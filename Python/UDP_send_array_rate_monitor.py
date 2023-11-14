@@ -16,16 +16,18 @@ RATIO = (PACKETS_PER_BURST*SAMPLES_PER_PACKET * BITS_PER_SAMPLE) / BIT_RATE
 # Create a UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-while(True):
+for BURST_IND in range(100000):
     start_time = time.time()
     
-    for i in range(PACKETS_PER_BURST):
+    for PACK_IND in range(PACKETS_PER_BURST):
     
         # send a data packet consisting of SAMPLES_PER_PACKET shorts (16 bit)
-        data_list = np.array(np.arange(0,SAMPLES_PER_PACKET,1), dtype="uint16")
-    
-        # Convert the list of doubles to bytes
-        data_bytes = struct.pack(str(SAMPLES_PER_PACKET) + "h", *data_list)
+        data_payload = np.array(np.arange(0,SAMPLES_PER_PACKET,1), dtype="uint16")
+        tracking_info = np.array(np.array([BURST_IND,PACK_IND]), dtype="uint16")
+        data_list = np.append(data_payload,tracking_info)
+
+        # Convert the list of doubles to bytes.. add len(tracking_info) for tracking info
+        data_bytes = struct.pack(str(SAMPLES_PER_PACKET+len(tracking_info)) + "h", *data_list)
         #print(data_bytes)
 
         # Send the data
