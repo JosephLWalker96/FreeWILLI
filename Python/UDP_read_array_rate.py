@@ -1,6 +1,6 @@
 import struct
 import socket
-
+import time
 # UDP settings
 UDP_IP = "192.168.7.2"  # Replace with the IP address of the receiver
 UDP_PORT = 1045  # Replace with the port number on the receiver
@@ -11,13 +11,13 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 # Bind the socket to the IP address and port
 sock.bind((UDP_IP, UDP_PORT))
 while True:
-    data, addr = sock.recvfrom(2*8 * 100)  # Assuming each double is 8 bytes
+    data, addr = sock.recvfrom(2*8 * 1000)  # Assuming each double is 8 bytes
 
     # Unpack the received bytes into a list of doubles
-    double_list = struct.unpack('100h', data)
+    double_list = struct.unpack('1000h', data)
 
     # Print the received list of doubles
-    print("Received doubles:", double_list)
-
+    #print("Received doubles:", double_list)
+    print(time.time())
 # Close the socket
 sock.close()
