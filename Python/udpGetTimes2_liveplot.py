@@ -22,9 +22,10 @@ import struct
 import matplotlib.pyplot as plt
 import sys
 import argparse
+import time
 
 
-print('HERE *********',sys.version)
+print('This code has been tested for python version 3.11.6, your version is:', sys.version)
 
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default=50000, type=int)
@@ -43,40 +44,33 @@ psz = hsz + dsz;    # packet size (bytes) = 1252
 
 blkinterval = 1550; # block/packet/datagram size microseconds = 1e6 * sppch/200e3
 
-# Create a udpport object udpportObj that uses IPV4 and communicates in byte mode. The
-# object is bound to the local host at "192.168.100.100" and the local port 50000 with
-# port sharing disabled.
-#udpportObj = udpport("LocalHost","192.168.100.100","LocalPort",50000);
-
 UDP_IP = args.ip
 UDP_PORT = args.port
 
 print(UDP_IP)
 print(UDP_PORT)
 
-
-# need 100 bytes to get Open command through
-# Write the data ['Open',zeros(1,96)] as a uint8 using the udpport object udpportObj to the device with
-# address or host name "192.168.100.220" and port 50000.
-#write(udpportObj,['Open',zeros(1,96)],"uint8","192.168.100.220",50000);
-
+# Create a udpport object udpportObj that uses IPV4
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-if UDP_IP == "192.168.100.220":
+if UDP_IP == "192.168.100.220": # IP address of the data logger
+    print('Sending wake up data to IP address: ', UDP_IP)
+
+    # need 100 bytes to get Open command through
     m1 = b'Open'
     m2 = bytearray(np.zeros((1,96),dtype=int))
-    
-    sock.sendto(m1, (UDP_IP, UDP_PORT))
-    sock.sendto(m2, (UDP_IP, UDP_PORT))
-elif UDP_IP == "192.168.7.2":
+    sock.sendto(m1 + m2, (UDP_IP, UDP_PORT))
+elif UDP_IP == "192.168.7.2": # IP address of Joe's simulator
     sock.bind((UDP_IP, UDP_PORT))
 else:
     print("ERROR: Unknown IP address" )
+
 
 print('UDP from HARP, check timestamps\n')
 pcnt = 0;
 lcnt = 0;
 flag1 = 1;
 k = 0
+
 while(1):
     dataB, addr1 = sock.recvfrom(psz)  # bytes object
     dataI = struct.unpack('>' + 'B'*len(dataB),dataB) # convert bytes to unsigned char list

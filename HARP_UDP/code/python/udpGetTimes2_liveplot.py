@@ -70,15 +70,19 @@ while(1):
     us = (dataB[6],dataB[7],dataB[8],dataB[9])
     usec = int.from_bytes(us,'big')                                  # get micro seconds from dataI (unsigned char ist)
     time1 = yy, mm, dd, HH, MM, SS, usec
+    
+    
     print(time1)
-    #print(dataI[6],dataI[7],dataI[8],dataI[9])
+    ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
+    #print(ch1)
+    #print('############# ', k ,' #############' )
+    #print(dataJ[6:])
     
     k = k+ 1
     if k == 9:
         break
 
-    ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
-    print(ch1)
+    
 
     if flag1 == 1:
         usec0 = usec
