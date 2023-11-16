@@ -4,16 +4,14 @@ import matplotlib.pyplot as plt
 import psutil
 import os
 
+NICE_VAL = -15
+TRIAL_NUM = 50000
 pid = os.getpid()
-
-# Get the process object for the current process
-process = psutil.Process(pid)
-
-# Set the process priority to high
-process.nice(-10)
+process = psutil.Process(pid)     # Get the process object for the current process
+process.nice(NICE_VAL)                 # Set the process priority to high
 
 trials = []
-os.nice(-10)
+os.nice(NICE_VAL)
 
 
 
@@ -23,7 +21,7 @@ def sleep(duration, get_now=time.perf_counter):
     while now < end:
         now = get_now()
 
-for i in range(5000):
+for i in range(TRIAL_NUM):
     start = time.time()
     sleep(.0014)
     trials.append(time.time()-start)

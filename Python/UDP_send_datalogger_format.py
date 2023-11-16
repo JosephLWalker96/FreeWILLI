@@ -5,14 +5,20 @@
 #  sudo python UDP_send_datalogger_format.py
 
 
-
-
 import struct              # library for converting data to binary
 import socket              # library for establishing UDP communication 
 import numpy as np
 import time
 import datetime
 from datetime import timedelta
+import psutil
+import os
+
+NICE_VAL = -15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
+pid = os.getpid()
+process = psutil.Process(pid)     # Get the process object for the current process
+process.nice(NICE_VAL)            # Set the process priority to high
+os.nice(NICE_VAL)
 
 UDP_IP = "192.168.7.2"     # IP address of the destination
 UDP_PORT = 1045            # Port number of the destination
@@ -23,8 +29,6 @@ SAMPLES_PER_PACKET = 1000  # number of measurements in each data packet
 BITS_PER_SAMPLE = 16       # bit depth
 
 RATIO = (PACKETS_PER_BURST*SAMPLES_PER_PACKET * BITS_PER_SAMPLE) / BIT_RATE
-
-
 
 REQUIRED_BYTES = 1252
 
