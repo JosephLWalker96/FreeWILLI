@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 import sys
 import argparse
 import time
-
+from process_data import detect_click
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)
 
@@ -33,7 +33,6 @@ parser.add_argument('--ip', default="192.168.100.220",type=str)
 
 # Parsing the arguments
 args = parser.parse_args()
-
 
 hsz = 12;           # packet head size (bytes)
 nchpp = 2;          # number of channels per packet
@@ -87,15 +86,13 @@ while(1):
     us = (dataB[6],dataB[7],dataB[8],dataB[9])
     usec = int.from_bytes(us,'big')                                  # get micro seconds from dataI (unsigned char ist)
     time1 = yy, mm, dd, HH, MM, SS, usec
-    print(time1)
+    #print(time1)
     #print(dataI[6],dataI[7],dataI[8],dataI[9])
     
-    k = k+ 1
-    if k == 9:
-        break
-    continue
     ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
-    print(ch1)
+    ch2 = np.array(dataJ[7:lenJ-4:4]) - 2**15  # shift for two complement
+    ch3 = np.array(dataJ[8:lenJ-3:4]) - 2**15  # shift for two complement
+    ch4 = np.array(dataJ[9:lenJ-2:4]) - 2**15  # shift for two complement
 
     if flag1 == 1:
         usec0 = usec
@@ -118,16 +115,21 @@ while(1):
             sock.sendto(m2, (UDP_IP, UDP_PORT))
     usec0 = usec
 
+    detect_click(ch1,ch2,ch3,ch4,time1)
+
+    # Show Progress 
     if pcnt >= 1000:
         pcnt = 0
         #print(".", end= "")
-        print('.',end = "")
+        print('.', end='', flush=True)
         lcnt = lcnt + 1
         if lcnt >= 50:
             lcnt = 0
             print("time: ", *time1)
     
+    #k = k+ 1
+    #if k == 9:
+    #    break
 
 # close the connection
-#write(udpportObj,['Close',zeros(1,95)],"uint8","192.168.100.220",50000);
 sock.close
