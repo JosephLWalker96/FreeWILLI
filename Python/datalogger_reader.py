@@ -1,10 +1,10 @@
 # This code is Joe's version of udpGetTimes2.py
 #
 # For running Joe's Simulator:
-#    python udpGetTimes2_liveplot.py --port 1045 --ip 192.168.7.2
+#    python datalogger_reader.py --port 1045 --ip 192.168.7.2
 #
 # For running in HARP lab:
-#    python udpGetTimes2_liveplot.py
+#    python datalogger_reader.py
 #
 # testing program for getting data from 4 ch HARP 3B04 230307
 # two channels at 200kHz/ch
