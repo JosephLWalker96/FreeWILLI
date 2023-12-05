@@ -18,15 +18,11 @@ def sleep(duration, get_now=time.perf_counter):
     while now < end:
         now = get_now()
         
-def narrow_gaussian_vector(vector_length, gaussian_width):
-    # Generate a vector with zeros
-    vector = np.zeros(vector_length)
+def synthetic_click_generator(signal_length, click_dur):
+    mu, sigma = 0, 10 # mean and standard deviation
+    s = np.abs(np.random.normal(mu, sigma, signal_length))
+    rand_num = np.random.rand(1)
+    start_pos = int(np.random.rand(1)*signal_length)
     
-    # Calculate the mean position for the Gaussian
-    mean_position = np.random.randint(0, vector_length)
-    
-    # Generate Gaussian kernel
-    gaussian_kernel = np.exp(-0.5 * ((np.arange(vector_length) - mean_position) / gaussian_width) ** 2)
-    
-    # Place the Gaussian in the vector
-    vector += gaussian_kernel
+    s[start_pos:start_pos + click_dur] = (s[start_pos:start_pos + click_dur] * 1.7) * (np.hamming(click_dur) + 1)
+    return s
