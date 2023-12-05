@@ -41,7 +41,7 @@ sppch = 5*62;       # samples per packet per channel = 310
 bps = 2;            # bytes per sample
 dsz = sppch * nchpp * bps;         # packet data size (bytes) = 1240
 psz = hsz + dsz;    # packet size (bytes) = 1252
-
+num_packs_detect = 5 # the number of data packets that are needed to perform energy detection 
 blkinterval = 1550; # block/packet/datagram size microseconds = 1e6 * sppch/200e3
 
 UDP_IP = args.ip
@@ -95,13 +95,14 @@ def udp_listener(udp_socket,buffer):
 # Function to process data from the buffer
 def data_processor(buffer):
     while True:
-        if not buffer.empty():  # Check if the buffer is not empty
-            data = buffer.get()  # Get data from the buffer
-            # Process the data (Replace this with your processing logic)
-            print("Processing data:", data["usec"])  # Example: Print decoded data
-            buffer_length = data_buffer.qsize()
-            print("Length of the buffer:", buffer_length)
-            time.sleep(0.001) 
+        #if not buffer.empty():  # Check if the buffer is not empty
+        if data_buffer.qsize() > num_packs_detect -1:
+            for i in range(num_packs_detect): 
+                data = buffer.get()  # Get data from the buffer
+                # Process the data (Replace this with your processing logic)
+                print("Processing data:", data["usec"])  # Example: Print decoded data
+
+
 # Create a buffer (Queue) for communication between threads
 data_buffer = queue.Queue()
 
