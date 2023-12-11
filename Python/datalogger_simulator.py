@@ -1,11 +1,13 @@
-#  This is a program for simulating the data logger
-#  This program may require root privileges 
-#
-#  Run this program by:
-#  sudo python UDP_send_datalogger_format.py
-#
-#  Setting the "nice" or priority value as done on lines 24 and 25 may not be possible on Windows.
+"""
+This is a program for simulating the data logger
+This program may require root privileges 
 
+Run this program on mac/linux by:
+$ sudo python UDP_send_datalogger_format.py
+
+Setting the "nice" or priority value as done on lines 24 and 25 may not be possible on Windows.
+  
+"""
 
 import struct                      # library for converting data to binary
 import socket                      # library for establishing UDP communication 
@@ -15,7 +17,7 @@ import datetime
 from datetime import timedelta
 import psutil
 import os
-from utils import sleep, synthetic_click_generator
+from utils import sleep, synthetic_click_generator, load_test_4ch_data
 
 NICE_VAL = -15                     # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
 
@@ -32,14 +34,17 @@ DATA_BYTES_PER_CHANNEL = 310       # number of data bytes per channel (REQUIRED_
 
 MICRO_INCR = .001550
 
-# Create a UDP socket
+## Create a UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-# Make a fake initial time for the "recorded data"
+## Make a fake initial time for the "recorded data"
 date_time = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
 
-DATA = np.array(synthetic_click_generator(signal_length = 10000, click_dur = 100),dtype=np.uint16)
-DATA_bytes = DATA.tobytes() # big_endian
+#DATA = synthetic_click_generator(signal_length = 10000, click_dur = 100)
+DATA = load_test_4ch_data(file_path = '../Data/joesdata.mat', scale = 2**15)
+
+DATA = np.array(DATA,dtype=np.uint16)      # convert data to unsigned 16 bit integers
+DATA_bytes = DATA.tobytes()                # convert the data to bytes using big_endian
 
 flag = 0
 while(True):
@@ -71,7 +76,10 @@ while(True):
     packet  = time_header + data_packet
     
     decoded_array = np.frombuffer(data_packet, dtype=np.uint16)
-    print(decoded_array)
+    print('SIMULATOR - NUMPY', np.array(decoded_array - 2**15).astype(np.int16))
+    
+    decoded_array = np.array(struct.unpack('<' + 'H' * int((REQUIRED_BYTES-12)/2), data_packet))
+    print('SIMULATOR - STRUCT', np.array(decoded_array - 2**15).astype(np.int16))
 
     #### Send the data
     sock.sendto(packet, (UDP_IP, UDP_PORT))
