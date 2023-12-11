@@ -1,20 +1,21 @@
-# This code is Joe's version of udpGetTimes2.py
-#
-# For running Joe's Simulator:
-#    python datalogger_reader.py --port 1045 --ip 192.168.7.2
-#
-# For running in HARP lab:
-#    python datalogger_reader.py
-#
-# testing program for getting data from 4 ch HARP 3B04 230307
-# two channels at 200kHz/ch
-# UDP 1 packet = 1252 bytes = 12 bytes time header + 1240 bytes data
-# 1 datagram = 1 packet
-#
-# based on udpGetTimes1.m
-#
-# 230920 smw
+"""
+ This code is Joe's version of udpGetTimes2.py
 
+ For running Joe's Simulator:
+    python datalogger_reader.py --port 1045 --ip 192.168.7.2
+
+ For running in HARP lab:
+    python datalogger_reader.py
+
+ testing program for getting data from 4 ch HARP 3B04 230307
+ two channels at 200kHz/ch
+ UDP 1 packet = 1252 bytes = 12 bytes time header + 1240 bytes data
+ 1 datagram = 1 packet
+
+ based on udpGetTimes1.m
+
+ 230920 smw
+"""
 
 import socket
 import numpy as np
@@ -34,14 +35,14 @@ parser.add_argument('--ip', default="192.168.100.220",type=str)
 # Parsing the arguments
 args = parser.parse_args()
 
-hsz = 12;           # packet head size (bytes)
-nchpp = 2;          # number of channels per packet
-sppch = 5*62;       # samples per packet per channel = 310
-bps = 2;            # bytes per sample
-dsz = sppch * nchpp * bps;         # packet data size (bytes) = 1240
-psz = hsz + dsz;    # packet size (bytes) = 1252
+HEAD_SIZE = 12;                                                 # packet head size (bytes)
+NUM_CHAN = 4;                                                   # number of channels per packet
+SAMPS_PER_CHANNEL = 155;                                        # samples per packet per channel, for 2 channels, this value is 5*62  = 310
+BYTES_PER_CHANNEL = 2;                                          # bytes per sample
+DATA_SIZE = SAMPS_PER_CHANNEL * NUM_CHAN * BYTES_PER_CHANNEL;   # packet data size (bytes) = 1240
+PACKET_SIZE = HEAD_SIZE + DATA_SIZE;                            # packet size (bytes) = 1252
 
-blkinterval = 1550; # block/packet/datagram size microseconds = 1e6 * sppch/200e3
+BLK_INTERVAL = 1550;                                            # block/packet/datagram size microseconds = 1e6 * SAMPS_PER_CHANNEL/(the sample rate)
 
 UDP_IP = args.ip
 UDP_PORT = args.port
@@ -71,11 +72,17 @@ flag1 = 1;
 k = 0
 
 while(1):
-    dataB, addr1 = sock.recvfrom(psz)  # bytes object
+    dataB, addr1 = sock.recvfrom(PACKET_SIZE)  # bytes object
     dataI = struct.unpack('>' + 'B'*len(dataB),dataB) # convert bytes to unsigned char list
-    lenJ = int(len(dataB) / 2)
-    dataJ = struct.unpack('>' + 'H'*lenJ,dataB) # convert bytes to short integer list
-    pcnt = pcnt + 1
+    
+    ###lenJ = int(len(dataB) / 2)
+    ###dataJ = struct.unpack('>' + 'H'*lenJ,dataB) # convert bytes to short integer list
+    ###print("First 50 samples of data in packet: ",np.array(dataJ[:50])-2**15) 
+    dataJ = np.frombuffer(dataB[12:], dtype=np.uint16)
+    dataJ = np.array(dataJ - 2**15).astype(np.int16)
+    print("First 50 samples of data in packet: ",dataJ[:50]) 
+    
+    pcnt = pcnt + 1 
     
     yy = dataI[0]
     mm = dataI[1]
@@ -86,13 +93,13 @@ while(1):
     us = (dataB[6],dataB[7],dataB[8],dataB[9])
     usec = int.from_bytes(us,'big')                                  # get micro seconds from dataI (unsigned char ist)
     time1 = yy, mm, dd, HH, MM, SS, usec
-    print(usec)
+    #print(usec)
     #print(dataI[6],dataI[7],dataI[8],dataI[9])
     
-    ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
-    ch2 = np.array(dataJ[7:lenJ-4:4]) - 2**15  # shift for two complement
-    ch3 = np.array(dataJ[8:lenJ-3:4]) - 2**15  # shift for two complement
-    ch4 = np.array(dataJ[9:lenJ-2:4]) - 2**15  # shift for two complement
+    ###ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
+    ch1 = dataJ[0::NUM_CHAN]
+    
+    print("First 10 samples in channel 1: ", ch1[:10])
 
     if flag1 == 1:
         usec0 = usec
@@ -104,7 +111,7 @@ while(1):
         dusec = usec - usec0
         if dusec < 0:
             dusec = dusec + 1e6
-    if dusec != blkinterval:
+    if dusec != BLK_INTERVAL:
         time2 = yy, mm, dd, HH, MM, SS, usec, int(dusec)
         print("Time Glitch:", *time2)
         if dusec == 0 | abs(usec) > 1e6 | mm == 0 | dd == 0:
@@ -115,7 +122,7 @@ while(1):
             sock.sendto(m2, (UDP_IP, UDP_PORT))
     usec0 = usec
 
-    detect_click(ch1,ch2,ch3,ch4,time1)
+    #detect_click(ch1,ch2,ch3,ch4,time1)
 
     # Show Progress 
     if pcnt >= 1000:
