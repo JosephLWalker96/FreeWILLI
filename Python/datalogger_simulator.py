@@ -23,8 +23,8 @@ NICE_VAL = -15                     # set the "nice" value (OS priority) of the p
 
 pid = os.getpid()
 process = psutil.Process(pid)      # Get the process object for the current process
-#process.nice(NICE_VAL)            # Set the process priority to high
-#os.nice(NICE_VAL)
+process.nice(NICE_VAL)            # Set the process priority to high
+os.nice(NICE_VAL)
 
 UDP_IP = "192.168.7.2"             # IP address of the destination
 UDP_PORT = 1045                    # Port number of the destination
@@ -66,6 +66,8 @@ while(True):
     second = int(date_time.second)
     microseconds = int(date_time.microsecond)
     
+    print("sending: ", microseconds)
+    
     time_list = [year,month,day,hour,minute,second,microseconds]
     
     date_time = date_time + timedelta(microseconds=int(MICRO_INCR * 1e6)) # increment the time for next packet
@@ -81,7 +83,10 @@ while(True):
     
     data_packet = DATA_bytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
     packet  = time_header + data_packet
-    
+    if len(packet) != PACKET_SIZE:
+        print('ERROR: packet length error')
+        break    
+
     #decoded_array = np.frombuffer(data_packet, dtype=np.uint16)
     #print('SIMULATOR - NUMPY', np.array(decoded_array - 2**15).astype(np.int16))
     
@@ -94,10 +99,12 @@ while(True):
     ### Sleep for a set time
     run_time = time.time() - start_time
     sleep(MICRO_INCR - run_time)
+    #sleep(2*MICRO_INCR)
     #print(time.time() - start_time)
     #time.sleep(1)
     
     if flag == 4000:
+        print('Reached flag ',flag)
         break
     flag += 1
 
