@@ -29,6 +29,13 @@ process = psutil.Process(pid)      # Get the process object for the current proc
 UDP_IP = "192.168.7.2"             # IP address of the destination
 UDP_PORT = 1045                    # Port number of the destination
 
+HEAD_SIZE = 12                     # packet head size (bytes)
+NUM_CHAN = 4;                      # number of channels per packet
+SAMPS_PER_CHANNEL = 155;           # samples per packet per channel, for 2 channels, this value is 5*62  = 310
+BYTES_PER_SAMP = 2;                                             # bytes per sample
+DATA_SIZE = SAMPS_PER_CHANNEL * NUM_CHAN * BYTES_PER_SAMP;   # packet data size (bytes) = 1240
+PACKET_SIZE = HEAD_SIZE + DATA_SIZE;                            # packet size (bytes) = 1252
+
 REQUIRED_BYTES = 1252
 DATA_BYTES_PER_CHANNEL = 310       # number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
 
@@ -70,26 +77,27 @@ while(True):
 
     #### Create the data to send
     # Send a list of zeros as data
-    #packet = time_header + bytes([0] * int(REQUIRED_BYTES-12))
+    #packet = time_header + bytes([0] * int(DATA_SIZE))
     
-    data_packet = DATA_bytes[flag * int(REQUIRED_BYTES-12):(flag+1) *int(REQUIRED_BYTES-12)]
+    data_packet = DATA_bytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
     packet  = time_header + data_packet
     
-    decoded_array = np.frombuffer(data_packet, dtype=np.uint16)
-    print('SIMULATOR - NUMPY', np.array(decoded_array - 2**15).astype(np.int16))
+    #decoded_array = np.frombuffer(data_packet, dtype=np.uint16)
+    #print('SIMULATOR - NUMPY', np.array(decoded_array - 2**15).astype(np.int16))
     
-    decoded_array = np.array(struct.unpack('<' + 'H' * int((REQUIRED_BYTES-12)/2), data_packet))
-    print('SIMULATOR - STRUCT', np.array(decoded_array - 2**15).astype(np.int16))
+    #decoded_array = np.array(struct.unpack('<' + 'H' * int((REQUIRED_BYTES-12)/2), data_packet))
+    #print('SIMULATOR - STRUCT', np.array(decoded_array - 2**15).astype(np.int16))
 
     #### Send the data
     sock.sendto(packet, (UDP_IP, UDP_PORT))
-    #run_time = time.time() - start_time
-    #sleep(MICRO_INCR - run_time)
     
+    ### Sleep for a set time
+    run_time = time.time() - start_time
+    sleep(MICRO_INCR - run_time)
     #print(time.time() - start_time)
-    time.sleep(1)
+    #time.sleep(1)
     
-    if flag == 40:
+    if flag == 4000:
         break
     flag += 1
 
