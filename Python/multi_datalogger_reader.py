@@ -65,17 +65,19 @@ else:
     print("ERROR: Unknown IP address" )
 
 # UDP listener function to receive data and write to the buffer
-def udp_listener(udp_socket,buffer):
+
+COUNTER = 0
+def udp_listener(COUNTER,udp_socket,buffer):
 
     while True:
-
+        COUNTER = COUNTER +1 
         dataB, addr1 = udp_socket.recvfrom(psz)  # bytes object
         dataI = struct.unpack('>' + 'B'*len(dataB),dataB) # convert bytes to unsigned char list
         lenJ = int(len(dataB) / 2)
         dataJ = struct.unpack('>' + 'H'*lenJ,dataB) # convert bytes to short integer list
         
         #print(int.from_bytes(dataJ[6:],'big'))
-        print(np.array(dataJ[6:]))
+        #print(np.array(dataJ[6:]))
         yy = dataI[0]
         mm = dataI[1]
         dd = dataI[2]
@@ -110,7 +112,7 @@ def data_processor(buffer):
 data_buffer = queue.Queue()
 
 # Create and start the UDP listener thread
-udp_thread = threading.Thread(target=udp_listener, args=(sock,data_buffer,))
+udp_thread = threading.Thread(target=udp_listener, args=(COUNTER,sock,data_buffer,))
 udp_thread.daemon = True  # Daemonize the thread to exit when the main program exits
 udp_thread.start()
 
@@ -124,4 +126,5 @@ try:
     while True:
         pass
 except KeyboardInterrupt:
+    print(COUNTER)
     print("\nExiting...")

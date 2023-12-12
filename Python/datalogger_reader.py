@@ -80,7 +80,7 @@ while(1):
     ###print("First 50 samples of data in packet: ",np.array(dataJ[:50])-2**15) 
     dataJ = np.frombuffer(dataB[12:], dtype=np.uint16)
     dataJ = np.array(dataJ - 2**15).astype(np.int16)
-    print("First 50 samples of data in packet: ",dataJ[:50]) 
+    #print("First 50 samples of data in packet: ",dataJ[:50]) 
     
     pcnt = pcnt + 1 
     
@@ -99,7 +99,7 @@ while(1):
     ###ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
     ch1 = dataJ[0::NUM_CHAN]
     
-    print("First 10 samples in channel 1: ", ch1[:10])
+    #print("First 10 samples in channel 1: ", ch1[:10])
 
     if flag1 == 1:
         usec0 = usec
@@ -134,9 +134,9 @@ while(1):
             lcnt = 0
             print("time: ", *time1)
     
-    k = k+ 1
-    if k == 5:
-        break
+    #k = k+ 1
+    #if k == 5:
+    #    break
 
 # close the connection
 sock.close

@@ -27,6 +27,15 @@ import argparse
 import time
 from process_data import detect_click
 #from utils import sleep
+import psutil
+import os
+NICE_VAL = -15                     # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
+
+pid = os.getpid()
+process = psutil.Process(pid)      # Get the process object for the current process
+
+process.nice(NICE_VAL)            # Set the process priority to high
+os.nice(NICE_VAL)
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)
 
@@ -70,8 +79,9 @@ else:
     print("ERROR: Unknown IP address" )
 
 # UDP listener function to receive data and write to the buffer
+COUNTER = 0
 def udp_listener(udp_socket,buffer):
-
+    global COUNTER
     while True:
 
         dataB, addr1 = udp_socket.recvfrom(PACKET_SIZE)  # bytes object
@@ -80,7 +90,9 @@ def udp_listener(udp_socket,buffer):
         ###dataJ = struct.unpack('>' + 'H'*lenJ,dataB) # convert bytes to short integer list
         dataJ = np.frombuffer(dataB[12:], dtype=np.uint16)
         dataJ = np.array(dataJ - 2**15).astype(np.int16)
-        
+        COUNTER += 1
+        if COUNTER % 500==0:
+            print("COUNTER is ",COUNTER)
         yy = dataI[0]
         mm = dataI[1]
         dd = dataI[2]
@@ -91,31 +103,30 @@ def udp_listener(udp_socket,buffer):
         usec = int.from_bytes(us,'big')                                  # get micro seconds from dataI (unsigned char ist)
         time1 = yy, mm, dd, HH, MM, SS, usec
         #print(dataI6],dataI[7],dataI[8],dataI[9])
-        print('recieved: ', usec) 
+        #print('recieved: ', usec) 
         
         ###ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
         ch1 = dataJ[0::NUM_CHAN]
         #print('HERE',ch1)
+        """
         packet_data = {
             "usec": usec,
             "data":ch1 
         }
-        buffer.put(packet_data)  # Put received data into the buffer
+        """
+        buffer.put(ch1)  # Put received data into the buffer
         buffer_length = data_buffer.qsize()
-        print("Recieve Length of the buffer:", buffer_length)
+        #print("Recieve Length of the buffer:", buffer_length)
 # Function to process data from the buffer
 def data_processor(buffer):
     while True:
-        #if not buffer.empty():  # Check if the buffer is not empty
-        if data_buffer.qsize() > NUM_PACKS_DETECT -1:
-            for i in range(num_packs_detect): 
-                data = buffer.get()  # Get data from the buffer
-                # Process the data (Replace this with your processing logic)
-                print("Processing data:", data["usec"])  # Example: Print decoded data
-                segment = buffer.get() if not isinstance(segment, np.ndarray) else np.append(segment, buffer.get())
-            print("################## SEGMENT ####################")
-            print("length of segment ", len(segment))
-            print(segment[:1000]) 
+        data_list = []
+        while len(data_list) < NUM_PACKS_DETECT:
+            data = buffer.get()  # Get data from the buffer
+            data_list.append(data)
+        #print("################## SEGMENT ####################")
+        #print("length of segment ", len(segment))
+        #print(segment[:1000]) 
 
 
 # Create a buffer (Queue) for communication between threads
@@ -123,17 +134,27 @@ data_buffer = queue.Queue()
 
 # Create and start the UDP listener thread
 udp_thread = threading.Thread(target=udp_listener, args=(sock,data_buffer,))
-udp_thread.daemon = True  # Daemonize the thread to exit when the main program exits
+udp_thread.daemon = False  # Daemonize the thread to exit when the main program exits
 udp_thread.start()
 
 # Create and start the data processor thread
 processor_thread = threading.Thread(target=data_processor, args=(data_buffer,))
-processor_thread.daemon = True
+processor_thread.daemon =False 
 processor_thread.start()
 
 # Keep the main thread alive to allow other threads to run
+
+# Wait for threads to finish (optional)
+udp_thread.join()
+processor_thread.join()
+
+print('GLOBAL COUNTER: ', COUNTER)
+
+
+"""
 try:
     while True:
         pass
 except KeyboardInterrupt:
     print("\nExiting...")
+"""
