@@ -59,9 +59,9 @@ def load_test_4ch_data(file_path = '../Data/joesdata.mat', scale = 2**15):
     """
     
     print("Loading data from file: ",file_path)
-    DATA = loadmat(file_path)['DATA']
+    DATA = loadmat(file_path)['DATA'].T
     print("Shape of loaded data: ", DATA.shape)
     DATA_reshaped = DATA.reshape(-1, order='F')                   # Interleave the values of the rows uniformly
     print("REAL DATA: ",DATA_reshaped[:30])
-    DATA_reshaped = DATA_reshaped + scale                         # Interleave the values of the rows uniformly
+    DATA_reshaped = DATA_reshaped + scale                         
     return DATA_reshaped
