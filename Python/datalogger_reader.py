@@ -134,9 +134,9 @@ while(1):
             lcnt = 0
             print("time: ", *time1)
     
-    #k = k+ 1
-    #if k == 9:
-    #    break
+    k = k+ 1
+    if k == 5:
+        break
 
 # close the connection
 sock.close
