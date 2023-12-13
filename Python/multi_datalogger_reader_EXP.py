@@ -2,10 +2,10 @@
  This code is for running a multithreaded version of datalogger_reader.py 
 
  For running with Joe's Simulator:
-    python multi_datalogger_reader.py --port 1045 --ip 192.168.7.2
+    sudo python multi_datalogger_reader.py --port 1045 --ip 192.168.7.2
 
  For running in HARP lab:
-    python multi_datalogger_reader.py
+    sudo python multi_datalogger_reader.py
 
  testing program for getting data from 4 ch HARP 3B04 230307
  two channels at 200kHz/ch
@@ -26,14 +26,13 @@ import sys
 import argparse
 import time
 from process_data import detect_click
-#from utils import sleep
 import psutil
 import os
-NICE_VAL = -15                     # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
 
+# The following 5 lines of code makes the program run at high priority 
+NICE_VAL = -15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
 pid = os.getpid()
-process = psutil.Process(pid)      # Get the process object for the current process
-
+process = psutil.Process(pid)     # Get the process object for the current process
 process.nice(NICE_VAL)            # Set the process priority to high
 os.nice(NICE_VAL)
 
@@ -54,7 +53,7 @@ DATA_SIZE = SAMPS_PER_CHAN * NUM_CHAN * BYTES_PER_SAMP   # packet data size (byt
 PACKET_SIZE = HEAD_SIZE + DATA_SIZE                      # packet size (bytes) = 1252
 BLK_INTERVAL = 1550                                      # block/packet/datagram size microseconds = 1e6 * SAMPS_PER_CHAN/100e3
 
-TIME_WINDOW = .5                                              # fraction of a second to consider  
+TIME_WINDOW = .5                                                 # fraction of a second to consider  
 NUM_PACKS_DETECT = round(TIME_WINDOW * 100000 / SAMPS_PER_CHAN)  # the number of data packets that are needed to perform energy detection 
 
 UDP_IP = args.ip                                          # IP address of data logger or simulator 
@@ -79,9 +78,9 @@ else:
     print("ERROR: Unknown IP address" )
 
 # UDP listener function to receive data and write to the buffer
-COUNTER = 0
+packet_counter = 0
 def udp_listener(udp_socket,buffer):
-    global COUNTER
+    global packet_counter 
     while True:
 
         dataB, addr1 = udp_socket.recvfrom(PACKET_SIZE)  # bytes object
@@ -90,9 +89,9 @@ def udp_listener(udp_socket,buffer):
         ###dataJ = struct.unpack('>' + 'H'*lenJ,dataB) # convert bytes to short integer list
         dataJ = np.frombuffer(dataB[12:], dtype=np.uint16)
         dataJ = np.array(dataJ - 2**15).astype(np.int16)
-        COUNTER += 1
-        if COUNTER % 500==0:
-            print("COUNTER is ",COUNTER)
+        packet_counter += 1
+        if packet_counter % 500==0:
+            print("Num packets received is ", packet_counter)
         yy = dataI[0]
         mm = dataI[1]
         dd = dataI[2]
@@ -120,14 +119,14 @@ def udp_listener(udp_socket,buffer):
 # Function to process data from the buffer
 def data_processor(buffer):
     while True:
-        data_list = []
-        while len(data_list) < NUM_PACKS_DETECT:
-            data = buffer.get()  # Get data from the buffer
-            data_list.append(data)
+        segment = np.array([])
+        while len(segment) < (NUM_PACKS_DETECT * SAMPS_PER_CHAN):
+            segment = np.append(segment,buffer.get())
+        
         #print("################## SEGMENT ####################")
         #print("length of segment ", len(segment))
         #print(segment[:1000]) 
-
+        detect_click(segment)
 
 # Create a buffer (Queue) for communication between threads
 data_buffer = queue.Queue()
