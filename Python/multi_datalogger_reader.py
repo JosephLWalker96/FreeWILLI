@@ -41,26 +41,31 @@ print('This code has been tested for python version 3.11.6, your version is:', s
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default=50000, type=int)
 parser.add_argument('--ip', default="192.168.100.220",type=str)
-
+parser.add_argument('--fw', default = 1550, type=int)
 # Parsing the arguments
 args = parser.parse_args()
 
-HEAD_SIZE = 12                                           # packet head size (bytes)
-NUM_CHAN = 4                                             # number of channels per packet
-SAMPS_PER_CHAN = 155                                     # samples per packet per channel, for 2 channels, this value is 5*62  = 310
-BYTES_PER_SAMP = 2                                       # bytes per sample
-DATA_SIZE = SAMPS_PER_CHAN * NUM_CHAN * BYTES_PER_SAMP   # packet data size (bytes) = 1240
-PACKET_SIZE = HEAD_SIZE + DATA_SIZE                      # packet size (bytes) = 1252
-BLK_INTERVAL = 1550                                      # block/packet/datagram size microseconds = 1e6 * SAMPS_PER_CHAN/100e3
-
-TIME_WINDOW = .5                                                 # fraction of a second to consider  
-NUM_PACKS_DETECT = round(TIME_WINDOW * 100000 / SAMPS_PER_CHAN)  # the number of data packets that are needed to perform energy detection 
-
 UDP_IP = args.ip                                          # IP address of data logger or simulator 
 UDP_PORT = args.port                                      # Port to listen for UDP packets
+print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
 
-print(UDP_IP)
-print(UDP_PORT)
+# import variables according to firmware version specified
+print('Assuming firmware version: ', args.fw)
+if args.fw == 1550:
+    from firmware_1550 import *
+elif args.fw == 1250:
+    from firmware_1250 import *
+else:
+    print('ERROR: Unknown firmware version')
+    sys.exit()  # Exiting the program
+
+TIME_WINDOW = .5                                                 # fraction of a second to consider  
+NUM_PACKS_DETECT = round(TIME_WINDOW * 100000 / SAMPS_PER_CHANNEL)  # the number of data packets that are needed to perform energy detection 
+
+print('Bytes per packet:       ', REQUIRED_BYTES)
+print('Time between packets:   ', MICRO_INCR)
+print('Number of channels:     ', NUM_CHAN)
+print('Data bytes per channel: ', DATA_BYTES_PER_CHANNEL)
 print("Detecting over a time window of ",TIME_WINDOW," seconds, using ",NUM_PACKS_DETECT, " packets") 
 
 # Create a udpport object udpportObj that uses IPV4
@@ -76,6 +81,9 @@ elif UDP_IP == "192.168.7.2": # IP address of Joe's simulator
     sock.bind((UDP_IP, UDP_PORT))
 else:
     print("ERROR: Unknown IP address" )
+
+time.sleep(2) # take time to make sure above parameters are correct
+print('Listening...')
 
 # UDP listener function to receive data and write to the buffer
 packet_counter = 0
@@ -120,7 +128,7 @@ def udp_listener(udp_socket,buffer):
 def data_processor(buffer):
     while True:
         segment = np.array([])
-        while len(segment) < (NUM_PACKS_DETECT * SAMPS_PER_CHAN):
+        while len(segment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL):
             segment = np.append(segment,buffer.get())
         
         #print("################## SEGMENT ####################")
