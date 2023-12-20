@@ -25,7 +25,7 @@ import numpy as np
 import sys
 import argparse
 import time
-from process_data import detect_click
+from process_data import process_segment_1550, process_segment_1240
 import psutil
 import os
 
@@ -53,8 +53,10 @@ print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
 print('Assuming firmware version: ', args.fw)
 if args.fw == 1550:
     from firmware_1550 import *
+    process_segment = process_segment_1550
 elif args.fw == 1240:
     from firmware_1240 import *
+    process_segment = process_segment_1240
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
@@ -113,7 +115,7 @@ def udp_listener(udp_socket,buffer):
         #print('recieved: ', usec) 
         
         ###ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
-        ch1 = dataJ[0::NUM_CHAN]
+        #ch1 = dataJ[0::NUM_CHAN]
         #print('HERE',ch1)
         """
         packet_data = {
@@ -121,7 +123,7 @@ def udp_listener(udp_socket,buffer):
             "data":ch1 
         }
         """
-        buffer.put(ch1)  # Put received data into the buffer
+        buffer.put(dataJ)  # Put received data into the buffer
         buffer_length = data_buffer.qsize()
         #print("Recieve Length of the buffer:", buffer_length)
 # Function to process data from the buffer
@@ -134,7 +136,7 @@ def data_processor(buffer):
         #print("################## SEGMENT ####################")
         #print("length of segment ", len(segment))
         #print(segment[:1000]) 
-        detect_click(segment)
+        process_segment(segment)
 
 # Create a buffer (Queue) for communication between threads
 data_buffer = queue.Queue()
