@@ -66,7 +66,7 @@ def load_test_4ch_data_1550(file_path = '../Data/joesdata.mat', scale = 2**15):
     DATA_reshaped = DATA_reshaped + scale                         
     return DATA_reshaped
 
-def load_test_4ch_data_1240(file_path = '../Data/joesdata.mat', scale = 2**15, chunk_interval):
+def load_test_4ch_data_1240(file_path = '../Data/joesdata.mat', scale = 2**15, chunk_interval = None):
     """
     Function to read in real 4 channel data and format the data according to firmware version 1240
 

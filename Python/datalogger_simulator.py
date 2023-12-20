@@ -41,9 +41,9 @@ print('Simulating firmware version: ', args.fw)
 if args.fw == 1550:
     from firmware_1550 import *
     DATA = load_test_4ch_data_1550(file_path = '../Data/joesdata.mat', scale = 2**15)
-elif args.fw == 1250:
+elif args.fw == 1240:
     from firmware_1240 import *
-    DATA = load_test_4ch_data_1240(file_path = '../Data/joesdata.mat', scale = 2**15, SAMPS_PER_CHANNEL)
+    DATA = load_test_4ch_data_1240(file_path = '../Data/joesdata.mat', scale = 2**15, chunk_interval = SAMPS_PER_CHANNEL)
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
