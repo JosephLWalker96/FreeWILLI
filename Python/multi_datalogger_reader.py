@@ -53,8 +53,8 @@ print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
 print('Assuming firmware version: ', args.fw)
 if args.fw == 1550:
     from firmware_1550 import *
-elif args.fw == 1250:
-    from firmware_1250 import *
+elif args.fw == 1240:
+    from firmware_1240 import *
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
