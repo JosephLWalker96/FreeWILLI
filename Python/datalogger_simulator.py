@@ -19,7 +19,7 @@ import argparse
 import psutil
 import os
 import sys
-from utils import sleep, synthetic_click_generator, load_test_4ch_data
+from utils import sleep, synthetic_click_generator, load_test_4ch_data_1550, load_test_4ch_data_1240
 
 NICE_VAL = -15                     # set the "nice" value (OS priority) of the program.
 pid = os.getpid()
@@ -31,36 +31,22 @@ parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default = 1045, type=int)
 parser.add_argument('--ip', default = "192.168.7.2", type=str)
 parser.add_argument('--fw', default = 1550, type=int)
-
-# Parsing the arguments
-args = parser.parse_args()                   
+args = parser.parse_args() # Parsing the arguments
 
 UDP_IP = args.ip                   # IP address of the destination
 UDP_PORT = args.port               # Port number of the destination
 
+print('Simulating firmware version: ', args.fw)
 # import variables according to firmware version specified
 if args.fw == 1550:
-    print('Simulating firmware version: 1550')
     from firmware_1550 import *
+    DATA = load_test_4ch_data_1550(file_path = '../Data/joesdata.mat', scale = 2**15)
 elif args.fw == 1250:
-    print('Simulating firmware version: 1250')
+    from firmware_1240 import *
+    DATA = load_test_4ch_data_1240(file_path = '../Data/joesdata.mat', scale = 2**15, SAMPS_PER_CHANNEL)
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
-    
-'''
-HEAD_SIZE = 12                     # packet head size (bytes)
-NUM_CHAN = 4;                      # number of channels per packet
-SAMPS_PER_CHANNEL = 155;           # samples per packet per channel, for 2 channels, this value is 5*62  = 310
-BYTES_PER_SAMP = 2;                                             # bytes per sample
-DATA_SIZE = SAMPS_PER_CHANNEL * NUM_CHAN * BYTES_PER_SAMP;   # packet data size (bytes) = 1240
-PACKET_SIZE = HEAD_SIZE + DATA_SIZE;                            # packet size (bytes) = 1252
-
-REQUIRED_BYTES = 1252
-DATA_BYTES_PER_CHANNEL = 310       # number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
-
-MICRO_INCR = .001550
-'''
 
 print('Bytes per packet:       ', REQUIRED_BYTES)
 print('Time between packets:   ', MICRO_INCR)
@@ -72,9 +58,6 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 ## Make a fake initial time for the "recorded data"
 date_time = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
-
-#DATA = synthetic_click_generator(signal_length = 10000, click_dur = 100)
-DATA = load_test_4ch_data(file_path = '../Data/joesdata.mat', scale = 2**15)
 
 DATA = np.array(DATA,dtype=np.uint16)      # convert data to unsigned 16 bit integers
 DATA_bytes = DATA.tobytes()                # convert the data to bytes using big_endian
@@ -119,14 +102,14 @@ while(True):
     #decoded_array = np.array(struct.unpack('<' + 'H' * int((REQUIRED_BYTES-12)/2), data_packet))
     #print('SIMULATOR - STRUCT', np.array(decoded_array - 2**15).astype(np.int16))
 
-    #### Send the data
-    sock.sendto(packet, (UDP_IP, UDP_PORT))
+    sock.sendto(packet, (UDP_IP, UDP_PORT)) # send the packet
     
-    ### Sleep for a set time
+    ### Sleep for the correct time
     run_time = time.time() - start_time
     sleep(MICRO_INCR - run_time)
+    
+    ### Sleep for an arbitrary time (debugging)
     #sleep(2*MICRO_INCR)
-    #print(time.time() - start_time)
     #time.sleep(1)
     
     if flag == 4000:

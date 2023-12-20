@@ -46,9 +46,29 @@ def synthetic_click_generator(signal_length, click_dur):
     s[start_pos:start_pos + click_dur] = (s[start_pos:start_pos + click_dur] * 1.7) * (np.hamming(click_dur) + 1)
     return s
 
-def load_test_4ch_data(file_path = '../Data/joesdata.mat', scale = 2**15):
+def load_test_4ch_data_1550(file_path = '../Data/joesdata.mat', scale = 2**15):
     """
-    Function to read in real 4 channel data
+    Function to read in real 4 channel data and format the data according to firmware version 1550
+
+    Args:
+        path (string):   The path to the data to read in
+        scale (integer): A scaling parameter to shift the data by
+
+    Returns:
+        array of integers: The result of the division.
+    """
+    
+    print("Loading data from file: ",file_path)
+    DATA = loadmat(file_path)['DATA'].T
+    print("Shape of loaded data: ", DATA.shape)
+    DATA_reshaped = DATA.reshape(-1, order='F')                   # Interleave the values of the rows uniformly
+    print("REAL DATA: ",DATA_reshaped[:30])
+    DATA_reshaped = DATA_reshaped + scale                         
+    return DATA_reshaped
+
+def load_test_4ch_data_1240(file_path = '../Data/joesdata.mat', scale = 2**15, chunk_interval):
+    """
+    Function to read in real 4 channel data and format the data according to firmware version 1240
 
     Args:
         path (string):   The path to the data to read in
