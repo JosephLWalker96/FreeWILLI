@@ -15,20 +15,40 @@ import numpy as np
 import time
 import datetime
 from datetime import timedelta
+import argparse
 import psutil
 import os
+import sys
 from utils import sleep, synthetic_click_generator, load_test_4ch_data
 
-NICE_VAL = -15                     # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
-
+NICE_VAL = -15                     # set the "nice" value (OS priority) of the program.
 pid = os.getpid()
 process = psutil.Process(pid)      # Get the process object for the current process
-process.nice(NICE_VAL)            # Set the process priority to high
+process.nice(NICE_VAL)             # Set the process priority to high
 os.nice(NICE_VAL)
 
-UDP_IP = "192.168.7.2"             # IP address of the destination
-UDP_PORT = 1045                    # Port number of the destination
+parser = argparse.ArgumentParser(description='Program command line arguments')
+parser.add_argument('--port', default = 1045, type=int)
+parser.add_argument('--ip', default = "192.168.7.2", type=str)
+parser.add_argument('--fw', default = 1550, type=int)
 
+# Parsing the arguments
+args = parser.parse_args()                   
+
+UDP_IP = args.ip                   # IP address of the destination
+UDP_PORT = args.port               # Port number of the destination
+
+# import variables according to firmware version specified
+if args.fw == 1550:
+    print('Simulating firmware version: 1550')
+    from firmware_1550 import *
+elif args.fw == 1250:
+    print('Simulating firmware version: 1250')
+else:
+    print('ERROR: Unknown firmware version')
+    sys.exit()  # Exiting the program
+    
+'''
 HEAD_SIZE = 12                     # packet head size (bytes)
 NUM_CHAN = 4;                      # number of channels per packet
 SAMPS_PER_CHANNEL = 155;           # samples per packet per channel, for 2 channels, this value is 5*62  = 310
@@ -40,6 +60,12 @@ REQUIRED_BYTES = 1252
 DATA_BYTES_PER_CHANNEL = 310       # number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
 
 MICRO_INCR = .001550
+'''
+
+print('Bytes per packet:       ', REQUIRED_BYTES)
+print('Time between packets:   ', MICRO_INCR)
+print('Number of channels:     ', NUM_CHAN)
+print('Data bytes per channel: ', DATA_BYTES_PER_CHANNEL)
 
 ## Create a UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

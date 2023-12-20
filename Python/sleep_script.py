@@ -13,8 +13,6 @@ process.nice(NICE_VAL)                 # Set the process priority to high
 trials = []
 os.nice(NICE_VAL)
 
-
-
 def sleep(duration, get_now=time.perf_counter):
     now = get_now()
     end = now + duration
@@ -23,7 +21,7 @@ def sleep(duration, get_now=time.perf_counter):
 
 for i in range(TRIAL_NUM):
     start = time.time()
-    sleep(.0014)
+    sleep(.001250)
     trials.append(time.time()-start)
     
 print(np.mean(trials))
