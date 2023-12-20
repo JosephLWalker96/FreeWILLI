@@ -75,7 +75,7 @@ while(True):
     second = int(date_time.second)
     microseconds = int(date_time.microsecond)
     
-    print("sending: ", microseconds)
+    #print("sending: ", microseconds)
     
     time_list = [year,month,day,hour,minute,second,microseconds]
     

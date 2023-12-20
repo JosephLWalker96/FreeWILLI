@@ -77,11 +77,18 @@ def load_test_4ch_data_1240(file_path = '../Data/joesdata.mat', scale = 2**15, c
     Returns:
         array of integers: The result of the division.
     """
+    Num_channels = 4
     
     print("Loading data from file: ",file_path)
     DATA = loadmat(file_path)['DATA'].T
     print("Shape of loaded data: ", DATA.shape)
-    DATA_reshaped = DATA.reshape(-1, order='F')                   # Interleave the values of the rows uniformly
-    print("REAL DATA: ",DATA_reshaped[:30])
+
+    divisor = DATA.shape[1] // chunk_interval
+    DATA = DATA[:,:int(chunk_interval*divisor)]
+    DATA_reshaped = DATA.reshape(Num_channels,divisor,chunk_interval)
+    DATA_reshaped = np.hstack(np.hstack(DATA_reshaped))
+    print(DATA_reshaped[:chunk_interval*3])
+    
+    
     DATA_reshaped = DATA_reshaped + scale                         
     return DATA_reshaped
