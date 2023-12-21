@@ -25,9 +25,10 @@ import numpy as np
 import sys
 import argparse
 import time
-from process_data import process_segment_1550, process_segment_1240
+import datetime
 import psutil
 import os
+from process_data import process_segment_1550, process_segment_1240
 
 # The following 5 lines of code makes the program run at high priority 
 NICE_VAL = -15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
@@ -42,8 +43,9 @@ parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default=50000, type=int)
 parser.add_argument('--ip', default="192.168.100.220",type=str)
 parser.add_argument('--fw', default = 1550, type=int)
-# Parsing the arguments
-args = parser.parse_args()
+parser.add_argument('--output_file', default = "clicks_data.txt", type=str)
+args = parser.parse_args() # Parsing the arguments
+output_file = open(args.output_file, 'w')
 
 UDP_IP = args.ip                                          # IP address of data logger or simulator 
 UDP_PORT = args.port                                      # Port to listen for UDP packets
@@ -92,51 +94,44 @@ packet_counter = 0
 def udp_listener(udp_socket,buffer):
     global packet_counter 
     while True:
-
         dataB, addr1 = udp_socket.recvfrom(PACKET_SIZE)  # bytes object
-        dataI = struct.unpack('>' + 'B'*len(dataB),dataB) # convert bytes to unsigned char list
-        ###lenJ = int(len(dataB) / 2)
-        ###dataJ = struct.unpack('>' + 'H'*lenJ,dataB) # convert bytes to short integer list
-        dataJ = np.frombuffer(dataB[12:], dtype=np.uint16)
-        dataJ = np.array(dataJ - 2**15).astype(np.int16)
         packet_counter += 1
         if packet_counter % 500==0:
             print("Num packets received is ", packet_counter)
-        yy = dataI[0]
-        mm = dataI[1]
-        dd = dataI[2]
-        HH = dataI[3]
-        MM = dataI[4]
-        SS = dataI[5]
-        us = (dataB[6],dataB[7],dataB[8],dataB[9])
-        usec = int.from_bytes(us,'big')                                  # get micro seconds from dataI (unsigned char ist)
-        time1 = yy, mm, dd, HH, MM, SS, usec
-        #print(dataI6],dataI[7],dataI[8],dataI[9])
-        #print('recieved: ', usec) 
-        
-        ###ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
-        #ch1 = dataJ[0::NUM_CHAN]
-        #print('HERE',ch1)
-        """
-        packet_data = {
-            "usec": usec,
-            "data":ch1 
-        }
-        """
-        buffer.put(dataJ)  # Put received data into the buffer
-        buffer_length = data_buffer.qsize()
-        #print("Recieve Length of the buffer:", buffer_length)
+        buffer.put(dataB)  # Put received data into the buffer
+
 # Function to process data from the buffer
 def data_processor(buffer):
     while True:
-        segment = np.array([])
-        while len(segment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL):
-            segment = np.append(segment,buffer.get())
+        data_segment = np.array([])
+        times = np.array([])
+        while len(data_segment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL):
+            #segment = np.append(segment,buffer.get())
+            dataB = buffer.get()
+            dataI = struct.unpack('>' + 'B'*len(dataB),dataB) # convert bytes to unsigned char list
+            ###lenJ = int(len(dataB) / 2)
+            ###dataJ = struct.unpack('>' + 'H'*lenJ,dataB) # convert bytes to short integer list
+            dataJ = np.frombuffer(dataB[12:], dtype=np.uint16)
+            dataJ = np.array(dataJ - 2**15).astype(np.int16)
+            #yy = dataI[0]
+            #mm = dataI[1]
+            #dd = dataI[2]
+            #HH = dataI[3]
+            #MM = dataI[4]
+            #SS = dataI[5]
+            us = (dataB[6],dataB[7],dataB[8],dataB[9])
+            usec = int.from_bytes(us,'big')                                  # get micro seconds from dataI (unsigned char ist)
+            date_time = datetime.datetime(2000+dataI[0], dataI[1], dataI[2], dataI[3], dataI[4], dataI[5], usec, tzinfo=datetime.timezone.utc)
+            times = np.append(times, date_time) 
+            data_segment = np.append(data_segment,dataJ)        
+            ###ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
+            #ch1 = dataJ[0::NUM_CHAN]
+            #print('HERE',ch1)
         
-        #print("################## SEGMENT ####################")
-        #print("length of segment ", len(segment))
-        #print(segment[:1000]) 
-        process_segment(segment)
+            #print("################## SEGMENT ####################")
+            #print("length of segment ", len(segment))
+            #print(segment[:1000]) 
+        process_segment(data_segment, times, args.output_file)
 
 # Create a buffer (Queue) for communication between threads
 data_buffer = queue.Queue()

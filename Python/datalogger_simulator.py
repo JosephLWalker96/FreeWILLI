@@ -37,7 +37,7 @@ UDP_IP = args.ip                   # IP address of the destination
 UDP_PORT = args.port               # Port number of the destination
 
 print('Simulating firmware version: ', args.fw)
-# import variables according to firmware version specified
+### import variables according to firmware version specified
 if args.fw == 1550:
     from firmware_1550 import *
     DATA = load_test_4ch_data_1550(file_path = '../Data/joesdata.mat', scale = 2**15)
@@ -53,10 +53,10 @@ print('Time between packets:   ', MICRO_INCR)
 print('Number of channels:     ', NUM_CHAN)
 print('Data bytes per channel: ', DATA_BYTES_PER_CHANNEL)
 
-## Create a UDP socket
+### Create a UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-## Make a fake initial time for the "recorded data"
+### Make a fake initial time for the "recorded data"
 date_time = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
 
 DATA = np.array(DATA,dtype=np.uint16)      # convert data to unsigned 16 bit integers
@@ -66,7 +66,7 @@ flag = 0
 while(True):
     start_time = time.time()
     
-    #### Create the time header
+    ### Create the time header
     year = int(date_time.year - 2000)
     month = int(date_time.month)
     day = int(date_time.day)
@@ -86,7 +86,7 @@ while(True):
     zero_pack = struct.pack("H", 0)
     time_header = time_pack + microseconds_pack + zero_pack
 
-    #### Create the data to send
+    ### Create the data to send
     # Send a list of zeros as data
     #packet = time_header + bytes([0] * int(DATA_SIZE))
     
@@ -111,12 +111,12 @@ while(True):
     ### Sleep for an arbitrary time (debugging)
     #sleep(2*MICRO_INCR)
     #time.sleep(1)
-    
+    '''
     if flag == 4000:
         print('Reached flag ',flag)
         break
+    '''
     flag += 1
-
 # Close the socket
 sock.close()
 
