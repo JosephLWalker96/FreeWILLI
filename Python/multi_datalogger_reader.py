@@ -54,10 +54,10 @@ print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
 # import variables according to firmware version specified
 print('Assuming firmware version: ', args.fw)
 if args.fw == 1550:
-    from firmware_1550 import *
+    from Firmware_config.firmware_1550 import *
     process_segment = process_segment_1550
 elif args.fw == 1240:
-    from firmware_1240 import *
+    from Firmware_config.firmware_1240 import *
     process_segment = process_segment_1240
 else:
     print('ERROR: Unknown firmware version')

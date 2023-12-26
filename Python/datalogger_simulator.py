@@ -39,10 +39,10 @@ UDP_PORT = args.port               # Port number of the destination
 print('Simulating firmware version: ', args.fw)
 ### import variables according to firmware version specified
 if args.fw == 1550:
-    from firmware_1550 import *
+    from Firmware_config.firmware_1550 import *
     DATA = load_test_4ch_data_1550(file_path = '../Data/joesdata.mat', scale = 2**15)
 elif args.fw == 1240:
-    from firmware_1240 import *
+    from Firmware_config.firmware_1240 import *
     DATA = load_test_4ch_data_1240(file_path = '../Data/joesdata.mat', scale = 2**15, chunk_interval = SAMPS_PER_CHANNEL)
 else:
     print('ERROR: Unknown firmware version')
