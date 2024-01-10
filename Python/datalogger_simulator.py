@@ -31,6 +31,7 @@ parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default = 1045, type=int)
 parser.add_argument('--ip', default = "192.168.7.2", type=str)
 parser.add_argument('--fw', default = 1550, type=int)
+parser.add_argument('--loop', action = 'store_true')
 args = parser.parse_args() # Parsing the arguments
 
 UDP_IP = args.ip                   # IP address of the destination
@@ -63,8 +64,13 @@ DATA = np.array(DATA,dtype=np.uint16)      # convert data to unsigned 16 bit int
 DATA_bytes = DATA.tobytes()                # convert the data to bytes using big_endian
 
 flag = 0
+print('HERE: ', len(DATA_bytes) // DATA_SIZE)
 while(True):
     start_time = time.time()
+
+    if args.loop:
+        if len(DATA_bytes) // DATA_SIZE == flag:
+            flag = 0
     
     ### Create the time header
     year = int(date_time.year - 2000)
@@ -94,6 +100,7 @@ while(True):
     packet  = time_header + data_packet
     if len(packet) != PACKET_SIZE:
         print('ERROR: packet length error')
+        print('FLAG: ',flag)
         break    
 
     #decoded_array = np.frombuffer(data_packet, dtype=np.uint16)
