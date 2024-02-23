@@ -103,12 +103,6 @@ while(True):
         print('FLAG: ',flag)
         break    
 
-    #decoded_array = np.frombuffer(data_packet, dtype=np.uint16)
-    #print('SIMULATOR - NUMPY', np.array(decoded_array - 2**15).astype(np.int16))
-    
-    #decoded_array = np.array(struct.unpack('<' + 'H' * int((REQUIRED_BYTES-12)/2), data_packet))
-    #print('SIMULATOR - STRUCT', np.array(decoded_array - 2**15).astype(np.int16))
-
     sock.sendto(packet, (UDP_IP, UDP_PORT)) # send the packet
     
     ### Sleep for the correct time
@@ -118,11 +112,10 @@ while(True):
     ### Sleep for an arbitrary time (debugging)
     #sleep(2*MICRO_INCR)
     #time.sleep(1)
-    '''
-    if flag == 4000:
+    
+    if flag == 4000 and not args.loop:
         print('Reached flag ',flag)
         break
-    '''
     flag += 1
 # Close the socket
 sock.close()
