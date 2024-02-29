@@ -13,6 +13,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iomanip> //put_time
+#include <ctime>
+#include <cstdint>
 
 using std::cout;
 using std::cin;
@@ -26,6 +28,7 @@ using std::mutex;
 using std::stoi;
 using std::thread;
 //using std::chrono;
+//using std::chrono::sys_clock;
 
 int HEAD_SIZE;                      //packet head size (bytes)
 double MICRO_INCR;            // time between packets
@@ -74,26 +77,6 @@ void udp_listener(int sockfd) {
         //dataB.resize(bytes_received); // Adjust size based on actual bytes received
         lock_guard<mutex> lock(buffer_mutex);
         data_buffer.push(dataB);
-        int year = dataB[0];
-        int mm = dataB[1];
-        int sec = dataB[5];
-
-        // uint32_t usec = *(uint32_t*)&dataB[6];
-
-        //uint32_t usec = *(uint32_t*)&dataB[6];
-        //uint32_t* usec_p =(uint32_t*)&dataB[6];
-        
-        //uint16_t usec1 = *(uint16_t*)&dataB[6];
-        //uint16_t usec2 = *(uint16_t*)&dataB[8];
-        //uint16_t usec3 = *(uint16_t*)&dataB[10];
-        uint32_t usec = (static_cast<uint32_t>(dataB[6]) << 24) |
-                 (static_cast<uint32_t>(dataB[7]) << 16) |
-                 (static_cast<uint32_t>(dataB[8]) << 8) |
-                 static_cast<uint32_t>(dataB[9]);
-        cout << "LISTENER usec: " << year << " " << mm << " " << sec << " " << usec << endl;
-        
-
-        packet_counter++;
         if (packet_counter % 500 == 0) {
             cout << "Num packets received is " << packet_counter << endl;
         }
@@ -108,29 +91,45 @@ void data_processor() {
             lock_guard<mutex> lock(buffer_mutex);
             if (!data_buffer.empty()) {
                 vector<uint8_t> dataB = data_buffer.front();
+                //vector<uint16_t> dataI = (uint16_t)data_buffer.front();
                 data_buffer.pop();
-                // Process dataB
-                /*vector<int16_t> dataJ(dataB.size() - HEAD_SIZE);
-                dataJ = vector<int16_t>(dataB.size() - HEAD_SIZE);
-                for (size_t i = 0; i < dataJ.size(); ++i) {
-                    dataJ[i] = dataB[i + HEAD_SIZE] - 256; // Convert to signed int16
-                }
-                */
-                // Extract timestamp
-                //uint16_t usec = *(uint16_t*)&dataB[12]; // Assuming big-endian byte ordera
-                // Extract microseconds using direct byte access and bit casting
-                //chrono::system_clock::time_point timestamp = std::chrono::system_clock::now() +
-                //                                                std::chrono::microseconds(usec);
+                
                 //auto duration = timestamp;
+                std::tm time_data;
+                time_data.tm_year = (int)dataB[0] + 2023; // Offset for year since 2000
+                time_data.tm_mon = dataB[1] - 1;   // Months are 0-indexed
+                time_data.tm_mday = dataB[2];
+                time_data.tm_hour = dataB[3];
+                time_data.tm_min = dataB[4];
+                time_data.tm_sec = dataB[5];
+
                 uint32_t usec = (static_cast<uint32_t>(dataB[6]) << 24) |
                          (static_cast<uint32_t>(dataB[7]) << 16) |
                          (static_cast<uint32_t>(dataB[8]) << 8) |
                          static_cast<uint32_t>(dataB[9]);
-                //cout << "timestamp: " << duration << endl;
-                cout << "usec: " << usec << endl;
+                
+                // Construct date and time
+                /*std::chrono::time_point<std::chrono::system_clock> date_time =
+                        std::mktime(&time_data);
+                date_time += std::chrono::microseconds(usec);
+                */
 
+                // Convert byte data to unsigned 16bit ints
+                vector<int16_t> data;
+                for (size_t i = 0; i < DATA_SIZE; i += 2) {
+                    int16_t value = static_cast<int16_t>(dataB[12+i]) +
+                                   (static_cast<int16_t>(dataB[i + 13]) << 8);
+                    data.push_back(value - 32768);
+                }
+
+                for (size_t j = 0; j < 12; j++){
+                    cout << data[j] << " ";
+                }
+                cout << endl;
+    
                 // Append data and timestamp
                 //times.push_back(timestamp);
+                //timestamps.push_back(std::mktime(&time_data));
                 //data_segment.insert(data_segment.end(), dataJ.begin(), dataJ.end());
 
                         ////////////data_segment.insert(data_segment.end(), dataJ.begin(), dataJ.end());
