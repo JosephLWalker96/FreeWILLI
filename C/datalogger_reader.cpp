@@ -15,6 +15,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <iomanip> //put_time
 
 
 using namespace std;
@@ -39,7 +40,7 @@ mutex buffer_mutex;  // For thread-safe buffer access
 void processFile(const string& fileName) {
     ifstream inputFile(fileName);
     if (!inputFile.is_open()) {
-        std::cerr << "Error: Unable to open file '" << fileName << "'." << std::endl;
+        cerr << "Error: Unable to open file '" << fileName << "'." << endl;
         return;
     }
     inputFile >> HEAD_SIZE >> MICRO_INCR >> NUM_CHAN >> SAMPS_PER_CHANNEL >> BYTES_PER_SAMP;
@@ -71,18 +72,32 @@ void data_processor() {
     while (true) {
         vector<int16_t> data_segment;
         vector<chrono::system_clock::time_point> times;
-
         while (data_segment.size() < NUM_PACKS_DETECT * SAMPS_PER_CHANNEL) {
             lock_guard<mutex> lock(buffer_mutex);
             if (!data_buffer.empty()) {
                 vector<uint8_t> dataB = data_buffer.front();
                 data_buffer.pop();
+                // Process dataB
+                vector<int16_t> dataJ(dataB.size() - HEAD_SIZE);
+                dataJ = vector<int16_t>(dataB.size() - HEAD_SIZE);
+                for (size_t i = 0; i < dataJ.size(); ++i) {
+                    dataJ[i] = dataB[i + HEAD_SIZE] - 256; // Convert to signed int16
+                }
 
-                // Process dataB here, similar to Python code
-                // ...
+                // Extract timestamp
+                uint32_t usec = *(uint32_t*)&dataB[6]; // Assuming big-endian byte order
+                //chrono::system_clock::time_point timestamp = std::chrono::system_clock::now() +
+                //                                                std::chrono::microseconds(usec);
+                //auto duration = timestamp;
+                cout << "usec: " << usec << endl;
+                //cout << "timestamp: " << duration << endl;
 
-                ////////////data_segment.insert(data_segment.end(), dataJ.begin(), dataJ.end());
-                // ...
+                // Append data and timestamp
+                //times.push_back(timestamp);
+                //data_segment.insert(data_segment.end(), dataJ.begin(), dataJ.end());
+
+                        ////////////data_segment.insert(data_segment.end(), dataJ.begin(), dataJ.end());
+                        // ...
             }
         }
 
