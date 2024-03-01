@@ -27,8 +27,6 @@ using std::lock_guard;
 using std::mutex;
 using std::stoi;
 using std::thread;
-//using std::chrono;
-//using std::chrono::sys_clock;
 
 int HEAD_SIZE;                      //packet head size (bytes)
 double MICRO_INCR;            // time between packets
@@ -42,8 +40,9 @@ int REQUIRED_BYTES;
 int DATA_BYTES_PER_CHANNEL;     //number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
 int NUM_PACKS_DETECT;
 const float TIME_WINDOW = 0.5;                                                    // fraction of a second to consider  
-
+const string OUTPUT_FILE = "clicks_data.txt";
 int packet_counter = 0;
+
 std::queue<vector<uint8_t>> data_buffer;
 std::mutex buffer_mutex;  // For thread-safe buffer access
 
@@ -77,6 +76,7 @@ void udp_listener(int sockfd) {
         //dataB.resize(bytes_received); // Adjust size based on actual bytes received
         lock_guard<mutex> lock(buffer_mutex);
         data_buffer.push(dataB);
+        packet_counter += 1;
         if (packet_counter % 500 == 0) {
             cout << "Num packets received is " << packet_counter << endl;
         }
@@ -86,7 +86,8 @@ void udp_listener(int sockfd) {
 void data_processor() {
     while (true) {
         vector<int16_t> data_segment;
-        vector<std::chrono::system_clock::time_point> times;
+        vector<std::chrono::system_clock::time_point> timestamps;
+        //cout << "data_segment empty!!!!!!!!!!!" << endl;
         while (data_segment.size() < NUM_PACKS_DETECT * SAMPS_PER_CHANNEL) {
             lock_guard<mutex> lock(buffer_mutex);
             if (!data_buffer.empty()) {
@@ -96,7 +97,7 @@ void data_processor() {
                 
                 //auto duration = timestamp;
                 std::tm time_data;
-                time_data.tm_year = (int)dataB[0] + 2023; // Offset for year since 2000
+                time_data.tm_year = (int)dataB[0] + 2000 - 1900; // Offset for year since 2000.. tm_year is years since 1900 
                 time_data.tm_mon = dataB[1] - 1;   // Months are 0-indexed
                 time_data.tm_mday = dataB[2];
                 time_data.tm_hour = dataB[3];
@@ -108,11 +109,28 @@ void data_processor() {
                          (static_cast<uint32_t>(dataB[8]) << 8) |
                          static_cast<uint32_t>(dataB[9]);
                 
-                // Construct date and time
-                /*std::chrono::time_point<std::chrono::system_clock> date_time =
-                        std::mktime(&time_data);
-                date_time += std::chrono::microseconds(usec);
-                */
+                std::chrono::time_point<std::chrono::system_clock> specific_time = std::chrono::system_clock::from_time_t(mktime(&time_data));
+
+                specific_time += std::chrono::microseconds(usec);
+                //cout << "date_time : " << std::chrono::system_clock::to_time_t(date_time) << endl;
+                cout << "Specific timestamp: " << specific_time.time_since_epoch().count() << endl;
+                // Convert the time_point to a system_clock::time_t for compatibility
+                auto time_t_value = std::chrono::system_clock::to_time_t(specific_time);
+
+                // Convert the time_t value to a tm structure
+                tm* localTime = localtime(&time_t_value);
+
+                // Use std::put_time for human-readable formatting
+                auto microsecs = std::chrono::duration_cast<std::chrono::microseconds>(specific_time.time_since_epoch()).count() % 1000000;
+
+                cout << "Custom Time Format: "
+                << std::setfill('0') << std::setw(4) << localTime->tm_year + 1900 << "-" // Year with century as a decimal number
+                << std::setfill('0') << std::setw(2) << localTime->tm_mon + 1 << "-"         // Month (1 - 12)
+                << std::setfill('0') << std::setw(2) << localTime->tm_mday << " "            // Day of the month (1 - 31)
+                << std::setfill('0') << std::setw(2) << localTime->tm_hour << ":"            // Hour (0 - 23)
+                << std::setfill('0') << std::setw(2) << localTime->tm_min << ":"             // Minutes (0 - 59)
+                << std::setfill('0') << std::setw(2) << localTime->tm_sec << "."              // Seconds (0 - 60)
+                << std::setfill('0') << std::setw(6) << microsecs << std::endl;           // Microseconds
 
                 // Convert byte data to unsigned 16bit ints
                 vector<int16_t> data;
@@ -126,15 +144,16 @@ void data_processor() {
                     cout << data[j] << " ";
                 }
                 cout << endl;
-    
+                
                 // Append data and timestamp
-                //times.push_back(timestamp);
+                timestamps.push_back(specific_time);
                 //timestamps.push_back(std::mktime(&time_data));
-                //data_segment.insert(data_segment.end(), dataJ.begin(), dataJ.end());
+                data_segment.insert(data_segment.end(), data.begin(), data.end());
 
                         ////////////data_segment.insert(data_segment.end(), dataJ.begin(), dataJ.end());
                         // ...
             }
+            //process_segment_1240(data_segment, ,OUTPUT_FILE);
         }
 
         // process_segment(data_segment, times, args.output_file);  // Replace with your processing code
