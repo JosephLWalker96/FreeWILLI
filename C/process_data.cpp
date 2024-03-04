@@ -4,7 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <chrono>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -24,6 +24,7 @@ void PrintTimes(const vector<std::chrono::system_clock::time_point>& timestamps)
             << microsecs << std::endl;
     }
 }
+/*
 void process_segment(const std::vector<double>& data, const std::vector<TimePoint>& times, const std::string& output_file) {
   Eigen::VectorXd data_abs = data.cast<double>().array().square().sqrt(); // Absolute value and square root
 
@@ -124,3 +125,4 @@ void write_clicks(const std::vector<std::pair<TimePoint, double>>& clicks, const
 
   file.close();
 }
+*/
