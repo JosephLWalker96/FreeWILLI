@@ -43,6 +43,8 @@ const float TIME_WINDOW = 0.5;                                                  
 const string OUTPUT_FILE = "clicks_data.txt";
 int packet_counter = 0;
 
+//#define SPEED_TEST
+
 std::queue<vector<uint8_t>> data_buffer;
 std::mutex buffer_mutex;  // For thread-safe buffer access
 
@@ -63,11 +65,20 @@ void udp_listener(int sockfd) {
     
     struct sockaddr_in addr;
     socklen_t addr_len = sizeof(addr);
+    int bytes_received;
+    vector<uint8_t> dataB(PACKET_SIZE);
+    #ifdef SPEED_TEST
+        // Record the start time
+        auto start_time = std::chrono::high_resolution_clock::now();
+        decltype(start_time) end_time;
+        long double duration;
+        bytes_received = recvfrom(sockfd, dataB.data(), PACKET_SIZE, 0, (struct sockaddr*)&addr, &addr_len);
+    #endif
     while (true) {
-        vector<uint8_t> dataB(PACKET_SIZE);
-        //vector<uint16_t> dataB(PACKET_SIZE);
-        int bytes_received = recvfrom(sockfd, dataB.data(), PACKET_SIZE, 0, (struct sockaddr*)&addr, &addr_len);
-        
+        //vector<uint8_t> dataB(PACKET_SIZE);
+        #ifndef SPEED_TEST
+            int bytes_received = recvfrom(sockfd, dataB.data(), PACKET_SIZE, 0, (struct sockaddr*)&addr, &addr_len);
+        #endif
         if (bytes_received == -1) {
             cerr << "Error in recvfrom" << endl;
             continue;
@@ -79,6 +90,14 @@ void udp_listener(int sockfd) {
         packet_counter += 1;
         if (packet_counter % 500 == 0) {
             cout << "Num packets received is " << packet_counter << endl;
+            
+            #ifdef SPEED_TEST
+                end_time = std::chrono::high_resolution_clock::now();
+                // Calculate the duration in seconds
+                duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count() / 1e6;
+                cout << "Processed 500 packets in " << duration << " !!!!!!!!!!!!!!!!!!" << endl;
+                start_time = std::chrono::high_resolution_clock::now();
+            #endif
         }
     }
 }
@@ -89,8 +108,9 @@ void data_processor() {
         vector<std::chrono::system_clock::time_point> timestamps;
         //cout << "data_segment empty!!!!!!!!!!!" << endl;
         while (data_segment.size() < NUM_PACKS_DETECT * SAMPS_PER_CHANNEL) {
-            lock_guard<mutex> lock(buffer_mutex);
+            //lock_guard<mutex> lock(buffer_mutex);
             if (!data_buffer.empty()) {
+                lock_guard<mutex> lock(buffer_mutex);
                 vector<uint8_t> dataB = data_buffer.front();
                 //vector<uint16_t> dataI = (uint16_t)data_buffer.front();
                 data_buffer.pop();
@@ -110,19 +130,14 @@ void data_processor() {
                          static_cast<uint32_t>(dataB[9]);
                 
                 std::chrono::time_point<std::chrono::system_clock> specific_time = std::chrono::system_clock::from_time_t(mktime(&time_data));
-
                 specific_time += std::chrono::microseconds(usec);
-                //cout << "date_time : " << std::chrono::system_clock::to_time_t(date_time) << endl;
+                
+                /*
                 cout << "Specific timestamp: " << specific_time.time_since_epoch().count() << endl;
-                // Convert the time_point to a system_clock::time_t for compatibility
-                auto time_t_value = std::chrono::system_clock::to_time_t(specific_time);
-
-                // Convert the time_t value to a tm structure
-                tm* localTime = localtime(&time_t_value);
-
-                // Use std::put_time for human-readable formatting
-                auto microsecs = std::chrono::duration_cast<std::chrono::microseconds>(specific_time.time_since_epoch()).count() % 1000000;
-
+                auto time_t_value = std::chrono::system_clock::to_time_t(specific_time);                // Convert the time_point to a system_clock::time_t for compatibility
+                tm* localTime = localtime(&time_t_value);                                               // Convert the time_t value to a tm structure
+                auto microsecs = std::chrono::duration_cast<std::chrono::microseconds>(specific_time.time_since_epoch()).count() % 1000000; // Use std::put_time for human-readable formatting
+                
                 cout << "Custom Time Format: "
                 << std::setfill('0') << std::setw(4) << localTime->tm_year + 1900 << "-" // Year with century as a decimal number
                 << std::setfill('0') << std::setw(2) << localTime->tm_mon + 1 << "-"         // Month (1 - 12)
@@ -131,6 +146,7 @@ void data_processor() {
                 << std::setfill('0') << std::setw(2) << localTime->tm_min << ":"             // Minutes (0 - 59)
                 << std::setfill('0') << std::setw(2) << localTime->tm_sec << "."              // Seconds (0 - 60)
                 << std::setfill('0') << std::setw(6) << microsecs << std::endl;           // Microseconds
+                */
 
                 // Convert byte data to unsigned 16bit ints
                 vector<int16_t> data;
@@ -139,7 +155,8 @@ void data_processor() {
                                    (static_cast<int16_t>(dataB[i + 13]) << 8);
                     data.push_back(value - 32768);
                 }
-
+                
+                // print first 12 values recieved
                 for (size_t j = 0; j < 12; j++){
                     cout << data[j] << " ";
                 }
@@ -149,13 +166,26 @@ void data_processor() {
                 timestamps.push_back(specific_time);
                 //timestamps.push_back(std::mktime(&time_data));
                 data_segment.insert(data_segment.end(), data.begin(), data.end());
-
-                        ////////////data_segment.insert(data_segment.end(), dataJ.begin(), dataJ.end());
-                        // ...
             }
-            //process_segment_1240(data_segment, ,OUTPUT_FILE);
         }
+        /*
+        for (auto& timestamp : timestamps){
+            std::time_t time_t_representation = std::chrono::system_clock::to_time_t(timestamp);
+            std::tm time_data = *std::localtime(&time_t_representation);
 
+            auto microsecs = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000; // Use std::put_time for human-readable formatting
+            // Print the timestamp
+            std::cout << "Timestamp: ";
+            std::cout << time_data.tm_year + 1900 << '-'
+                      << time_data.tm_mon + 1 << '-'
+                      << time_data.tm_mday << ' '
+                      << time_data.tm_hour << ':'
+                      << time_data.tm_min << ':'
+                      << time_data.tm_sec << ':'
+                      << microsecs << std::endl;
+        }
+        */
+        PrintTimes(timestamps)
         // process_segment(data_segment, times, args.output_file);  // Replace with your processing code
     }
 }
@@ -223,6 +253,5 @@ int main(int argc, char *argv[]){
     //cout << "GLOBAL COUNTER: " << COUNTER << endl;
 
     close(sockfd);
-        return 0;   
-    }
-
+    return 0;
+}

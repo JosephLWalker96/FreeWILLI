@@ -8,6 +8,22 @@
 
 using TimePoint = std::chrono::system_clock::time_point;
 
+void PrintTimes(const vector<std::chrono::system_clock::time_point>& timestamps){
+    for (auto& timestamp : timestamps){
+        std::time_t time_t_representation = std::chrono::system_clock::to_time_t(timestamp);
+        std::tm time_data = *std::localtime(&time_t_representation); 
+        auto microsecs = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000; // Use std::put_time for human-readable formatting
+        // Print the timestamp
+        std::cout << "Timestamp: ";
+        std::cout << time_data.tm_year + 1900 << '-'
+            << time_data.tm_mon + 1 << '-'
+            << time_data.tm_mday << ' '
+            << time_data.tm_hour << ':'
+            << time_data.tm_min << ':'
+            << time_data.tm_sec << ':'
+            << microsecs << std::endl;
+    }
+}
 void process_segment(const std::vector<double>& data, const std::vector<TimePoint>& times, const std::string& output_file) {
   Eigen::VectorXd data_abs = data.cast<double>().array().square().sqrt(); // Absolute value and square root
 
