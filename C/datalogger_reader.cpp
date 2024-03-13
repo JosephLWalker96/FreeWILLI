@@ -16,6 +16,10 @@
 #include <ctime>
 #include <cstdint>
 
+#include "process_data.h"
+#include "my_globals.h"
+
+
 using std::cout;
 using std::cin;
 using std::endl;
@@ -27,7 +31,7 @@ using std::lock_guard;
 using std::mutex;
 using std::stoi;
 using std::thread;
-
+/*
 int HEAD_SIZE;                      //packet head size (bytes)
 double MICRO_INCR;            // time between packets
 int NUM_CHAN;                      //number of channels per packet
@@ -42,6 +46,8 @@ int NUM_PACKS_DETECT;
 const float TIME_WINDOW = 0.5;                                                    // fraction of a second to consider  
 const string OUTPUT_FILE = "clicks_data.txt";
 int packet_counter = 0;
+extern int DATA_SEGMENT_LENGTH;
+*/
 
 //#define SPEED_TEST
 
@@ -103,11 +109,14 @@ void udp_listener(int sockfd) {
 }
 
 void data_processor() {
+    if (MICRO_INCR == 1240){
+        void(*process_fnc_ptr)(std::vector<double>&, std::vector<TimePoint>&, const std::string&) = process_segment_1240;
+    }
+
     while (true) {
         vector<int16_t> data_segment;
         vector<std::chrono::system_clock::time_point> timestamps;
-        //cout << "data_segment empty!!!!!!!!!!!" << endl;
-        while (data_segment.size() < NUM_PACKS_DETECT * SAMPS_PER_CHANNEL) {
+        while (data_segment.size() < DATA_SEGMENT_LENGTH) {
             //lock_guard<mutex> lock(buffer_mutex);
             if (!data_buffer.empty()) {
                 lock_guard<mutex> lock(buffer_mutex);
@@ -185,7 +194,7 @@ void data_processor() {
                       << microsecs << std::endl;
         }
         */
-        PrintTimes(timestamps)
+        PrintTimes(timestamps);
         // process_segment(data_segment, times, args.output_file);  // Replace with your processing code
     }
 }
@@ -216,7 +225,7 @@ int main(int argc, char *argv[]){
 
     
     NUM_PACKS_DETECT = TIME_WINDOW * 100000 / SAMPS_PER_CHANNEL;  // NEED TO ROUND THIS  the number of data packets that are needed to perform energy detection 
-    
+    DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL; 
 
     cout << "HEAD_SIZE: " << HEAD_SIZE << endl; 
     cout << "SAMPS_PER_CHAN: " << SAMPS_PER_CHANNEL << endl;

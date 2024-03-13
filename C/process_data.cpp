@@ -2,13 +2,17 @@
 #include <algorithm>
 #include <numeric>
 #include <cmath>
+#include <cstdlib>
 #include <fstream>
 #include <chrono>
 #include <eigen3/Eigen/Dense>
+#include <iostream>
+
+#include "my_globals.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-void PrintTimes(const vector<std::chrono::system_clock::time_point>& timestamps){
+void PrintTimes(const std::vector<std::chrono::system_clock::time_point>& timestamps){
     for (auto& timestamp : timestamps){
         std::time_t time_t_representation = std::chrono::system_clock::to_time_t(timestamp);
         std::tm time_data = *std::localtime(&time_t_representation); 
@@ -24,13 +28,22 @@ void PrintTimes(const vector<std::chrono::system_clock::time_point>& timestamps)
             << microsecs << std::endl;
     }
 }
-/*
-void process_segment(const std::vector<double>& data, const std::vector<TimePoint>& times, const std::string& output_file) {
-  Eigen::VectorXd data_abs = data.cast<double>().array().square().sqrt(); // Absolute value and square root
+
+void process_segment(std::vector<double>& data, std::vector<TimePoint>& times, const std::string& output_file) {
+  //Eigen::VectorXd data_abs = data.cast<double>().array().square().sqrt(); // Absolute value and square root
+  Eigen::Map<Eigen::MatrixXd> data_matrix(data.data(), 1, DATA_SEGMENT_LENGTH);
+  Eigen::MatrixXd data_abs = data_matrix.abs();
+
+  //Eigen::VectorXd eigen_vector = Eigen::Map<Eigen::VectorXd>(data.data(), data.size());
+
+  //Eigen::VectorXd data_abs = eigen_vector.array().abs2(); // .cast<double>().array().square().sqrt(); // Absolute value and square root
 
   // Average data using a filter
-  Eigen::VectorXd pulse_filter = Eigen::VectorXd::Ones(256) / 256;
-  Eigen::VectorXd filtered_signal = data_abs.convolve(pulse_filter);
+  //Eigen::VectorXd pulse_filter = Eigen::VectorXd::Ones(256) / 256;
+  Eigen::MatrixXd pulse_filter(1, 3);
+  pulse_filter.setOnes();
+
+  Eigen::MatrixXd filtered_signal = data_abs.convolve(pulse_filter);
 
   // Remove low amplitude values
   filtered_signal = filtered_signal.unaryExpr([](double x) { return x < 80 ? 0 : x; });
@@ -60,17 +73,18 @@ void process_segment(const std::vector<double>& data, const std::vector<TimePoin
         clicks.push_back({click_time, peak_amp});
       }
     }
-
+    cout << sizeof(clicks) << endl;
     // Write clicks to output file
-    std::ofstream file(output_file, std::ios_base::app);
+    /*std::ofstream file(output_file, std::ios_base::app);
     for (const auto& click : clicks) {
       file << click.first << ", " << click.second << "\n";
     }
+    */
   }
 }
 
 
-
+/*
 void process_segment_1550(const std::vector<double>& data, const std::vector<TimePoint>& times, const std::string& output_file) {
   // Extract first channel data (assuming 4 channels and starting from index 0)
   std::vector<double> ch1(data.size() / 4);
@@ -79,8 +93,10 @@ void process_segment_1550(const std::vector<double>& data, const std::vector<Tim
   // Process the extracted channel data
   process_segment(ch1, times, output_file);
 }
+*/
 
-void process_segment_1240(const std::vector<double>& data, const std::vector<TimePoint>& times, const std::string& output_file) {
+
+void process_segment_1240(std::vector<double>& data, std::vector<TimePoint>& times, const std::string& output_file) {
   // Reshape the data into its original components (assuming 4 rows and 124 columns)
   if (data.size() % (4 * 124) != 0) {
     // Handle case where data size is not divisible by 488 (4 rows * 124 columns)
@@ -106,7 +122,7 @@ void process_segment_1240(const std::vector<double>& data, const std::vector<Tim
   process_segment(ch1.toStdVector(), times, output_file);
 }
 
-
+/*
 void write_clicks(const std::vector<std::pair<TimePoint, double>>& clicks, const std::string& output_file) {
   // Open the file in append mode (assuming you want to add to existing content)
   std::ofstream file(output_file, std::ios_base::app);
