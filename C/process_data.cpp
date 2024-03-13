@@ -7,6 +7,7 @@
 #include <chrono>
 #include <eigen3/Eigen/Dense>
 #include <iostream>
+#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
 #include "my_globals.h"
 
@@ -28,7 +29,7 @@ void PrintTimes(const std::vector<std::chrono::system_clock::time_point>& timest
             << microsecs << std::endl;
     }
 }
-
+/*
 void process_segment(std::vector<double>& data, std::vector<TimePoint>& times, const std::string& output_file) {
   //Eigen::VectorXd data_abs = data.cast<double>().array().square().sqrt(); // Absolute value and square root
   Eigen::Map<Eigen::MatrixXd> data_matrix(data.data(), 1, DATA_SEGMENT_LENGTH);
@@ -75,13 +76,64 @@ void process_segment(std::vector<double>& data, std::vector<TimePoint>& times, c
     }
     cout << sizeof(clicks) << endl;
     // Write clicks to output file
-    /*std::ofstream file(output_file, std::ios_base::app);
+    std::ofstream file(output_file, std::ios_base::app);
     for (const auto& click : clicks) {
       file << click.first << ", " << click.second << "\n";
     }
-    */
+    
   }
 }
+*/
+
+arma::vec process_segment(const arma::vec& data, const arma::vec& times, const std::string& output_file) {
+  // Convert data to absolute values (square and sqrt)
+  arma::vec data_abs = arma::pow(data, 2.0);
+  data_abs = arma::sqrt(data_abs);
+
+  // Define pulse filter (assuming it's constant across all data)
+  arma::vec pulse_filter = arma::ones(256) / 256.0;
+
+  // Apply convolution for filtering (valid mode)
+  arma::vec filtered_signal = arma::conv(data_abs, pulse_filter, "valid");
+
+  // Thresholding low amplitude values
+  filtered_signal.elem(arma::find(filtered_signal < 80)).fill(0);
+
+  // Create a mask for click regions (ones filter)
+  arma::vec filt = arma::ones(256);
+  arma::vec output = arma::conv(filtered_signal, filt, "valid");
+  output.elem(arma::find(output > 0)) = 1.0;
+
+  // Find click region indices based on differences
+  arma::vec diff = arma::diff(output);
+  output = arma::find(diff != 0);
+
+  // Split data and filtered signal based on click regions
+  arma::vecvec non_zero_mask_regions = arma::split(output, filtered_signal.n_elem);
+  arma::vecvec non_zero_regions = arma::split(data, output.n_elem);
+
+  // Extract click information
+  arma::vec clicks;
+  if (non_zero_regions.n_elem > 1) {
+    output = arma::join_horiz(arma::zeros(1), output);
+    for (int i = 0; i < non_zero_mask_regions.n_elem; ++i) {
+      if (arma::any(non_zero_mask_regions[i] > 0)) {
+        double seconds = (output[i] + arma::max_index(non_zero_regions[i])) * 1e-5;
+        arma::umat click_time = times[0] + arma::datetime<arma::u64>(seconds * 1e6, arma::micro); // Assuming times is arma::vec
+        double peak_amp = arma::max(non_zero_regions[i]);
+        clicks = arma::join_vert(clicks, arma::vec({click_time[0], peak_amp}));
+      }
+    }
+  }
+
+  // (Optional) Write clicks to a file (replace with your preferred method)
+  // std::ofstream outfile(output_file);
+  // outfile << clicks << std::endl;
+  // outfile.close();
+
+  return clicks;
+}
+
 
 
 /*
