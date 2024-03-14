@@ -85,46 +85,60 @@ void process_segment(std::vector<double>& data, std::vector<TimePoint>& times, c
 }
 */
 
-arma::vec process_segment(const arma::vec& data, const arma::vec& times, const std::string& output_file) {
-  // Convert data to absolute values (square and sqrt)
-  arma::vec data_abs = arma::pow(data, 2.0);
-  data_abs = arma::sqrt(data_abs);
+void process_segment(arma::vec& data, std::vector<TimePoint>& times, const std::string& output_file) {
+    // Convert data to absolute values (square and sqrt)
+    arma::vec data_abs = arma::pow(data, 2.0);
+    data_abs = arma::sqrt(data_abs);
 
-  // Define pulse filter (assuming it's constant across all data)
-  arma::vec pulse_filter = arma::ones(256) / 256.0;
+    // Define pulse filter (assuming it's constant across all data)
+    arma::vec pulse_filter = arma::ones(256) / 256.0;
 
-  // Apply convolution for filtering (valid mode)
-  arma::vec filtered_signal = arma::conv(data_abs, pulse_filter, "valid");
+    // Apply convolution for filtering (valid mode)
+    arma::vec filtered_signal = arma::conv(data_abs, pulse_filter, "valid");
 
-  // Thresholding low amplitude values
-  filtered_signal.elem(arma::find(filtered_signal < 80)).fill(0);
+    // Thresholding low amplitude values
+    filtered_signal.elem(arma::find(filtered_signal < 80)).fill(0);
 
-  // Create a mask for click regions (ones filter)
-  arma::vec filt = arma::ones(256);
-  arma::vec output = arma::conv(filtered_signal, filt, "valid");
-  output.elem(arma::find(output > 0)) = 1.0;
+    // Create a mask for click regions (ones filter)
+    arma::vec filt = arma::ones(256);
+    arma::vec output_f = arma::conv(filtered_signal, filt, "valid");
+    //output.elem(arma::find(output_f > 0)) = 1.0;
+    output_f.elem(arma::find(output_f > 0.0)).fill(1.0);
 
-  // Find click region indices based on differences
-  arma::vec diff = arma::diff(output);
-  output = arma::find(diff != 0);
+    // Find click region indices based on differences
+    arma::vec diff = arma::diff(output_f);
+    //arma::uvec output = arma::find(diff != 0.0);
+    arma::vec output = arma::conv_to<arma::vec>::from(arma::find(diff != 0.0));
+    
+    // Split data and filtered signal based on click regions
+    arma::mat non_zero_mask_regions(output.n_elem, filtered_signal.max());
+    arma::mat non_zero_regions(data.n_elem, data.max());  // Assuming data holds max values for regions
 
-  // Split data and filtered signal based on click regions
-  arma::vecvec non_zero_mask_regions = arma::split(output, filtered_signal.n_elem);
-  arma::vecvec non_zero_regions = arma::split(data, output.n_elem);
+    non_zero_mask_regions.fill(0);
+    non_zero_regions.fill(0);
 
-  // Extract click information
-  arma::vec clicks;
-  if (non_zero_regions.n_elem > 1) {
-    output = arma::join_horiz(arma::zeros(1), output);
-    for (int i = 0; i < non_zero_mask_regions.n_elem; ++i) {
-      if (arma::any(non_zero_mask_regions[i] > 0)) {
-        double seconds = (output[i] + arma::max_index(non_zero_regions[i])) * 1e-5;
-        arma::umat click_time = times[0] + arma::datetime<arma::u64>(seconds * 1e6, arma::micro); // Assuming times is arma::vec
-        double peak_amp = arma::max(non_zero_regions[i]);
-        clicks = arma::join_vert(clicks, arma::vec({click_time[0], peak_amp}));
-      }
+    for (int i = 0; i < output.n_elem; ++i) {
+        int start_idx = i > 0 ? output[i - 1] + 1 : 0;
+        int end_idx = output[i];
+        non_zero_mask_regions.row(i) = filtered_signal.subvec(start_idx, end_idx);
+        non_zero_regions.row(i) = data.subvec(start_idx, end_idx);
     }
-  }
+    /*
+    // Extract click information
+    arma::vec clicks;
+    if (non_zero_regions.n_elem > 1) {
+        output = arma::join_horiz(arma::zeros(1), output);
+        for (int i = 0; i < non_zero_mask_regions.n_elem; ++i) {
+            if (arma::any(non_zero_mask_regions.row(i) > 0)) {
+            //double seconds = (output[i] + arma::index_max(non_zero_regions[i])) * 1e-5;
+            //double seconds = (output[i] + (non_zero_regions[i]).arma::index_max()) * 1e-5;
+            double seconds = (output[i] + arma::as_scalar(arma::index_max(non_zero_regions[i]))) * 1e-5;
+            arma::umat click_time = times[0] + arma::datetime<arma::u64>(seconds * 1e6, arma::micro); // Assuming times is arma::vec
+            double peak_amp = arma::max(non_zero_regions[i]);
+            clicks = arma::join_vert(clicks, arma::vec({click_time[0], peak_amp}));
+            }
+        }
+    }
 
   // (Optional) Write clicks to a file (replace with your preferred method)
   // std::ofstream outfile(output_file);
@@ -132,9 +146,29 @@ arma::vec process_segment(const arma::vec& data, const arma::vec& times, const s
   // outfile.close();
 
   return clicks;
+  */
 }
 
+void process_segment_1240(std::vector<double>& data, std::vector<TimePoint>& times, const std::string& output_file) {
+    // Reshape the data into its original components (assuming 4 rows and 124 columns)
+    if (data.size() % (4 * 124) != 0) {
+    // Handle case where data size is not divisible by 488 (4 rows * 124 columns)
+    // ... (implement appropriate error handling or logic)
+        std::cout << "ERROR in process_segment_1240 function: not divisible" << std::endl;
+    }
 
+    const int num_rows = data.size() / (4 * 124);
+    const int num_cols = 124;
+    //arma::mat data_reshaped = arma::mat(data).reshape(num_rows, num_cols);  // Reshape directly from std::vector
+    //arma::mat data_reshaped = arma::vec::from(data).reshape(num_rows, num_cols);
+    arma::mat data_reshaped(data.data(), num_rows, num_cols, false, true);
+
+    // Extract the first channel (assuming 4 channels and row-major order)
+    arma::vec ch1 = data_reshaped.col(0);
+
+    // Process the extracted channel data
+    process_segment(ch1, times, output_file);  // Use memptr to access raw data
+}
 
 /*
 void process_segment_1550(const std::vector<double>& data, const std::vector<TimePoint>& times, const std::string& output_file) {
@@ -145,7 +179,7 @@ void process_segment_1550(const std::vector<double>& data, const std::vector<Tim
   // Process the extracted channel data
   process_segment(ch1, times, output_file);
 }
-*/
+
 
 
 void process_segment_1240(std::vector<double>& data, std::vector<TimePoint>& times, const std::string& output_file) {
@@ -174,7 +208,7 @@ void process_segment_1240(std::vector<double>& data, std::vector<TimePoint>& tim
   process_segment(ch1.toStdVector(), times, output_file);
 }
 
-/*
+
 void write_clicks(const std::vector<std::pair<TimePoint, double>>& clicks, const std::string& output_file) {
   // Open the file in append mode (assuming you want to add to existing content)
   std::ofstream file(output_file, std::ios_base::app);
