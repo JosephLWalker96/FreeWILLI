@@ -9,7 +9,7 @@
 #include <iostream>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
-#include "my_globals.h"
+//#include "my_globals.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 

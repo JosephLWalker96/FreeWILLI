@@ -19,7 +19,6 @@
 #include "process_data.h"
 #include "my_globals.h"
 
-
 using std::cout;
 using std::cin;
 using std::endl;
@@ -31,7 +30,7 @@ using std::lock_guard;
 using std::mutex;
 using std::stoi;
 using std::thread;
-/*
+
 int HEAD_SIZE;                      //packet head size (bytes)
 double MICRO_INCR;            // time between packets
 int NUM_CHAN;                      //number of channels per packet
@@ -46,13 +45,16 @@ int NUM_PACKS_DETECT;
 const float TIME_WINDOW = 0.5;                                                    // fraction of a second to consider  
 const string OUTPUT_FILE = "clicks_data.txt";
 int packet_counter = 0;
-extern int DATA_SEGMENT_LENGTH;
-*/
+int DATA_SEGMENT_LENGTH;
 
 //#define SPEED_TEST
 
 std::queue<vector<uint8_t>> data_buffer;
 std::mutex buffer_mutex;  // For thread-safe buffer access
+
+//const float TIME_WINDOW = 0.5;                                                    // fraction of a second to consider  
+//const string OUTPUT_FILE = "clicks_data.txt";
+//int packet_counter = 0;
 
 void processFile(const string& fileName) {
     ifstream inputFile(fileName);
