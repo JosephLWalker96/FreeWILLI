@@ -131,9 +131,6 @@ def data_processor(buffer):
             #print("################## SEGMENT ####################")
             #print("length of segment ", len(segment))
             #print(segment[:1000]) 
-        for time in times:
-            print(time)
-        return
         process_segment(data_segment, times, args.output_file)
 
 # Create a buffer (Queue) for communication between threads
