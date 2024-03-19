@@ -9,7 +9,7 @@
 #include <iostream>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
-//#include "my_globals.h"
+#include "my_globals.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -56,7 +56,7 @@ void process_segment(std::vector<double>& data, std::vector<TimePoint>& times, c
 
   // Find index of click regions and split
   Eigen::VectorXd diff = output.tail(output.size() - 1) - output.head(output.size() - 1);
-  Eigen::VectorXi output_indices = diff.indices().unaryExpr([](int x) { return x + 1; });
+filtered_signal.elem(arma::find(filtered_signal < 80)).fill(0);  Eigen::VectorXi output_indices = diff.indices().unaryExpr([](int x) { return x + 1; });
 
   std::vector<Eigen::VectorXd> non_zero_mask_regions = split_vector(filtered_signal, output_indices);
   std::vector<Eigen::VectorXd> non_zero_regions = split_vector(data.cast<double>(), output_indices);
@@ -85,31 +85,63 @@ void process_segment(std::vector<double>& data, std::vector<TimePoint>& times, c
 }
 */
 
-void process_segment(arma::vec& data, std::vector<TimePoint>& times, const std::string& output_file) {
+void ProcessSegment(arma::Row<int16_t>& data, std::vector<TimePoint>& times, const std::string& output_file) {
     // Convert data to absolute values (square and sqrt)
-    arma::vec data_abs = arma::pow(data, 2.0);
-    data_abs = arma::sqrt(data_abs);
+    //arma::vec data_abs = arma::pow(data, 2.0);
+    //data_abs = arma::sqrt(data_abs);
+    arma::Row<double> data_abs = arma::conv_to<arma::Row<double>>::from(data);
 
-    // Define pulse filter (assuming it's constant across all data)
-    arma::vec pulse_filter = arma::ones(256) / 256.0;
-
-    // Apply convolution for filtering (valid mode)
-    arma::vec filtered_signal = arma::conv(data_abs, pulse_filter, "valid");
-
-    // Thresholding low amplitude values
-    filtered_signal.elem(arma::find(filtered_signal < 80)).fill(0);
-
-    // Create a mask for click regions (ones filter)
-    arma::vec filt = arma::ones(256);
-    arma::vec output_f = arma::conv(filtered_signal, filt, "valid");
-    //output.elem(arma::find(output_f > 0)) = 1.0;
-    output_f.elem(arma::find(output_f > 0.0)).fill(1.0);
-
-    // Find click region indices based on differences
-    arma::vec diff = arma::diff(output_f);
-    //arma::uvec output = arma::find(diff != 0.0);
-    arma::vec output = arma::conv_to<arma::vec>::from(arma::find(diff != 0.0));
+    //arma::Row<double> data_abs = arma::abs(data);
+    data_abs = arma::abs(data_abs);
+    #ifdef DEBUG_PRINT_UNPACKED
+        std::cout << "Inside ProcessSegment() " << std::endl;
+        for (size_t j = 0; j < 12; j++){
+            std::cout << data_abs[j] << " ";
+        }
+        std::cout << std::endl;
+    #endif
+   
+    // define the filter for click regions
+    arma::Row<double> filter(1, 256, arma::fill::ones); // Filter of size 256 with all ones
+    filter /= 256.0;
     
+    // Convolve abs_data with the filter
+    arma::Row<double> convolved_data = arma::conv(data_abs, filter, "same");
+
+    #ifdef DEBUG_PRINT_UNPACKED
+        std::cout << "Inside ProcessSegment(), convolved data: (before)" << std::endl;
+        for (size_t j = 0; j < 12; j++){
+            std::cout << convolved_data[j] << " ";
+        }
+        std::cout << std::endl;
+    #endif
+    
+    // Thresholding low amplitude values
+    convolved_data.elem(arma::find(convolved_data < 80)).fill(0);
+    
+    #ifdef DEBUG_PRINT_UNPACKED
+        std::cout << "Inside ProcessSegment(), convolved data (after) " << std::endl;
+        for (size_t j = 0; j < 12; j++){
+            std::cout << convolved_data[j] << " ";
+        }
+        std::cout << std::endl;
+    #endif
+
+    
+    // Create a mask for click regions (ones filter)
+    arma::Row<double> filt = arma::ones(256);
+    arma::Row<double> output_f = arma::conv(convolved_data, filt, "valid");
+    output_f.elem(arma::find(output_f > 0.0)).fill(1.0);
+    
+    
+    // Find click region indices based on differences
+    arma::Row<double> diff = arma::diff(output_f);
+    //arma::uvec output = arma::find(diff != 0.0);
+    
+    //arma::vec output = arma::conv_to<arma::vec>::from(arma::find(diff != 0.0));
+    arma::Row<double> output = arma::conv_to<arma::vec>::from(arma::find(diff != 0.0));
+    
+    /*
     // Split data and filtered signal based on click regions
     arma::mat non_zero_mask_regions(output.n_elem, filtered_signal.max());
     arma::mat non_zero_regions(data.n_elem, data.max());  // Assuming data holds max values for regions
@@ -123,6 +155,9 @@ void process_segment(arma::vec& data, std::vector<TimePoint>& times, const std::
         non_zero_mask_regions.row(i) = filtered_signal.subvec(start_idx, end_idx);
         non_zero_regions.row(i) = data.subvec(start_idx, end_idx);
     }
+    */
+
+
     /*
     // Extract click information
     arma::vec clicks;
@@ -149,7 +184,7 @@ void process_segment(arma::vec& data, std::vector<TimePoint>& times, const std::
   */
 }
 
-void process_segment_1240(std::vector<double>& data, std::vector<TimePoint>& times, const std::string& output_file) {
+void ProcessSegment1240(std::vector<int16_t>& data, std::vector<TimePoint>& times, const std::string& output_file) {
     // Reshape the data into its original components (assuming 4 rows and 124 columns)
     if (data.size() % (4 * 124) != 0) {
     // Handle case where data size is not divisible by 488 (4 rows * 124 columns)
@@ -157,17 +192,32 @@ void process_segment_1240(std::vector<double>& data, std::vector<TimePoint>& tim
         std::cout << "ERROR in process_segment_1240 function: not divisible" << std::endl;
     }
 
-    const int num_rows = data.size() / (4 * 124);
+    const int num_rows = 1; //data.size() / (4 * 124);
     const int num_cols = 124;
     //arma::mat data_reshaped = arma::mat(data).reshape(num_rows, num_cols);  // Reshape directly from std::vector
     //arma::mat data_reshaped = arma::vec::from(data).reshape(num_rows, num_cols);
-    arma::mat data_reshaped(data.data(), num_rows, num_cols, false, true);
+    //arma::imat data_reshaped(data.data(), num_rows, num_cols, false, true);
+    arma::Mat<int16_t> data_reshaped(data.data(), num_rows * 4, num_cols, false, true);
 
     // Extract the first channel (assuming 4 channels and row-major order)
-    arma::vec ch1 = data_reshaped.col(0);
+    //arma::vec ch1 = data_reshaped.col(0);
+    arma::Row<int16_t> ch1 = data_reshaped.row(0);
+    /*
+    for (int i = 0; i < 10; i++){
+        std::cout << ch1[i] << std::endl;
+    }
+    */
 
+    #ifdef DEBUG_PRINT_UNPACKED
+        std::cout << "Inside ProcessSegment1240() " << std::endl;
+        for (size_t j = 0; j < 12; j++){
+            std::cout << ch1[j] << " ";
+        }
+        std::cout << std::endl;
+    #endif
+        
     // Process the extracted channel data
-    process_segment(ch1, times, output_file);  // Use memptr to access raw data
+    ProcessSegment(ch1, times, output_file);  // Use memptr to access raw data
 }
 
 /*
