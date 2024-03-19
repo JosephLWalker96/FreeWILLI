@@ -129,8 +129,8 @@ void ProcessSegment(arma::Row<int16_t>& data, std::vector<TimePoint>& times, con
 
     
     // Create a mask for click regions (ones filter)
-    arma::Row<double> filt = arma::ones(256);
-    arma::Row<double> output_f = arma::conv(convolved_data, filt, "valid");
+    arma::Row<double> filt(1,256,arma::fill::ones);
+    arma::Row<double> output_f = arma::conv(convolved_data, filt, "same");
     output_f.elem(arma::find(output_f > 0.0)).fill(1.0);
     
     
@@ -139,8 +139,18 @@ void ProcessSegment(arma::Row<int16_t>& data, std::vector<TimePoint>& times, con
     //arma::uvec output = arma::find(diff != 0.0);
     
     //arma::vec output = arma::conv_to<arma::vec>::from(arma::find(diff != 0.0));
-    arma::Row<double> output = arma::conv_to<arma::vec>::from(arma::find(diff != 0.0));
+    arma::uvec output = arma::find(diff != 0.0);
     
+    #ifdef DEBUG_PRINT_UNPACKED
+        std::cout << "Inside ProcessSegment(), split points !!!!!!!!!!!!!!!" << std::endl;
+        std::cout << output.n_elem << std::endl;
+        /*
+        for (size_t j = 0; j < output.size(); j++){
+            std::cout << output[j] << " ";
+        }
+        std::cout << std::endl;
+        */
+    #endif
     /*
     // Split data and filtered signal based on click regions
     arma::mat non_zero_mask_regions(output.n_elem, filtered_signal.max());
