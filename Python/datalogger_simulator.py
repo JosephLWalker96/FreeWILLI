@@ -32,7 +32,8 @@ parser.add_argument('--port', default = 1045, type=int)
 parser.add_argument('--ip', default = "192.168.7.2", type=str)
 parser.add_argument('--fw', default = 1240, type=int)
 parser.add_argument('--loop', action = 'store_true')
-parser.add_argument('--time_glitch', action = 'store_true')
+parser.add_argument('--time_glitch', default = 0, type=int)
+parser.add_argument('--data_glitch', default = 0, type=int)
 args = parser.parse_args() # Parsing the arguments
 
 UDP_IP = args.ip                   # IP address of the destination
@@ -83,11 +84,7 @@ while(True):
     microseconds = int(dateTime.microsecond)
     
     dateTime = dateTime + timedelta(microseconds=int(MICRO_INCR)) # increment the time for next packet
-    if args.time_glitch:
-        if np.random.rand() < .01:
-            dateTime = dateTime + timedelta(microseconds=int(MICRO_INCR))
-
-        
+    
     timePack = struct.pack("BBBBBB", *np.array([year,month,day,hour,minute,second]))
     microPack  = microseconds.to_bytes(4, byteorder='big')
     zeroPack = struct.pack("H", 0)
@@ -95,7 +92,16 @@ while(True):
     
     dataPacket = dataMatrixBytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
     packet  = timeHeader + dataPacket
-    if len(packet) != PACKET_SIZE:
+    
+    ###simulate datalogger glitches
+    if args.time_glitch > 0:
+        if args.time_glitch == flag:
+            dateTime = dateTime + timedelta(microseconds=int(103))
+    elif args.data_glitch > 0:
+        if args.data_glitch == flag:
+            packet = packet + packet[:3]
+    
+    if len(packet) != PACKET_SIZE and args.data_glitch == 0:
         print('ERROR: packet length error')
         print('FLAG: ',flag)
         break    
