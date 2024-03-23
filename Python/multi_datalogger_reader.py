@@ -28,7 +28,7 @@ import time
 import datetime
 import psutil
 import os
-from process_data import process_segment_1550, process_segment_1240
+from process_data import *
 
 # The following 5 lines of code makes the program run at high priority 
 NICE_VAL = -15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
@@ -42,7 +42,7 @@ print('This code has been tested for python version 3.11.6, your version is:', s
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default=50000, type=int)
 parser.add_argument('--ip', default="192.168.100.220",type=str)
-parser.add_argument('--fw', default = 1550, type=int)
+parser.add_argument('--fw', default = 1240, type=int)
 parser.add_argument('--output_file', default = "clicks_data.txt", type=str)
 args = parser.parse_args() # Parsing the arguments
 output_file = open(args.output_file, 'w')
@@ -67,7 +67,7 @@ TIME_WINDOW = .5                                                 # fraction of a
 NUM_PACKS_DETECT = round(TIME_WINDOW * 100000 / SAMPS_PER_CHANNEL)  # the number of data packets that are needed to perform energy detection 
 
 print('Bytes per packet:       ', REQUIRED_BYTES)
-print('Time between packets:   ', MICRO_INCR)
+print('Microseconds between packets:   ', MICRO_INCR)
 print('Number of channels:     ', NUM_CHAN)
 print('Data bytes per channel: ', DATA_BYTES_PER_CHANNEL)
 print("Detecting over a time window of ",TIME_WINDOW," seconds, using ",NUM_PACKS_DETECT, " packets") 
@@ -131,7 +131,10 @@ def data_processor(buffer):
             #print("################## SEGMENT ####################")
             #print("length of segment ", len(segment))
             #print(segment[:1000]) 
-        process_segment(data_segment, times, args.output_file)
+        if not integrityCheck(data_segment, times, MICRO_INCR):
+            restartListener()
+        else:
+            process_segment(data_segment, times, args.output_file)
 
 # Create a buffer (Queue) for communication between threads
 data_buffer = queue.Queue()

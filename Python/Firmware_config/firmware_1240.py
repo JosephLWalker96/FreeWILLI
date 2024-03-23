@@ -1,5 +1,5 @@
 HEAD_SIZE = 12                     # packet head size (bytes)
-MICRO_INCR = .001240               # time between packets
+MICRO_INCR = 1240               # time between packets
 NUM_CHAN = 4;                      # number of channels per packet
 SAMPS_PER_CHANNEL = 124;           # samples per packet per channel, for 2 channels, this value is 5*62  = 310
 BYTES_PER_SAMP = 2;                                             # bytes per sample

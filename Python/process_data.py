@@ -3,6 +3,20 @@ import time
 import datetime
 from datetime import timedelta
 
+
+def restartListener():
+    print("Function not defined")
+
+
+def integrityCheck(data, times, MICRO_INCR):
+    for i in range(len(times) - 1):
+        if (times[i+1] - times[i]).microseconds != MICRO_INCR:
+            print("Error: time stamps not evenly spaced by "+ str(MICRO_INCR) + " microseconds")
+            for time in times:
+                print(time)
+            return 0
+    return 1
+
 def process_segment(data, times, output_file):
     data_abs = data.astype('float64') **2
     data_abs = np.sqrt(data_abs)
@@ -54,8 +68,8 @@ def process_segment_1240(data, times, output_file):
     data = data.reshape(-1,4,124)  # Split the flattened array into original components
     data = np.hstack(data)
     ch1 = data[0]
-    for i in range(10):
-        print(ch1[i])
+    #for i in range(10):
+    #    print(ch1[i])
     process_segment(ch1, times, output_file)
 
 def write_clicks(clicks, output_file):
