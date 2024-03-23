@@ -3,7 +3,7 @@ This is a program for simulating the data logger
 This program may require root privileges 
 
 Run this program on mac/linux by:
-$ sudo python UDP_send_datalogger_format.py
+$ sudo python datalogger_simulator.py
 
 Setting the "nice" or priority value as done on lines 24 and 25 may not be possible on Windows.
   
@@ -19,7 +19,7 @@ import argparse
 import psutil
 import os
 import sys
-from utils import sleep, synthetic_click_generator, load_test_4ch_data_1550, load_test_4ch_data_1240
+from utils import *
 
 NICE_VAL = -15                     # set the "nice" value (OS priority) of the program.
 pid = os.getpid()
@@ -30,8 +30,9 @@ os.nice(NICE_VAL)
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default = 1045, type=int)
 parser.add_argument('--ip', default = "192.168.7.2", type=str)
-parser.add_argument('--fw', default = 1550, type=int)
+parser.add_argument('--fw', default = 1240, type=int)
 parser.add_argument('--loop', action = 'store_true')
+parser.add_argument('--time_glitch', action = 'store_true')
 args = parser.parse_args() # Parsing the arguments
 
 UDP_IP = args.ip                   # IP address of the destination
@@ -41,10 +42,10 @@ print('Simulating firmware version: ', args.fw)
 ### import variables according to firmware version specified
 if args.fw == 1550:
     from Firmware_config.firmware_1550 import *
-    DATA = load_test_4ch_data_1550(file_path = '../Data/joesdata.mat', scale = 2**15)
+    dataMatrix = load_test_4ch_data_1550(filePath = '../Data/joesdata.mat', scale = 2**15)
 elif args.fw == 1240:
     from Firmware_config.firmware_1240 import *
-    DATA = load_test_4ch_data_1240(file_path = '../Data/joesdata.mat', scale = 2**15, chunk_interval = SAMPS_PER_CHANNEL)
+    dataMatrix = load_test_4ch_data_1240(filePath = '../Data/joesdata.mat', scale = 2**15, chunkInterval = SAMPS_PER_CHANNEL)
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
@@ -58,46 +59,42 @@ print('Data bytes per channel: ', DATA_BYTES_PER_CHANNEL)
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 ### Make a fake initial time for the "recorded data"
-date_time = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
+dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
 
-DATA = np.array(DATA,dtype=np.uint16)      # convert data to unsigned 16 bit integers
-DATA_bytes = DATA.tobytes()                # convert the data to bytes using big_endian
+dataMatrix = np.array(dataMatrix,dtype=np.uint16)      # convert data to unsigned 16 bit integers
+dataMatrixBytes = dataMatrix.tobytes()                # convert the data to bytes using big_endian
 
 flag = 0
-print('HERE: ', len(DATA_bytes) // DATA_SIZE)
+print('HERE: ', len(dataMatrixBytes) // DATA_SIZE)
 while(True):
-    start_time = time.time()
+    startTime = time.time()
 
     if args.loop:
-        if len(DATA_bytes) // DATA_SIZE == flag:
+        if len(dataMatrixBytes) // DATA_SIZE == flag:
             flag = 0
     
     ### Create the time header
-    year = int(date_time.year - 2000)
-    month = int(date_time.month)
-    day = int(date_time.day)
-    hour = int(date_time.hour)
-    minute = int(date_time.minute)
-    second = int(date_time.second)
-    microseconds = int(date_time.microsecond)
+    year = int(dateTime.year - 2000)
+    month = int(dateTime.month)
+    day = int(dateTime.day)
+    hour = int(dateTime.hour)
+    minute = int(dateTime.minute)
+    second = int(dateTime.second)
+    microseconds = int(dateTime.microsecond)
     
-    #print("sending: ", microseconds)
-    
-    time_list = [year,month,day,hour,minute,second,microseconds]
-    
-    date_time = date_time + timedelta(microseconds=int(MICRO_INCR * 1e6)) # increment the time for next packet
+    dateTime = dateTime + timedelta(microseconds=int(MICRO_INCR)) # increment the time for next packet
+    if args.time_glitch:
+        if np.random.rand() < .01:
+            dateTime = dateTime + timedelta(microseconds=int(MICRO_INCR))
 
-    time_pack = struct.pack("BBBBBB", *np.array([year,month,day,hour,minute,second]))
-    microseconds_pack  = microseconds.to_bytes(4, byteorder='big')
-    zero_pack = struct.pack("H", 0)
-    time_header = time_pack + microseconds_pack + zero_pack
-
-    ### Create the data to send
-    # Send a list of zeros as data
-    #packet = time_header + bytes([0] * int(DATA_SIZE))
+        
+    timePack = struct.pack("BBBBBB", *np.array([year,month,day,hour,minute,second]))
+    microPack  = microseconds.to_bytes(4, byteorder='big')
+    zeroPack = struct.pack("H", 0)
+    timeHeader = timePack + microPack + zeroPack
     
-    data_packet = DATA_bytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
-    packet  = time_header + data_packet
+    dataPacket = dataMatrixBytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
+    packet  = timeHeader + dataPacket
     if len(packet) != PACKET_SIZE:
         print('ERROR: packet length error')
         print('FLAG: ',flag)
@@ -106,8 +103,8 @@ while(True):
     sock.sendto(packet, (UDP_IP, UDP_PORT)) # send the packet
     
     ### Sleep for the correct time
-    run_time = time.time() - start_time
-    sleep(MICRO_INCR - run_time)
+    runTime = time.time() - startTime
+    sleep(MICRO_INCR * 1e-6 - runTime)
     
     ### Sleep for an arbitrary time (debugging)
     #sleep(2*MICRO_INCR)
