@@ -55,10 +55,10 @@ print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
 print('Assuming firmware version: ', args.fw)
 if args.fw == 1550:
     from Firmware_config.firmware_1550 import *
-    process_segment = process_segment_1550
+    ProcessSegment = ProcessSegment1550
 elif args.fw == 1240:
     from Firmware_config.firmware_1240 import *
-    process_segment = process_segment_1240
+    ProcessSegment = ProcessSegment1240
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
@@ -86,26 +86,30 @@ elif UDP_IP == "192.168.7.2": # IP address of Joe's simulator
 else:
     print("ERROR: Unknown IP address" )
 
-time.sleep(2) # take time to make sure above parameters are correct
 print('Listening...')
 
 # UDP listener function to receive data and write to the buffer
-packet_counter = 0
-def udp_listener(udp_socket,buffer):
-    global packet_counter 
+packetCounter = 0
+def UdpListener(udpSocket,buffer):
+    global packetCounter 
     while True:
-        dataB, addr1 = udp_socket.recvfrom(PACKET_SIZE)  # bytes object
-        packet_counter += 1
-        if packet_counter % 500==0:
-            print("Num packets received is ", packet_counter)
+        dataB, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes than expected are recieved
+
+        if len(dataB) != PACKET_SIZE: # check packet length
+            print('Error: recieved incorrect number of packets')
+            continue
+
+        packetCounter += 1
+        if packetCounter % 500==0:
+            print("Num packets received is ", packetCounter)
         buffer.put(dataB)  # Put received data into the buffer
 
 # Function to process data from the buffer
-def data_processor(buffer):
+def DataProcessor(buffer):
     while True:
-        data_segment = np.array([])
+        dataSegment = np.array([])
         times = np.array([])
-        while len(data_segment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL):
+        while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL):
             #segment = np.append(segment,buffer.get())
             dataB = buffer.get()
             dataI = struct.unpack('>' + 'B'*len(dataB),dataB) # convert bytes to unsigned char list
@@ -113,17 +117,12 @@ def data_processor(buffer):
             ###dataJ = struct.unpack('>' + 'H'*lenJ,dataB) # convert bytes to short integer list
             dataJ = np.frombuffer(dataB[12:], dtype=np.uint16)
             dataJ = np.array(dataJ - 2**15).astype(np.int16)
-            #yy = dataI[0]
-            #mm = dataI[1]
-            #dd = dataI[2]
-            #HH = dataI[3]
-            #MM = dataI[4]
-            #SS = dataI[5]
+            
             us = (dataB[6],dataB[7],dataB[8],dataB[9])
-            usec = int.from_bytes(us,'big')                                  # get micro seconds from dataI (unsigned char ist)
-            date_time = datetime.datetime(2000+dataI[0], dataI[1], dataI[2], dataI[3], dataI[4], dataI[5], usec, tzinfo=datetime.timezone.utc)
-            times = np.append(times, date_time) 
-            data_segment = np.append(data_segment,dataJ)        
+            microSeconds = int.from_bytes(us,'big')                                  # get micro seconds from dataI (unsigned char ist)
+            dateTime = datetime.datetime(2000+dataI[0], dataI[1], dataI[2], dataI[3], dataI[4], dataI[5], microSeconds, tzinfo=datetime.timezone.utc)
+            times = np.append(times, dateTime) 
+            dataSegment = np.append(dataSegment,dataJ)        
             ###ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
             #ch1 = dataJ[0::NUM_CHAN]
             #print('HERE',ch1)
@@ -131,37 +130,26 @@ def data_processor(buffer):
             #print("################## SEGMENT ####################")
             #print("length of segment ", len(segment))
             #print(segment[:1000]) 
-        if not integrityCheck(data_segment, times, MICRO_INCR):
-            restartListener()
+        if not IntegrityCheck(dataSegment, times, MICRO_INCR):
+            RestartListener()
         else:
-            process_segment(data_segment, times, args.output_file)
+            ProcessSegment(dataSegment, times, args.output_file)
 
 # Create a buffer (Queue) for communication between threads
-data_buffer = queue.Queue()
+dataBuffer = queue.Queue()
 
 # Create and start the UDP listener thread
-udp_thread = threading.Thread(target=udp_listener, args=(sock,data_buffer,))
-udp_thread.daemon = False  # Daemonize the thread to exit when the main program exits
-udp_thread.start()
+udpThread = threading.Thread(target=UdpListener, args=(sock,dataBuffer,))
+udpThread.daemon = False  # Daemonize the thread to exit when the main program exits
+udpThread.start()
 
 # Create and start the data processor thread
-processor_thread = threading.Thread(target=data_processor, args=(data_buffer,))
-processor_thread.daemon =False 
-processor_thread.start()
+processorThread = threading.Thread(target=DataProcessor, args=(dataBuffer,))
+processorThread.daemon =False 
+processorThread.start()
 
 # Keep the main thread alive to allow other threads to run
 
 # Wait for threads to finish (optional)
-udp_thread.join()
-processor_thread.join()
-
-print('GLOBAL COUNTER: ', COUNTER)
-
-
-"""
-try:
-    while True:
-        pass
-except KeyboardInterrupt:
-    print("\nExiting...")
-"""
+udpThread.join()
+processorThread.join()
