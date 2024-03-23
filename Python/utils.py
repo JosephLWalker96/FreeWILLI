@@ -13,7 +13,7 @@ process.nice(NICE_VAL)                # Set the process priority to high
 trials = []
 os.nice(NICE_VAL)
 
-def sleep(duration, getNow=time.perf_counter):
+def Sleep(duration, getNow=time.perf_counter):
     """
     Custom sleep function. Checks the current time against the disired wake up time.
 
@@ -26,7 +26,7 @@ def sleep(duration, getNow=time.perf_counter):
     while now < end:
         now = getNow()
         
-def synthetic_click_generator(signalLength, clickDur):
+def SyntheticClickGenerator(signalLength, clickDur):
     """
     Function to generate synthetic click/impulse data
 
@@ -46,7 +46,7 @@ def synthetic_click_generator(signalLength, clickDur):
     s[startPosition:startPosition + clickDur] = (s[startPosition:startPosition + clickDur] * 1.7) * (np.hamming(clickDur) + 1)
     return s
 
-def load_test_4ch_data_1550(filePath = '../Data/joesdata.mat', scale = 2**15):
+def LoadTest4chData1550(filePath = '../Data/joesdata.mat', scale = 2**15):
     """
     Function to read in real 4 channel data and format the data according to firmware version 1550
 
@@ -66,7 +66,7 @@ def load_test_4ch_data_1550(filePath = '../Data/joesdata.mat', scale = 2**15):
     dataMatrixReshaped = dataMatrixReshaped + scale                         
     return dataMatrixReshaped
 
-def load_test_4ch_data_1240(filePath = '../Data/joesdata.mat', scale = 2**15, chunkInterval = None):
+def LoadTest4chData1240(filePath = '../Data/joesdata.mat', scale = 2**15, chunkInterval = None):
     """
     Function to read in real 4 channel data and format the data according to firmware version 1240
 

@@ -43,10 +43,10 @@ print('Simulating firmware version: ', args.fw)
 ### import variables according to firmware version specified
 if args.fw == 1550:
     from Firmware_config.firmware_1550 import *
-    dataMatrix = load_test_4ch_data_1550(filePath = '../Data/joesdata.mat', scale = 2**15)
+    dataMatrix = LoadTest4chData1550(filePath = '../Data/joesdata.mat', scale = 2**15)
 elif args.fw == 1240:
     from Firmware_config.firmware_1240 import *
-    dataMatrix = load_test_4ch_data_1240(filePath = '../Data/joesdata.mat', scale = 2**15, chunkInterval = SAMPS_PER_CHANNEL)
+    dataMatrix = LoadTest4chData1240(filePath = '../Data/joesdata.mat', scale = 2**15, chunkInterval = SAMPS_PER_CHANNEL)
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
@@ -110,7 +110,7 @@ while(True):
     
     ### Sleep for the correct time
     runTime = time.time() - startTime
-    sleep(MICRO_INCR * 1e-6 - runTime)
+    Sleep(MICRO_INCR * 1e-6 - runTime)
     
     ### Sleep for an arbitrary time (debugging)
     #sleep(2*MICRO_INCR)
