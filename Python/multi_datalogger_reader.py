@@ -42,7 +42,7 @@ print('This code has been tested for python version 3.11.6, your version is:', s
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default=50000, type=int)
 parser.add_argument('--ip', default="192.168.100.220",type=str)
-parser.add_argument('--fw', default = 1240, type=int)
+parser.add_argument('--fw', default = 1550, type=int)
 parser.add_argument('--output_file', default = "clicks_data.txt", type=str)
 args = parser.parse_args() # Parsing the arguments
 output_file = open(args.output_file, 'w')

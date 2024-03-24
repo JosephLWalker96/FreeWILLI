@@ -124,11 +124,18 @@ void UdpListener(int datagramSocket) {
     }
 }
 
-void DataProcessor() {
+void DataProcessor(void (*ProcessingFunction)(std::vector<int16_t>&, std::vector<TimePoint>&, const std::string&)) {
+    /*
     if (MICRO_INCR == 1240){
         void(*processFncPtr)(std::vector<int16_t>&, std::vector<TimePoint>&, const std::string&) = ProcessSegment1240;
     }
-
+    else if (MICRO_INCR == 1550){
+        void(*processFncPtr)(std::vector<int16_t>&, std::vector<TimePoint>&, const std::string&) = ProcessSegment1550;
+    }
+    else{
+        cerr << "Incorrect MICRO_INC" << endl;
+    }
+    */
     while (true) {
         vector<int16_t> dataSegment;
         //arma::vec dataSegment;
@@ -166,13 +173,11 @@ void DataProcessor() {
                     data.push_back(value - 32768);
                 }
                 
-                // Append data and timestamp
                 timestamps.push_back(specificTime);
-                //timestamps.push_back(std::mktime(&timeStruct));
                 dataSegment.insert(dataSegment.end(), data.begin(), data.end());
             }
         }
-        // print first 12 values recieved
+        // print first few values recieved
         #ifdef DEBUG_PRINT_UNPACKED
             cout << "Inside DataProcessor() " << endl;
             for (size_t j = 0; j < 50; j++){
@@ -181,7 +186,7 @@ void DataProcessor() {
             cout << endl;
         #endif
         cout << "dataSegment Size: " << dataSegment.size() << endl;
-        ProcessSegment1240(dataSegment, timestamps, OUTPUT_FILE);  // Replace with your processing code
+        ProcessingFunction(dataSegment, timestamps, OUTPUT_FILE);  // Replace with your processing code
     }
 }
 
@@ -195,18 +200,19 @@ int main(int argc, char *argv[]){
 
     //import variables according to firmware version specified
     cout << "Assuming firmware version: " << firmwareVersion << endl;
+    void(*ProcessFncPtr)(std::vector<int16_t>&, std::vector<TimePoint>&, const std::string&) = nullptr;
     if (firmwareVersion == 1550){
-        cerr << "functionality for firmware version 1550 is undefined" << endl;
-        return 1;
+        ProcessFile("1550_config.txt");
+        ProcessFncPtr = ProcessSegment1550;
     }
     else if (firmwareVersion == 1240){
         ProcessFile("1240_config.txt");
+        ProcessFncPtr = ProcessSegment1240;
     }
     else{
         cerr << "ERROR: Unknown firmware version" << endl;
         return 1;
     }
-
     
     NUM_PACKS_DETECT = TIME_WINDOW * 100000 / SAMPS_PER_CHANNEL;  // NEED TO ROUND THIS  the number of data packets that are needed to perform energy detection 
     DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL; 
@@ -220,7 +226,21 @@ int main(int argc, char *argv[]){
     cout << "Data bytes per channel: " <<  DATA_BYTES_PER_CHANNEL << endl;
     cout << "Detecting over a time window of " << TIME_WINDOW << " seconds, using " << NUM_PACKS_DETECT <<  " packets" << endl;
 
-        
+    std::string output_file = "Ccode_clicks.txt"; // Change to your desired file name
+    
+    // Open the file in write mode and clear its contents if it exists, create a new file otherwise
+    std::ofstream file(output_file, std::ofstream::out | std::ofstream::trunc);
+
+    if (file.is_open()) {
+        // Write header row (optional)
+        file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << std::endl;
+        file.close();
+        std::cout << "File created and cleared: " << output_file << std::endl;
+    } else {
+        std::cerr << "Error: Unable to open file for writing: " << output_file << std::endl;
+        return 1; // Indicate error
+    }
+
     int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if (datagramSocket == -1) {
         cerr << "Error creating socket" << endl;
@@ -238,7 +258,7 @@ int main(int argc, char *argv[]){
     }
 
     thread udpThread(UdpListener, datagramSocket);
-    thread processorThread(DataProcessor);
+    thread processorThread(DataProcessor, ProcessFncPtr);
 
     udpThread.join();
     processorThread.join();
