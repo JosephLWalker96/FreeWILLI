@@ -133,6 +133,7 @@ def DataProcessor(buffer):
         if not IntegrityCheck(dataSegment, times, MICRO_INCR):
             RestartListener()
         else:
+            print("****Data segment length: ",len(dataSegment) )
             ProcessSegment(dataSegment, times, args.output_file)
 
 # Create a buffer (Queue) for communication between threads

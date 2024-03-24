@@ -20,19 +20,27 @@ def IntegrityCheck(data, times, MICRO_INCR):
 def ProcessSegment(data, times, outputFile):
     dataAbs = data.astype('float64')**2
     dataAbs = np.sqrt(dataAbs)
+    print("dataAbs Size ", len(dataAbs))
     
     ### average data
     pulseFilter = np.ones(256) / 256
-    filteredSignal = np.convolve(dataAbs, pulseFilter, mode='valid')
+    #filteredSignal = np.convolve(dataAbs, pulseFilter, mode='valid')
+    filteredSignal = np.convolve(dataAbs, pulseFilter, mode='same')
     
+    print("dataAbs ", dataAbs[:20])
+    print("filter: ", pulseFilter[:10])
+    print("filtered signal: ",len(filteredSignal), filteredSignal[:20])    
+    print("end of filtered signal: ", filteredSignal[-4:])    
     ### remove low amplitude values
+    
     filteredSignal[filteredSignal < 80] = 0
     
     ### create a mask to segment click regions
     filt = np.ones(256)
-    output = np.convolve(filteredSignal,filt)
+    output = np.convolve(filteredSignal,filt, mode = 'same')
+    print('###################### WHERE: ',np.where(output > 0)[0])
     output[output > 0] = 1
-
+    '''
     ### find index of click regions (click start: 0 -> 1, click end 1 -> 0) and split around these values
     diff = np.diff(output)
     output = np.where(diff != 0)[0]
@@ -58,18 +66,21 @@ def ProcessSegment(data, times, outputFile):
             #    print('ALL zero')
         print(clicks)
         WriteClicks(clicks, outputFile)
-
+   '''
 def ProcessSegment1550(data, times, outputFile):
     ch1 = data[0::4] # get first channel data by getting every 4th element starting with the first
     ProcessSegment(ch1, times, outputFile)
 
 
 def ProcessSegment1240(data, times, outputFile):
-    data = data.reshape(-1,4,124)  # Split the flattened array into original components
-    data = np.hstack(data)
-    ch1 = data[0]
+    ch1 = data[0::4] # This is incorrect!!!!
+    ###data = data.reshape(-1,4,124)  # Split the flattened array into original components
+    ###data = np.hstack(data)
+    ###ch1 = data[0]
     #for i in range(10):
     #    print(ch1[i])
+    print("Start: ",ch1[:15])
+    print("End: ",ch1[-4:])
     ProcessSegment(ch1, times, outputFile)
 
 def WriteClicks(clicks, outputFile):

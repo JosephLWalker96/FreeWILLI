@@ -89,12 +89,12 @@ void ProcessSegment(arma::Row<int16_t>& data, std::vector<TimePoint>& times, con
     // Convert data to absolute values (square and sqrt)
     //arma::vec data_abs = arma::pow(data, 2.0);
     //data_abs = arma::sqrt(data_abs);
-    arma::Row<double> data_abs = arma::conv_to<arma::Row<double>>::from(data);
-
+    arma::Row<double> data_abs = arma::abs(arma::conv_to<arma::Row<double>>::from(data));
+    std::cout << "data_Abs " << data_abs.size() << std::endl;
     //arma::Row<double> data_abs = arma::abs(data);
-    data_abs = arma::abs(data_abs);
+    //data_abs = arma::abs(data_abs);
     #ifdef DEBUG_PRINT_UNPACKED
-        std::cout << "Inside ProcessSegment() " << std::endl;
+        std::cout << "dataAbs " << std::endl;
         for (size_t j = 0; j < 12; j++){
             std::cout << data_abs[j] << " ";
         }
@@ -102,26 +102,39 @@ void ProcessSegment(arma::Row<int16_t>& data, std::vector<TimePoint>& times, con
     #endif
    
     // define the filter for click regions
-    arma::Row<double> filter(1, 256, arma::fill::ones); // Filter of size 256 with all ones
+    arma::Row<double> filter(1.0, 256, arma::fill::ones); // Filter of size 256 with all ones
     filter /= 256.0;
     
+    #ifdef DEBUG_PRINT_UNPACKED
+        std::cout << "filter " << std::endl;
+        for (size_t j = 0; j < 12; j++){
+            std::cout << filter[j] << " ";
+        }
+        std::cout << std::endl;
+    #endif
     // Convolve abs_data with the filter
     arma::Row<double> convolved_data = arma::conv(data_abs, filter, "same");
 
     #ifdef DEBUG_PRINT_UNPACKED
         std::cout << "Inside ProcessSegment(), convolved data: (before)" << std::endl;
-        for (size_t j = 0; j < 12; j++){
+        std::cout << convolved_data.size() << std::endl;
+        for (size_t j = 0; j < 50; j++){
+            std::cout << convolved_data[j] << " ";
+        }
+        std::cout << std::endl;
+        std::cout << "end of conv: "<< std::endl;
+        for (size_t j = convolved_data.size()-4; j < convolved_data.size(); j++){
             std::cout << convolved_data[j] << " ";
         }
         std::cout << std::endl;
     #endif
     
     // Thresholding low amplitude values
-    convolved_data.elem(arma::find(convolved_data < 80)).fill(0);
+    convolved_data.elem(arma::find(convolved_data < 80.0)).fill(0.0);
     
     #ifdef DEBUG_PRINT_UNPACKED
         std::cout << "Inside ProcessSegment(), convolved data (after) " << std::endl;
-        for (size_t j = 0; j < 12; j++){
+        for (size_t j = 0; j < 50; j++){
             std::cout << convolved_data[j] << " ";
         }
         std::cout << std::endl;
@@ -129,10 +142,11 @@ void ProcessSegment(arma::Row<int16_t>& data, std::vector<TimePoint>& times, con
 
     
     // Create a mask for click regions (ones filter)
-    arma::Row<double> filt(1,256,arma::fill::ones);
+    arma::Row<double> filt(1.0,256,arma::fill::ones);
     arma::Row<double> output_f = arma::conv(convolved_data, filt, "same");
+    std::cout << "##################################  WHERE " << arma::find(output_f > 0.0) << std::endl;
     output_f.elem(arma::find(output_f > 0.0)).fill(1.0);
-    
+    /*
     
     // Find click region indices based on differences
     arma::Row<double> diff = arma::diff(output_f);
@@ -140,10 +154,10 @@ void ProcessSegment(arma::Row<int16_t>& data, std::vector<TimePoint>& times, con
     
     //arma::vec output = arma::conv_to<arma::vec>::from(arma::find(diff != 0.0));
     arma::uvec output = arma::find(diff != 0.0);
-    
+    */
     #ifdef DEBUG_PRINT_UNPACKED
-        std::cout << "Inside ProcessSegment(), split points !!!!!!!!!!!!!!!" << std::endl;
-        std::cout << output.n_elem << std::endl;
+        //std::cout << "Inside ProcessSegment(), split points !!!!!!!!!!!!!!!" << std::endl;
+        //std::cout << output.n_elem << std::endl;
         /*
         for (size_t j = 0; j < output.size(); j++){
             std::cout << output[j] << " ";
@@ -201,26 +215,52 @@ void ProcessSegment1240(std::vector<int16_t>& data, std::vector<TimePoint>& time
     // ... (implement appropriate error handling or logic)
         std::cout << "ERROR in process_segment_1240 function: not divisible" << std::endl;
     }
-
-    const int num_rows = 1; //data.size() / (4 * 124);
-    const int num_cols = 124;
+    /*
+    //const int num_rows = 1; //data.size() / (4 * 124);
+    //const int num_cols = 124;
+    //std::cout << "DATA SIZE " << data.data().size() << std::endl;
+    const int num_rows = 4; //data.size() / (4 * 124);
+    const int num_cols = 12524 - 4;
     //arma::mat data_reshaped = arma::mat(data).reshape(num_rows, num_cols);  // Reshape directly from std::vector
     //arma::mat data_reshaped = arma::vec::from(data).reshape(num_rows, num_cols);
     //arma::imat data_reshaped(data.data(), num_rows, num_cols, false, true);
     arma::Mat<int16_t> data_reshaped(data.data(), num_rows * 4, num_cols, false, true);
+    
+    //arma::Mat<int16_t> data_reshaped(data.data(), num_rows, num_cols, false, true);
 
     // Extract the first channel (assuming 4 channels and row-major order)
     //arma::vec ch1 = data_reshaped.col(0);
-    arma::Row<int16_t> ch1 = data_reshaped.row(0);
-    /*
+    arma::Row<int16_t> ch2 = data_reshaped.row(0);
+    
+    
+    arma::Row<int16_t> ch1(12524);
+    for (size_t i = 0, j = 0; i < data.size(); i += 4, ++j) {
+        ch1(j) = data[i]; // Saving every 4th element into ch1
+    }
+    
+
+    
     for (int i = 0; i < 10; i++){
         std::cout << ch1[i] << std::endl;
     }
     */
+    arma::Row<int16_t> ch1;
 
+    // Reserve space in the arma::Row (optional but can improve performance)
+    ch1.set_size(data.size() / 4);
+
+    // Iterate through the data vector and save every 4th element into the arma::Row
+    for (size_t i = 0, j = 0; i < data.size(); i += 4, ++j) {
+        ch1(j) = data[i]; // Saving every 4th element into ch1
+    }
     #ifdef DEBUG_PRINT_UNPACKED
         std::cout << "Inside ProcessSegment1240() " << std::endl;
+        std::cout << "Ch1 size" << ch1.size() << std::endl;
         for (size_t j = 0; j < 12; j++){
+            std::cout << ch1[j] << " ";
+        }
+        std::cout << std::endl;
+        for (size_t j = ch1.size() - 4; j < ch1.size(); j++){
             std::cout << ch1[j] << " ";
         }
         std::cout << std::endl;

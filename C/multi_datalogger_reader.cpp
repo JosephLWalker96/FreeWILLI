@@ -180,6 +180,7 @@ void DataProcessor() {
             }
             cout << endl;
         #endif
+        cout << "dataSegment Size: " << dataSegment.size() << endl;
         ProcessSegment1240(dataSegment, timestamps, OUTPUT_FILE);  // Replace with your processing code
     }
 }
