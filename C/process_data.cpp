@@ -13,222 +13,200 @@
 #include "my_globals.h"
 #include "process_data.h"
 
+using std::cout;
+using std::endl;
+using std::cerr;
+using std::vector;
+using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
-void PrintTimes(const std::vector<std::chrono::system_clock::time_point>& timestamps){
+void PrintTimes(const vector<TimePoint>& timestamps){
     for (auto& timestamp : timestamps){
-        std::time_t time_t_representation = std::chrono::system_clock::to_time_t(timestamp);
-        std::tm time_data = *std::localtime(&time_t_representation); 
-        auto microsecs = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000; // Use std::put_time for human-readable formatting
-        // Print the timestamp
-        std::cout << "Timestamp: ";
-        std::cout << time_data.tm_year + 1900 << '-'
-            << time_data.tm_mon + 1 << '-'
-            << time_data.tm_mday << ' '
-            << time_data.tm_hour << ':'
-            << time_data.tm_min << ':'
-            << time_data.tm_sec << ':'
-            << microsecs << std::endl;
+        std::time_t timeRepresentation = std::chrono::system_clock::to_time_t(timestamp);
+        std::tm timeData = *std::localtime(&timeRepresentation); 
+        auto microsecs = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000; 
+        
+        cout << "Timestamp: ";
+        cout << timeData.tm_year + 1900 << '-'
+            << timeData.tm_mon + 1 << '-'
+            << timeData.tm_mday << ' '
+            << timeData.tm_hour << ':'
+            << timeData.tm_min << ':'
+            << timeData.tm_sec << ':'
+            << microsecs << endl;
     }
 }
 
-void ProcessSegment(arma::Row<int16_t>& data, std::vector<TimePoint>& times, const std::string& output_file) {
-    arma::Row<double> data_abs = arma::abs(arma::conv_to<arma::Row<double>>::from(data));
-    std::cout << "data_Abs " << data_abs.size() << std::endl;
+void ProcessSegment(arma::Row<int16_t>& data, vector<TimePoint>& times, const string& outputFile) {
+    arma::Row<double> dataAbsolute = arma::abs(arma::conv_to<arma::Row<double>>::from(data));
     
-    #ifdef DEBUG_PRINT_UNPACKED
-        std::cout << "dataAbs " << std::endl;
+    #ifdef PRINT_PROCESS_SEGMENT
+        cout << "Inside ProcessSegment() " << endl;
+        cout << "dataAbsolute.size() " << dataAbsolute.size() << endl;
+        cout << "first few elements in dataAbsolute " << endl;
         for (size_t j = 0; j < 12; j++){
-            std::cout << data_abs[j] << " ";
+            cout << dataAbsolute[j] << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
     #endif
    
     // define the filter for click regions
-    arma::Row<double> filter(1.0, 256, arma::fill::ones); // Filter of size 256 with all ones
-    filter /= 256.0;
+    arma::Row<double> smoothFilter(1.0, 256, arma::fill::ones); // Filter of size 256 with all ones
+    smoothFilter /= 256.0;
     
-    #ifdef DEBUG_PRINT_UNPACKED
-        std::cout << "filter " << std::endl;
+    #ifdef PRINT_PROCESS_SEGMENT
+        cout << "first few elements in smoothFilter " << endl;
         for (size_t j = 0; j < 12; j++){
-            std::cout << filter[j] << " ";
+            cout << smoothFilter[j] << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
     #endif
-    // Convolve abs_data with the filter
-    arma::Row<double> convolved_data = arma::conv(data_abs, filter, "same");
 
-    #ifdef DEBUG_PRINT_UNPACKED
-        std::cout << "Inside ProcessSegment(), convolved data: (before)" << std::endl;
-        std::cout << convolved_data.size() << std::endl;
-        for (size_t j = 0; j < 50; j++){
-            std::cout << convolved_data[j] << " ";
+    // Convolve abs_data with the filter
+    arma::Row<double> dataSmoothed = arma::conv(dataAbsolute, smoothFilter, "same");
+
+    #ifdef PRINT_PROCESS_SEGMENT
+        cout << "first few elements in dataSmoothed: " << endl;
+        cout << "dataSmoothed.size() " << dataSmoothed.size() << endl;
+        for (size_t j = 0; j < 12; j++){
+            cout << dataSmoothed[j] << " ";
         }
-        std::cout << std::endl;
-        std::cout << "end of conv: "<< std::endl;
-        for (size_t j = convolved_data.size()-4; j < convolved_data.size(); j++){
-            std::cout << convolved_data[j] << " ";
+        cout << endl;
+        cout << "last few elements in dataSmoothed: "<< endl;
+        for (size_t j = dataSmoothed.size() - 12; j < dataSmoothed.size(); j++){
+            cout << dataSmoothed[j] << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
     #endif
     
     // Thresholding low amplitude values
-    convolved_data.elem(arma::find(convolved_data < 80.0)).fill(0.0);
-    
-    #ifdef DEBUG_PRINT_UNPACKED
-        std::cout << "Inside ProcessSegment(), convolved data (after) " << std::endl;
-        for (size_t j = 0; j < 50; j++){
-            std::cout << convolved_data[j] << " ";
-        }
-        std::cout << std::endl;
-    #endif
-
+    dataSmoothed.elem(arma::find(dataSmoothed < 80.0)).fill(0.0);
     
     // Create a mask for click regions (ones filter)
-    arma::Row<double> filt(1.0,256,arma::fill::ones);
-    arma::Row<double> output_f = arma::conv(convolved_data, filt, "same");
-    std::cout << "##################################  WHERE " << arma::find(output_f > 0.0) << std::endl;
-    output_f.elem(arma::find(output_f > 0.0)).fill(1.0);
+    arma::Row<double> segmentationFilter(1.0,256,arma::fill::ones);
+    arma::Row<double> dataMasked = arma::conv(dataSmoothed, segmentationFilter, "same");
+    dataMasked.elem(arma::find(dataMasked > 0.0)).fill(1.0);
     
 
     // Find click region indices based on differences
-    arma::Row<double> diff = arma::diff(output_f);
-    
-    arma::uvec output = arma::find(diff != 0.0);
-    std::cout << "OUTPUT: " << output << std::endl;
+    arma::Row<double> diff = arma::diff(dataMasked);
+    arma::uvec segmentBoundary = arma::find(diff != 0.0);
 
-    #ifdef DEBUG_PRINT_UNPACKED
-        //std::cout << "Inside ProcessSegment(), split points !!!!!!!!!!!!!!!" << std::endl;
-        //std::cout << output.n_elem << std::endl;
-        /*
-        for (size_t j = 0; j < output.size(); j++){
-            std::cout << output[j] << " ";
-        }
-        std::cout << std::endl;
-        */
-    #endif
-    
-    // Split data and filtered signal based on click regions
-    std::cout << "OUTPUT.N_ELEM " << output.n_elem << std::endl;
-    std::cout << "CONVOLVED_DATA.MAX() " << convolved_data.max() << std::endl;
-
-    if (output.n_elem > 0){
-        std::vector<std::chrono::system_clock::time_point> timestamps;
-        std::cout << "Above horiz" << std::endl;
-        //output = arma::join_cols(arma::uvec(1, 0), output);
-        output.insert_rows(0, 1);
-        output(0) = 0;
-        std::cout << output << std::endl;
-        std::cout << "Below horiz" << std::endl;
-        std::vector<int16_t> click_amps;
-        std::cout << "Above for-loop" << std::endl;
-        for (size_t i = 0; i < output.size() - 1; ++i) {
-            int start_point = output[i];
-            int end_point = output[i + 1];
+    if (segmentBoundary.n_elem > 0){
+        vector<TimePoint> timestamps;
+        segmentBoundary.insert_rows(0, 1);
+        segmentBoundary(0) = 0;
+        vector<int16_t> clickPeakAmps;
+        for (size_t i = 0; i < segmentBoundary.size() - 1; ++i) {
+            int start_point = segmentBoundary[i];
+            int end_point = segmentBoundary[i + 1];
 
             // Check if there's any non-zero value in the region
-            std::cout << "Above if-statement" << std::endl;
-            if (arma::any(convolved_data.subvec(start_point, end_point - 1) != 0.0)) {
+            if (arma::any(dataSmoothed.subvec(start_point, end_point - 1) != 0.0)) {
                 //arma::vec region_data = data.subvec(start_point, end_point - 1);
-                std::cout << "Above region-data" << std::endl;
-                arma::Row<int16_t> region_data = data.subvec(start_point, end_point - 1);
+                arma::Row<int16_t> clickSegment = data.subvec(start_point, end_point - 1);
 
                 // Calculate the index (avoid potential iterator subtraction issues)
-                int peak_index = arma::index_max(region_data);
-                int16_t peak_amplitude = arma::max(region_data);
+                int peakIndex = arma::index_max(clickSegment);
+                int16_t peakAmplitude = arma::max(clickSegment);
                 
                 // Calculate click time based on sampling rate and peak index
-                long long seconds = ((start_point + peak_index) * 10); // divide by 1e5 then times 1e6
+                long long seconds = ((start_point + peakIndex) * 10); // divide (...) by 1e5 then times 1e6
                 
-                std::chrono::time_point<std::chrono::system_clock> click_time = times[0] + std::chrono::microseconds(seconds);
-                click_amps.push_back(peak_amplitude);
-                timestamps.push_back(click_time);
+                std::chrono::time_point<std::chrono::system_clock> peakAmplitudeTime = times[0] + std::chrono::microseconds(seconds);
+                clickPeakAmps.push_back(peakAmplitude);
+                timestamps.push_back(peakAmplitudeTime);
             }
         }
-        WriteClicks(click_amps,timestamps, "Ccode_clicks.txt");
+        WriteClicks(clickPeakAmps,timestamps, "Ccode_clicks.txt");
     }
 }
 
-void ProcessSegment1240(std::vector<int16_t>& data, std::vector<TimePoint>& times, const std::string& output_file) {
-    size_t num_segments = data.size() / (4*124); // Calculate the number of segments
-
-    // Initialize Armadillo row to store extracted elements
-    arma::Row<int16_t> ch1(num_segments * 124);
-
+void ProcessSegment1240(vector<int16_t>& data, vector<TimePoint>& times, const string& outputFile) {
+    
+    #ifdef PRINT_PROCESS_SEGMENT_1240
+        cout << "Inside ProcessSegment1240() " << endl;
+        cout << "data.size(): " << data.size() << endl;
+    #endif
+    
+    arma::Row<int16_t> ch1;
+    int channelSize = data.size() / NUM_CHAN;
+    ch1.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance) 
+    
     // Iterate over the data in steps of 100
-    for (size_t i = 0; i < num_segments; ++i) {
+    for (size_t i = 0; i < NUM_PACKS_DETECT; ++i) {
         // Calculate the starting index of the current segment
-        size_t segment_start = i * (4*124);
+        size_t segmentStart = i * (NUM_CHAN * SAMPS_PER_CHANNEL);
 
-        // Extract 10 consecutive elements from the current segment
-        for (size_t j = 0; j < 124; ++j) {
-            ch1(i * 124 + j) = data[segment_start + j];
+        // Extract SAMPS_PER_CHANNEL consecutive elements from the current segment
+        for (size_t j = 0; j < SAMPS_PER_CHANNEL; ++j) {
+            ch1(i * SAMPS_PER_CHANNEL + j) = data[segmentStart + j];
         }
     }
-    #ifdef DEBUG_PRINT_UNPACKED
-        std::cout << "Inside ProcessSegment1240() " << std::endl;
-        std::cout << "Ch1 size" << ch1.size() << std::endl;
+    #ifdef PRINT_PROCESS_SEGMENT_1240
+        cout << "Ch1 size " << ch1.size() << endl;
+        cout << "First few elements in ch1 " << ch1.size() << endl;
         for (size_t j = 0; j < 12; j++){
-            std::cout << ch1[j] << " ";
+            cout << ch1[j] << " ";
         }
-        std::cout << std::endl;
-        for (size_t j = ch1.size() - 4; j < ch1.size(); j++){
-            std::cout << ch1[j] << " ";
+        cout << endl;
+        cout << "Last few elements in ch1 " << ch1.size() << endl;
+        for (size_t j = ch1.size() - 12; j < ch1.size(); j++){
+            cout << ch1[j] << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
     #endif
 
-    ProcessSegment(ch1, times, output_file);  // Use memptr to access raw data
+    ProcessSegment(ch1, times, outputFile);  // Use memptr to access raw data
 }
 
 
-void ProcessSegment1550(std::vector<int16_t>& data, std::vector<TimePoint>& times, const std::string& output_file) {
+void ProcessSegment1550(vector<int16_t>& data, vector<TimePoint>& times, const string& outputFile) {
     arma::Row<int16_t> ch1;
-
-    // Reserve space in the arma::Row (optional but can improve performance)
-    ch1.set_size(data.size() / 4);
+    ch1.set_size(data.size() / NUM_CHAN);                    // Reserve space in the arma::Row (optional but can improve performance)
 
     // Iterate through the data vector and save every 4th element into the arma::Row
-    for (size_t i = 0, j = 0; i < data.size(); i += 4, ++j) {
+    for (size_t i = 0, j = 0; i < data.size(); i += NUM_CHAN, ++j) {
         ch1(j) = data[i]; // Saving every 4th element into ch1
     }
-    #ifdef DEBUG_PRINT_UNPACKED
-        std::cout << "Inside ProcessSegment1550() " << std::endl;
-        std::cout << "Ch1 size" << ch1.size() << std::endl;
+    #ifdef PRINT_PROCESS_SEGMENT_1550
+        cout << "Inside ProcessSegment1550() " << endl;
+        cout << "Ch1 size " << ch1.size() << endl;
+        cout << "First few elements in ch1 " << ch1.size() << endl;
         for (size_t j = 0; j < 12; j++){
-            std::cout << ch1[j] << " ";
+            cout << ch1[j] << " ";
         }
-        std::cout << std::endl;
-        for (size_t j = ch1.size() - 4; j < ch1.size(); j++){
-            std::cout << ch1[j] << " ";
+        cout << endl;
+        cout << "Last few elements in ch1 " << ch1.size() << endl;
+        for (size_t j = ch1.size() - 12; j < ch1.size(); j++){
+            cout << ch1[j] << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
     #endif
         
-    // Process the extracted channel data
-    ProcessSegment(ch1, times, output_file);  // Use memptr to access raw data
+    ProcessSegment(ch1, times, outputFile);  
 }
 
-void WriteClicks(const std::vector<int16_t>& click_amps,
-                 const std::vector<std::chrono::system_clock::time_point>& timestamps,
-                 const std::string& filename) {
+void WriteClicks(const vector<int16_t>& clickPeakAmps,
+                 const vector<TimePoint>& timestamps,
+                 const string& filename) {
   std::ofstream outfile(filename, std::ios::app);
   if (outfile.is_open()) {
     // Check if vectors have the same size
-    if (click_amps.size() != timestamps.size()) {
-      std::cerr << "Error: Click amplitude and timestamp vectors have different sizes." << std::endl;
+    if (clickPeakAmps.size() != timestamps.size()) {
+      cerr << "Error: Click amplitude and timestamp vectors have different sizes." << endl;
       return;
     }
 
     // Write data rows
-    for (size_t i = 0; i < click_amps.size(); ++i) {
+    for (size_t i = 0; i < clickPeakAmps.size(); ++i) {
       auto time_point = timestamps[i];
       auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
-      outfile << time_since_epoch.count() << std::setw(20) << click_amps[i] << std::endl;
+      outfile << time_since_epoch.count() << std::setw(20) << clickPeakAmps[i] << endl;
     }
 
     outfile.close();
   } else {
-    std::cerr << "Error: Could not open file " << filename << std::endl;
+    cerr << "Error: Could not open file " << filename << endl;
   }
 }

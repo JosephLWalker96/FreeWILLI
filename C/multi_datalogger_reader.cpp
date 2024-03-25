@@ -3,13 +3,13 @@
 This is a C++ version of Python/multi_datalogger_reader.py
 
 Compile code manually:
-g++ multi_datalogger_reader.cpp process_data.cpp -o exe -larmadillo
+g++ multi_datalogger_reader.cpp process_data.cpp -o listen.exe -larmadillo
 
 Execute (datalogger simulator):
-./exe 192.168.7.2 1045 1240
+./listen.exe 192.168.7.2 1045 1240
 
 Execute (datalogger):
-./exe 192.168.100.220 50000 1240
+./listen.exe 192.168.100.220 50000 1240
 
 */
 
@@ -42,10 +42,6 @@ using std::string;
 using std::cerr;
 using std::vector;
 using std::ifstream;
-using std::lock_guard;
-using std::mutex;
-using std::stoi;
-using std::thread;
 
 int HEAD_SIZE;                                 //packet head size (bytes)
 double MICRO_INCR;                             // time between packets
@@ -64,8 +60,6 @@ int packetCounter = 0;
 int DATA_SEGMENT_LENGTH;
 
 // Macros for preprocessor directives
-//#define SPEED_TEST
-//#define DEBUG_PRINT_UNPACKED
 
 std::queue<vector<uint8_t>> dataBuffer;
 std::mutex bufferMutex;                       // For thread-safe buffer access
@@ -89,69 +83,55 @@ void UdpListener(int datagramSocket) {
     socklen_t addrLength = sizeof(addr);
     int bytesReceived;
     vector<uint8_t> dataB(PACKET_SIZE);
-    #ifdef SPEED_TEST
-        // Record the start time
+    
+    #ifdef SPEED_TEST // Record the start time
         auto startTime = std::chrono::high_resolution_clock::now();
         decltype(startTime) endTime;
         long double duration;
         bytesReceived = recvfrom(datagramSocket, dataB.data(), PACKET_SIZE, 0, (struct sockaddr*)&addr, &addrLength);
     #endif
+    
     while (true) {
-        //vector<uint8_t> dataB(PACKET_SIZE);
+        
         #ifndef SPEED_TEST
             int bytesReceived = recvfrom(datagramSocket, dataB.data(), PACKET_SIZE, 0, (struct sockaddr*)&addr, &addrLength);
         #endif
+        
         if (bytesReceived == -1) {
             cerr << "Error in recvfrom" << endl;
             continue;
         }
-        
         //dataB.resize(bytesReceived); // Adjust size based on actual bytes received
-        lock_guard<mutex> lock(bufferMutex);
+        std::lock_guard<std::mutex> lock(bufferMutex);
         dataBuffer.push(dataB);
         packetCounter += 1;
         if (packetCounter % 500 == 0) {
             cout << "Num packets received is " << packetCounter << endl;
             
-            #ifdef SPEED_TEST
+            #ifdef SPEED_TEST // Calculate the duration in seconds
                 endTime = std::chrono::high_resolution_clock::now();
-                // Calculate the duration in seconds
                 duration = std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count() / 1e6;
-                cout << "Processed 500 packets in " << duration << " !!!!!!!!!!!!!!!!!!" << endl;
+                cout << "Processed 500 packets in " << duration << " seconds" << endl;
                 startTime = std::chrono::high_resolution_clock::now();
             #endif
+
         }
     }
 }
 
-void DataProcessor(void (*ProcessingFunction)(std::vector<int16_t>&, std::vector<TimePoint>&, const std::string&)) {
-    /*
-    if (MICRO_INCR == 1240){
-        void(*processFncPtr)(std::vector<int16_t>&, std::vector<TimePoint>&, const std::string&) = ProcessSegment1240;
-    }
-    else if (MICRO_INCR == 1550){
-        void(*processFncPtr)(std::vector<int16_t>&, std::vector<TimePoint>&, const std::string&) = ProcessSegment1550;
-    }
-    else{
-        cerr << "Incorrect MICRO_INC" << endl;
-    }
-    */
+void DataProcessor(void (*ProcessingFunction)(vector<int16_t>&, vector<TimePoint>&, const string&)) {
     while (true) {
         vector<int16_t> dataSegment;
-        //arma::vec dataSegment;
         vector<std::chrono::system_clock::time_point> timestamps;
         while (dataSegment.size() < DATA_SEGMENT_LENGTH) {
-            //lock_guard<mutex> lock(bufferMutex);
             if (!dataBuffer.empty()) {
-                lock_guard<mutex> lock(bufferMutex);
+                std::lock_guard<std::mutex> lock(bufferMutex);
                 vector<uint8_t> dataB = dataBuffer.front();
-                //vector<uint16_t> dataI = (uint16_t)dataBuffer.front();
                 dataBuffer.pop();
                 
-                //auto duration = timestamp;
                 std::tm timeStruct;
-                timeStruct.tm_year = (int)dataB[0] + 2000 - 1900; // Offset for year since 2000.. tm_year is years since 1900 
-                timeStruct.tm_mon = dataB[1] - 1;   // Months are 0-indexed
+                timeStruct.tm_year = (int)dataB[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
+                timeStruct.tm_mon = dataB[1] - 1;                     // Months are 0-indexed
                 timeStruct.tm_mday = dataB[2];
                 timeStruct.tm_hour = dataB[3];
                 timeStruct.tm_min = dataB[4];
@@ -165,28 +145,27 @@ void DataProcessor(void (*ProcessingFunction)(std::vector<int16_t>&, std::vector
                 std::chrono::time_point<std::chrono::system_clock> specificTime = std::chrono::system_clock::from_time_t(mktime(&timeStruct));
                 specificTime += std::chrono::microseconds(microSec);
                 
-                // Convert byte data to unsigned 16bit ints
+                // Convert byte data to signed 16bit ints
                 vector<int16_t> data;
                 for (size_t i = 0; i < DATA_SIZE; i += 2) {
                     int16_t value = static_cast<int16_t>(dataB[12+i]) +
                                    (static_cast<int16_t>(dataB[i + 13]) << 8);
                     data.push_back(value - 32768);
                 }
-                
                 timestamps.push_back(specificTime);
                 dataSegment.insert(dataSegment.end(), data.begin(), data.end());
             }
         }
-        // print first few values recieved
-        #ifdef DEBUG_PRINT_UNPACKED
+        
+        #ifdef PRINT_DATA_PROCESSOR // print first few values in dataSegment
             cout << "Inside DataProcessor() " << endl;
+            cout << "dataSegment Size: " << dataSegment.size() << " should be same as " << NUM_PACKS_DETECT * (DATA_SIZE / 2) << endl;
             for (size_t j = 0; j < 50; j++){
                 cout << dataSegment[j] << " ";
             }
             cout << endl;
         #endif
-        cout << "dataSegment Size: " << dataSegment.size() << endl;
-        ProcessingFunction(dataSegment, timestamps, OUTPUT_FILE);  // Replace with your processing code
+        ProcessingFunction(dataSegment, timestamps, OUTPUT_FILE);
     }
 }
 
@@ -194,13 +173,13 @@ void DataProcessor(void (*ProcessingFunction)(std::vector<int16_t>&, std::vector
 int main(int argc, char *argv[]){
     
     string UDP_IP = argv[1];                                         // IP address of data logger or simulator
-    int UDP_PORT = stoi(argv[2]);                                     // Port to listen for UDP packets
-    int firmwareVersion = stoi(argv[3]);
+    int UDP_PORT = std::stoi(argv[2]);                                     // Port to listen for UDP packets
+    int firmwareVersion = std::stoi(argv[3]);
     printf("Listening to IP address %s and port %d \n", UDP_IP.c_str(),UDP_PORT);
 
     //import variables according to firmware version specified
     cout << "Assuming firmware version: " << firmwareVersion << endl;
-    void(*ProcessFncPtr)(std::vector<int16_t>&, std::vector<TimePoint>&, const std::string&) = nullptr;
+    void(*ProcessFncPtr)(vector<int16_t>&, vector<TimePoint>&, const string&) = nullptr;
     if (firmwareVersion == 1550){
         ProcessFile("1550_config.txt");
         ProcessFncPtr = ProcessSegment1550;
@@ -214,8 +193,8 @@ int main(int argc, char *argv[]){
         return 1;
     }
     
-    NUM_PACKS_DETECT = TIME_WINDOW * 100000 / SAMPS_PER_CHANNEL;  // NEED TO ROUND THIS  the number of data packets that are needed to perform energy detection 
-    DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL; 
+    NUM_PACKS_DETECT = (int)(TIME_WINDOW * 100000 / SAMPS_PER_CHANNEL);  // NEED TO ROUND THIS  the number of data packets that are needed to perform energy detection 
+    DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN; 
 
     cout << "HEAD_SIZE: " << HEAD_SIZE << endl; 
     cout << "SAMPS_PER_CHAN: " << SAMPS_PER_CHANNEL << endl;
@@ -233,11 +212,11 @@ int main(int argc, char *argv[]){
 
     if (file.is_open()) {
         // Write header row (optional)
-        file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << std::endl;
+        file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << endl;
         file.close();
-        std::cout << "File created and cleared: " << output_file << std::endl;
+        cout << "File created and cleared: " << output_file << endl;
     } else {
-        std::cerr << "Error: Unable to open file for writing: " << output_file << std::endl;
+        cerr << "Error: Unable to open file for writing: " << output_file << endl;
         return 1; // Indicate error
     }
 
@@ -257,12 +236,11 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-    thread udpThread(UdpListener, datagramSocket);
-    thread processorThread(DataProcessor, ProcessFncPtr);
+    std::thread udpThread(UdpListener, datagramSocket);
+    std::thread processorThread(DataProcessor, ProcessFncPtr);
 
     udpThread.join();
     processorThread.join();
 
-    //close(datagramSocket);
     return 0;
 }

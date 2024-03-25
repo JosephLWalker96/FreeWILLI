@@ -5,8 +5,11 @@
 
 // Macros for preprocessor directives
 //#define SPEED_TEST
-#define DEBUG_PRINT_UNPACKED
-
+//#define PRINT_DATA_PROCESSOR
+#define PRINT_PROCESS_SEGMENT
+#define PRINT_PROCESS_SEGMENT_1240
+//#define PRINT_PROCESS_SEGMENT_1550
+        
 extern int HEAD_SIZE;                  //packet head size (bytes)
 extern double MICRO_INCR;              // time between packets
 extern int NUM_CHAN;                   //number of channels per packet
