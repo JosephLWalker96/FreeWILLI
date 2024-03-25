@@ -100,6 +100,7 @@ def ProcessSegment1240(data, times, outputFile):
     data = data.reshape(-1,4,124)  # Split the flattened array into original components
     data = np.hstack(data)
     ch1 = data[0]
+    print('HERE: ', len(ch1))
     #for i in range(10):
     #    print(ch1[i])
     print("Ch1 Start: ",ch1[:15])

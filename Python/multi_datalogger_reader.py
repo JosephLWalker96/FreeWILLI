@@ -88,8 +88,8 @@ else:
 
 print('Listening...')
 
+packetCounter = 0 # this is used as a global variable
 # UDP listener function to receive data and write to the buffer
-packetCounter = 0
 def UdpListener(udpSocket,buffer):
     global packetCounter 
     while True:
@@ -109,7 +109,7 @@ def DataProcessor(buffer):
     while True:
         dataSegment = np.array([])
         times = np.array([])
-        while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL):
+        while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
             #segment = np.append(segment,buffer.get())
             dataB = buffer.get()
             dataI = struct.unpack('>' + 'B'*len(dataB),dataB) # convert bytes to unsigned char list
@@ -123,13 +123,7 @@ def DataProcessor(buffer):
             dateTime = datetime.datetime(2000+dataI[0], dataI[1], dataI[2], dataI[3], dataI[4], dataI[5], microSeconds, tzinfo=datetime.timezone.utc)
             times = np.append(times, dateTime) 
             dataSegment = np.append(dataSegment,dataJ)        
-            ###ch1 = np.array(dataJ[6:lenJ-5:4]) - 2**15  # shift for two complement
-            #ch1 = dataJ[0::NUM_CHAN]
-            #print('HERE',ch1)
         
-            #print("################## SEGMENT ####################")
-            #print("length of segment ", len(segment))
-            #print(segment[:1000]) 
         if not IntegrityCheck(dataSegment, times, MICRO_INCR):
             RestartListener()
         else:
