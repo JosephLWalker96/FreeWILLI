@@ -37,9 +37,12 @@ parser.add_argument('--data_glitch', default = 0, type=int)
 args = parser.parse_args() # Parsing the arguments
 
 UDP_IP = args.ip                   # IP address of the destination
-UDP_PORT = args.port               # Port number of the destination
+UDP_PORT = args.port
+if args.ip == "self":
+    UDP_IP = "127.0.0.1"         # Port number of the destination
 
 print('Simulating firmware version: ', args.fw)
+print("Sending data to " + UDP_IP + " on port " + str(UDP_PORT))
 ### import variables according to firmware version specified
 if args.fw == 1550:
     from Firmware_config.firmware_1550 import *

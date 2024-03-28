@@ -89,6 +89,8 @@ def restartListener():
         elif UDP_IP == "192.168.7.2": # IP address of Joe's simulator
             udpSocket.bind((UDP_IP, UDP_PORT))
             print('Listening to simulator')
+        elif UDP_IP == "self": # IP address of Joe's simulator
+            sock.bind(("127.0.0.1", UDP_PORT))
         else:
             print("ERROR: Unknown IP address" )
     
