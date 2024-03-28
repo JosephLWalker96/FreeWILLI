@@ -73,45 +73,67 @@ print('Data bytes per channel: ', DATA_BYTES_PER_CHANNEL)
 print("Detecting over a time window of ",TIME_WINDOW," seconds, using ",NUM_PACKS_DETECT, " packets") 
 
 # Create a udpport object udpportObj that uses IPV4
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-if UDP_IP == "192.168.100.220": # IP address of the data logger
-    print('Sending wake up data to IP address: ', UDP_IP)
+def OpenSocket():
+    newSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    if UDP_IP == "192.168.100.220": # IP address of the data logger
+        print('Sending wake up data to IP address: ', UDP_IP)
 
-    # need 100 bytes to get Open command through
-    m1 = b'Open'
-    m2 = bytearray(np.zeros((1,96),dtype=int))
-    sock.sendto(m1 + m2, (UDP_IP, UDP_PORT))
-elif UDP_IP == "192.168.7.2": # IP address of Joe's simulator
-    sock.bind((UDP_IP, UDP_PORT))
-else:
-    print("ERROR: Unknown IP address" )
+        # need 100 bytes to get Open command through
+        m1 = b'Open'
+        m2 = bytearray(np.zeros((1,96),dtype=int))
+        newSocket.sendto(m1 + m2, (UDP_IP, UDP_PORT))
+    elif UDP_IP == "192.168.7.2": # IP address of Joe's simulator
+        newSocket.bind((UDP_IP, UDP_PORT))
+        print('Listening to simulator')
+    else:
+        print("ERROR: Unknown IP address" )
+    return newSocket
 
-print('Listening...')
-
-packetCounter = 0 # this is used as a global variable
 # UDP listener function to receive data and write to the buffer
-def UdpListener(udpSocket,buffer):
-    global packetCounter 
+def UdpListener():
+    global dataBuffer, packetCounter, udpSocket
     while True:
-        dataB, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes than expected are recieved
+        #print('Here1')
+        with socketLock:
+            dataB, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes than expected are recieved
 
         if len(dataB) != PACKET_SIZE: # check packet length
             print('Error: recieved incorrect number of packets')
+            with socketLock:
+                udpSocket.close()
+                udpSocket = OpenSocket() # SEE IF YOU can CHANGE PORT TO ENSURE CHANGE IN OTHER FUNCTION 
+            with bufferLock:
+                dataBuffer = queue.Queue()
+            with segmentLock:
+                global dataSegment, times 
+                dataSegment = np.array([])
+                times = np.array([])
             continue
-
+        #print('Here2')
         packetCounter += 1
-        if packetCounter % 500==0:
+        if packetCounter % 500 == 0:
             print("Num packets received is ", packetCounter)
-        buffer.put(dataB)  # Put received data into the buffer
+        with bufferLock:
+            dataBuffer.put(dataB)  # Put received data into the buffer
 
 # Function to process data from the buffer
-def DataProcessor(buffer):
+def DataProcessor():
+    global dataBuffer, dataSegment, times
     while True:
-        dataSegment = np.array([])
+        #print('dfgsfd')
+        dataSegment = np.array([])  # clear the segment
         times = np.array([])
         while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
             #segment = np.append(segment,buffer.get())
-            dataB = buffer.get()
+            #print('Here3')
+            if dataBuffer.qsize() > 0:
+                with bufferLock:
+                    dataB = dataBuffer.get()
+            else:
+                continue
+            #if testVar == "B":
+                #print("Var to test is B")
+                #return
             dataI = struct.unpack('>' + 'B'*len(dataB),dataB) # convert bytes to unsigned char list
             ###lenJ = int(len(dataB) / 2)
             ###dataJ = struct.unpack('>' + 'H'*lenJ,dataB) # convert bytes to short integer list
@@ -125,26 +147,57 @@ def DataProcessor(buffer):
             dataSegment = np.append(dataSegment,dataJ)        
         
         if not IntegrityCheck(dataSegment, times, MICRO_INCR):
-            RestartListener()
+            with socketLock:
+                global udpSocket
+                udpSocket.close()
+                udpSocket = OpenSocket() # SEE IF YOU can CHANGE PORT TO ENSURE CHANGE IN OTHER FUNCTION 
+                #udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                #udp_socket.bind(('localhost', 9999))
+            with bufferLock:
+                dataBuffer = queue.Queue()
+            with segmentLock:
+                #global dataSegment 
+                dataSegment = np.array([])
+                times = np.array([])
+
         else:
-            print("****Data segment length: ",len(dataSegment) )
             ProcessSegment(dataSegment, times, args.output_file)
+
+
+# Global Variables 
+packetCounter = 0                           # count the number of packets received
+bufferLock = threading.Lock()               # a lock for safe buffer access
+segmentLock = threading.Lock()               # a lock for safe buffer access
+socketLock = threading.Lock()               # a lock for safe thread restarting 
+#socket_restart_event = threading.Event()
+
+#while True:
+udpSocket = OpenSocket()
 
 # Create a buffer (Queue) for communication between threads
 dataBuffer = queue.Queue()
+dataSegment = np.array([])
+times = np.array([])
+#testVar = 'A'
+#udpThread = threading.Thread(target=UdpListener, args=(dataBuffer,))
+#processorThread = threading.Thread(target=DataProcessor, args=(dataBuffer,))
+udpThread = threading.Thread(target=UdpListener)
+processorThread = threading.Thread(target=DataProcessor)
 
-# Create and start the UDP listener thread
-udpThread = threading.Thread(target=UdpListener, args=(sock,dataBuffer,))
-udpThread.daemon = False  # Daemonize the thread to exit when the main program exits
+#udpThread.daemon = False  # Daemonize the thread to exit when the main program exits
+#processorThread.daemon =False 
+
 udpThread.start()
-
-# Create and start the data processor thread
-processorThread = threading.Thread(target=DataProcessor, args=(dataBuffer,))
-processorThread.daemon =False 
 processorThread.start()
 
-# Keep the main thread alive to allow other threads to run
+#socket_restart_event.wait() # wait for restart signal
 
-# Wait for threads to finish (optional)
+
+#udpThread.close()
+
+# Clear the event for future use
+#socket_restart_event.clear()
+
+# Wait for both threads to finish
 udpThread.join()
 processorThread.join()
