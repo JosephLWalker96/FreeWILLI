@@ -74,8 +74,14 @@ print("Detecting over a time window of ",TIME_WINDOW," seconds, using ",NUM_PACK
 
 # Create a udpport object udpportObj that uses IPV4
 def restartListener():
-    global dataBuffer, dataSegment, times, udpSocket
+    '''
+    This function is responsible for (re)starting the listener, which involves resetting or reconfiguring the socket connection as well as clearing the exisiting buffer (dataBuffer) and segment to be processed (dataSegment).
+
+    In order for the changes that this function makes be observable across both threads, this function relies on global variables
+
+    '''
     
+    global dataBuffer, dataSegment, times, udpSocket
     with socketLock:
         udpSocket.close()
         udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -93,6 +99,7 @@ def restartListener():
             sock.bind(("127.0.0.1", UDP_PORT))
         else:
             print("ERROR: Unknown IP address" )
+            sys.exit()
     
     with bufferLock:
         dataBuffer = queue.Queue()
