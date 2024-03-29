@@ -21,11 +21,22 @@ import os
 import sys
 from utils import *
 
-NICE_VAL = -15                     # set the "nice" value (OS priority) of the program.
-pid = os.getpid()
-process = psutil.Process(pid)      # Get the process object for the current process
-process.nice(NICE_VAL)             # Set the process priority to high
-os.nice(NICE_VAL)
+if CheckIfUnix():
+    print("You are using a UNIX-based system.")
+    try:
+        NICE_VAL = -15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
+        pid = os.getpid()
+        process = psutil.Process(pid)     # Get the process object for the current process
+        process.nice(NICE_VAL)            # Set the process priority to high
+        os.nice(NICE_VAL)
+    except PermissionError as e:
+        print(f"Failed to set nice value: {e}")
+    except psutil.AccessDenied as e:
+        print(f"Failed to set nice value: {e}")
+        print("Try running using $ sudo python ... ")
+        sys.exit()
+else:
+    print("You are not using a UNIX-based system.")
 
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default = 1045, type=int)
