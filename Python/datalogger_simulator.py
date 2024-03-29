@@ -21,7 +21,8 @@ import os
 import sys
 from utils import *
 
-if CheckIfUnix():
+thisSystem = CheckSystem()
+if thisSystem == "Unix":
     print("You are using a UNIX-based system.")
     try:
         NICE_VAL = -15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
@@ -35,14 +36,14 @@ if CheckIfUnix():
         print(f"Failed to set nice value: {e}")
         print("Try running using $ sudo python ... ")
         sys.exit()
-else:
-    print("You are not using a UNIX-based system.")
-
-    # Assume windows
+elif thisSystem == "Win":
+    print("You are using a Windows-based system.")
     pid = os.getpid()  # Get PID of this process
     print("PID:", pid)
     p = psutil.Process(pid)
     p.nice(psutil.HIGH_PRIORITY_CLASS)  # Set to desired priority class
+else:
+    print("You are not using a UNIX- or Windows-based system.")
 
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default = 1045, type=int)

@@ -5,16 +5,22 @@ import os
 from scipy.io import loadmat
 import sys
 
-def CheckIfUnix():
+def CheckSystem():
     """
     Checks to see if computing platform is a Unix based system. Unix is needed to set "nice" priority
+
+    Also, check if computing platform is Windows-based system.
 
     """
     # List of common UNIX platform names
     unix_platforms = ['linux', 'darwin', 'freebsd']
     
     # Check if the current platform is in the list of UNIX platforms
-    return any(platform in sys.platform for platform in unix_platforms)
+    if any(platform in sys.platform for platform in unix_platforms):
+        return "Unix"
+    elif sys.platform.startswith('win'):
+        return "Win"
+
 
 
 def Sleep(duration, getNow=time.perf_counter):
