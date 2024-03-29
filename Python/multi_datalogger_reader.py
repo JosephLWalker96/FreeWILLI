@@ -125,9 +125,9 @@ def UdpListener():
     global dataBuffer, packetCounter, udpSocket
     while True:
         with socketLock:
-            dataB, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes are received
+            dataBytes, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes are received
 
-        if len(dataB) != PACKET_SIZE: # check packet length
+        if len(dataBytes) != PACKET_SIZE: # check packet length
             print('Error: recieved incorrect number of packets')
             restartListener()
             continue
@@ -135,7 +135,7 @@ def UdpListener():
         if packetCounter % 500 == 0:
             print("Num packets received is ", packetCounter)
         with bufferLock:
-            dataBuffer.put(dataB)  # Put received data into the buffer
+            dataBuffer.put(dataBytes)  # Put received data into the buffer
 
 # Function to process data from the buffer
 def DataProcessor():
@@ -146,19 +146,19 @@ def DataProcessor():
         while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
             if dataBuffer.qsize() > 0:
                 with bufferLock:
-                    dataB = dataBuffer.get()
+                    dataBytes = dataBuffer.get()
             else:
                 continue
-            dataI = struct.unpack('>' + 'B'*len(dataB),dataB) # convert bytes to unsigned char list
-            dataJ = np.frombuffer(dataB[12:], dtype=np.uint16)
-            dataJ = np.array(dataJ - 2**15).astype(np.int16)
+            dataUnpacked = struct.unpack('<' + 'B'*HEAD_SIZE + 'H'*((len(dataBytes) - HEAD_SIZE) // 2), dataBytes)
+            dataTime = dataUnpacked[:HEAD_SIZE]  # Extract dataTime
+            dataSamples = np.array(dataUnpacked[HEAD_SIZE:]) - 2**15  # Extract and adjust dataSamples
             
-            us = (dataB[6],dataB[7],dataB[8],dataB[9])
-            microSeconds = int.from_bytes(us,'big')         # get micro seconds from dataI (unsigned char ist)
-            dateTime = datetime.datetime(2000+dataI[0], dataI[1], dataI[2], dataI[3], dataI[4], dataI[5], microSeconds, tzinfo=datetime.timezone.utc)
+            us = (dataBytes[6],dataBytes[7],dataBytes[8],dataBytes[9])
+            microSeconds = int.from_bytes(us,'big')         # get micro seconds from dataTime (unsigned char ist)
+            dateTime = datetime.datetime(2000+dataTime[0], dataTime[1], dataTime[2], dataTime[3], dataTime[4], dataTime[5], microSeconds, tzinfo=datetime.timezone.utc)
             times = np.append(times, dateTime) 
-            dataSegment = np.append(dataSegment,dataJ)        
-        
+            dataSegment = np.append(dataSegment,dataSamples)        
+            #print(dataSegment) 
         if not IntegrityCheck(dataSegment, times, MICRO_INCR):
             print('Error: Integrity check failed')
             restartListener()
