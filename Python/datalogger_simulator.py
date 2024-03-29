@@ -38,6 +38,12 @@ if CheckIfUnix():
 else:
     print("You are not using a UNIX-based system.")
 
+    # Assume windows
+    pid = os.getpid()  # Get PID of this process
+    print("PID:", pid)
+    p = psutil.Process(pid)
+    p.nice(psutil.HIGH_PRIORITY_CLASS)  # Set to desired priority class
+
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default = 1045, type=int)
 parser.add_argument('--ip', default = "192.168.7.2", type=str)
