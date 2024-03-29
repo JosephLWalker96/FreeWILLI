@@ -3,15 +3,19 @@ import numpy as np
 import psutil
 import os
 from scipy.io import loadmat
+import sys
 
-NICE_VAL = -15                        # set the "nice" value (priority). Ranges between [-20, 19] lower value 
+def CheckIfUnix():
+    """
+    Checks to see if computing platform is a Unix based system. Unix is needed to set "nice" priority
 
-pid = os.getpid()
-process = psutil.Process(pid)         # Get the process object for the current process
-process.nice(NICE_VAL)                # Set the process priority to high
+    """
+    # List of common UNIX platform names
+    unix_platforms = ['linux', 'darwin', 'freebsd']
+    
+    # Check if the current platform is in the list of UNIX platforms
+    return any(platform in sys.platform for platform in unix_platforms)
 
-trials = []
-os.nice(NICE_VAL)
 
 def Sleep(duration, getNow=time.perf_counter):
     """

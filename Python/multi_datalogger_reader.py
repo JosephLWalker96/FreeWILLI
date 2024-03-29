@@ -29,13 +29,26 @@ import datetime
 import psutil
 import os
 from process_data import *
+from utils import CheckIfUnix
 
-# The following 5 lines of code makes the program run at high priority 
-NICE_VAL = -15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
-pid = os.getpid()
-process = psutil.Process(pid)     # Get the process object for the current process
-process.nice(NICE_VAL)            # Set the process priority to high
-os.nice(NICE_VAL)
+
+if CheckIfUnix():
+    print("You are using a UNIX-based system.")
+    try:
+        NICE_VAL = -15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
+        pid = os.getpid()
+        process = psutil.Process(pid)     # Get the process object for the current process
+        process.nice(NICE_VAL)            # Set the process priority to high
+        os.nice(NICE_VAL)
+    except PermissionError as e:
+        print(f"Failed to set nice value: {e}")
+    except psutil.AccessDenied as e:
+        print(f"Failed to set nice value: {e}")
+        print("Try running using $ sudo python ... ")
+        sys.exit()
+else:
+    print("You are not using a UNIX-based system.")
+
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)
 
@@ -96,7 +109,7 @@ def restartListener():
             udpSocket.bind((UDP_IP, UDP_PORT))
             print('Listening to simulator')
         elif UDP_IP == "self": # IP address of Joe's simulator
-            sock.bind(("127.0.0.1", UDP_PORT))
+            udpSocket.bind(("127.0.0.1", UDP_PORT))
         else:
             print("ERROR: Unknown IP address" )
             sys.exit()
