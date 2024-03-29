@@ -73,43 +73,42 @@ print('Data bytes per channel: ', DATA_BYTES_PER_CHANNEL)
 print("Detecting over a time window of ",TIME_WINDOW," seconds, using ",NUM_PACKS_DETECT, " packets") 
 
 # Create a udpport object udpportObj that uses IPV4
-def OpenSocket():
-    newSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    if UDP_IP == "192.168.100.220": # IP address of the data logger
-        print('Sending wake up data to IP address: ', UDP_IP)
+def restartListener():
+    global dataBuffer, dataSegment, times, udpSocket
+    
+    with socketLock:
+        udpSocket.close()
+        udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if UDP_IP == "192.168.100.220": # IP address of the data logger
+            print('Sending wake up data to IP address: ', UDP_IP)
 
-        # need 100 bytes to get Open command through
-        m1 = b'Open'
-        m2 = bytearray(np.zeros((1,96),dtype=int))
-        newSocket.sendto(m1 + m2, (UDP_IP, UDP_PORT))
-    elif UDP_IP == "192.168.7.2": # IP address of Joe's simulator
-        newSocket.bind((UDP_IP, UDP_PORT))
-        print('Listening to simulator')
-    else:
-        print("ERROR: Unknown IP address" )
-    return newSocket
+            # need 100 bytes to get Open command through
+            m1 = b'Open'
+            m2 = bytearray(np.zeros((1,96),dtype=int))
+            udpSocket.sendto(m1 + m2, (UDP_IP, UDP_PORT))
+        elif UDP_IP == "192.168.7.2": # IP address of Joe's simulator
+            udpSocket.bind((UDP_IP, UDP_PORT))
+            print('Listening to simulator')
+        else:
+            print("ERROR: Unknown IP address" )
+    
+    with bufferLock:
+        dataBuffer = queue.Queue()
+    with segmentLock:
+        dataSegment = np.array([])
+        times = np.array([])
 
 # UDP listener function to receive data and write to the buffer
 def UdpListener():
     global dataBuffer, packetCounter, udpSocket
     while True:
-        #print('Here1')
         with socketLock:
-            dataB, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes than expected are recieved
+            dataB, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes are received
 
         if len(dataB) != PACKET_SIZE: # check packet length
             print('Error: recieved incorrect number of packets')
-            with socketLock:
-                udpSocket.close()
-                udpSocket = OpenSocket() # SEE IF YOU can CHANGE PORT TO ENSURE CHANGE IN OTHER FUNCTION 
-            with bufferLock:
-                dataBuffer = queue.Queue()
-            with segmentLock:
-                global dataSegment, times 
-                dataSegment = np.array([])
-                times = np.array([])
+            restartListener()
             continue
-        #print('Here2')
         packetCounter += 1
         if packetCounter % 500 == 0:
             print("Num packets received is ", packetCounter)
@@ -120,84 +119,47 @@ def UdpListener():
 def DataProcessor():
     global dataBuffer, dataSegment, times
     while True:
-        #print('dfgsfd')
         dataSegment = np.array([])  # clear the segment
         times = np.array([])
         while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
-            #segment = np.append(segment,buffer.get())
-            #print('Here3')
             if dataBuffer.qsize() > 0:
                 with bufferLock:
                     dataB = dataBuffer.get()
             else:
                 continue
-            #if testVar == "B":
-                #print("Var to test is B")
-                #return
             dataI = struct.unpack('>' + 'B'*len(dataB),dataB) # convert bytes to unsigned char list
-            ###lenJ = int(len(dataB) / 2)
-            ###dataJ = struct.unpack('>' + 'H'*lenJ,dataB) # convert bytes to short integer list
             dataJ = np.frombuffer(dataB[12:], dtype=np.uint16)
             dataJ = np.array(dataJ - 2**15).astype(np.int16)
             
             us = (dataB[6],dataB[7],dataB[8],dataB[9])
-            microSeconds = int.from_bytes(us,'big')                                  # get micro seconds from dataI (unsigned char ist)
+            microSeconds = int.from_bytes(us,'big')         # get micro seconds from dataI (unsigned char ist)
             dateTime = datetime.datetime(2000+dataI[0], dataI[1], dataI[2], dataI[3], dataI[4], dataI[5], microSeconds, tzinfo=datetime.timezone.utc)
             times = np.append(times, dateTime) 
             dataSegment = np.append(dataSegment,dataJ)        
         
         if not IntegrityCheck(dataSegment, times, MICRO_INCR):
-            with socketLock:
-                global udpSocket
-                udpSocket.close()
-                udpSocket = OpenSocket() # SEE IF YOU can CHANGE PORT TO ENSURE CHANGE IN OTHER FUNCTION 
-                #udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                #udp_socket.bind(('localhost', 9999))
-            with bufferLock:
-                dataBuffer = queue.Queue()
-            with segmentLock:
-                #global dataSegment 
-                dataSegment = np.array([])
-                times = np.array([])
-
+            print('Error: Integrity check failed')
+            restartListener()
         else:
             ProcessSegment(dataSegment, times, args.output_file)
 
 
 # Global Variables 
 packetCounter = 0                           # count the number of packets received
+udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 bufferLock = threading.Lock()               # a lock for safe buffer access
 segmentLock = threading.Lock()               # a lock for safe buffer access
 socketLock = threading.Lock()               # a lock for safe thread restarting 
-#socket_restart_event = threading.Event()
 
-#while True:
-udpSocket = OpenSocket()
-
-# Create a buffer (Queue) for communication between threads
-dataBuffer = queue.Queue()
+dataBuffer = queue.Queue() # create a buffer (Queue) for communication between threads
 dataSegment = np.array([])
 times = np.array([])
-#testVar = 'A'
-#udpThread = threading.Thread(target=UdpListener, args=(dataBuffer,))
-#processorThread = threading.Thread(target=DataProcessor, args=(dataBuffer,))
+
+restartListener()
+
 udpThread = threading.Thread(target=UdpListener)
 processorThread = threading.Thread(target=DataProcessor)
 
-#udpThread.daemon = False  # Daemonize the thread to exit when the main program exits
-#processorThread.daemon =False 
-
 udpThread.start()
 processorThread.start()
-
-#socket_restart_event.wait() # wait for restart signal
-
-
-#udpThread.close()
-
-# Clear the event for future use
-#socket_restart_event.clear()
-
-# Wait for both threads to finish
-udpThread.join()
 processorThread.join()
