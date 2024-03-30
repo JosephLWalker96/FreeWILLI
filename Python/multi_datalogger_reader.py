@@ -20,7 +20,7 @@
 import struct
 import socket
 import threading
-import queue  # Queue for thread-safe communication between threads
+import queue  
 import numpy as np
 import sys
 import argparse
@@ -29,8 +29,24 @@ import datetime
 import psutil
 import os
 from process_data import *
-from utils import CheckSystem()
+from utils import CheckSystem
 
+print('This code has been tested for python version 3.11.6, your version is:', sys.version)
+
+parser = argparse.ArgumentParser(description='Program command line arguments')
+parser.add_argument('--port', default=50000, type=int)                           # port to listen to for UDP packets
+parser.add_argument('--ip', default="192.168.100.220",type=str)                  # IP address of data logger or simulator
+parser.add_argument('--fw', default = 1550, type=int)                            # firmware version
+parser.add_argument('--output_file', default = "clicks_data.txt", type=str)      # output file for logging time and peak amp. of pulses
+args = parser.parse_args()
+output_file = open(args.output_file, 'w')                 # clear contents in file
+
+UDP_IP = args.ip                                          # IP address of data logger or simulator 
+UDP_PORT = args.port                                      # Port to listen for UDP packets
+
+print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
+
+### Set the program to run at high priority on the system ###
 thisSystem = CheckSystem()
 if thisSystem == "Unix":
     print("You are using a UNIX-based system.")
@@ -48,35 +64,21 @@ if thisSystem == "Unix":
         sys.exit()
 elif thisSystem == "Win":
     print("You are using a Windows-based system.")
-    pid = os.getpid()  # Get PID of this process
+    pid = os.getpid()
     print("PID:", pid)
     p = psutil.Process(pid)
-    p.nice(psutil.HIGH_PRIORITY_CLASS)  # Set to desired priority class
+    p.nice(psutil.HIGH_PRIORITY_CLASS)
 else:
     print("You are not using a UNIX- or Windows-based system.")
 
-print('This code has been tested for python version 3.11.6, your version is:', sys.version)
-
-parser = argparse.ArgumentParser(description='Program command line arguments')
-parser.add_argument('--port', default=50000, type=int)
-parser.add_argument('--ip', default="192.168.100.220",type=str)
-parser.add_argument('--fw', default = 1550, type=int)
-parser.add_argument('--output_file', default = "clicks_data.txt", type=str)
-args = parser.parse_args() # Parsing the arguments
-output_file = open(args.output_file, 'w')
-
-UDP_IP = args.ip                                          # IP address of data logger or simulator 
-UDP_PORT = args.port                                      # Port to listen for UDP packets
-print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
-
-# import variables according to firmware version specified
+### import variables according to firmware version specified ###
 print('Assuming firmware version: ', args.fw)
 if args.fw == 1550:
     from Firmware_config.firmware_1550 import *
-    ProcessSegment = ProcessSegment1550
+    PreprocessSegment = PreprocessSegment1550
 elif args.fw == 1240:
     from Firmware_config.firmware_1240 import *
-    ProcessSegment = ProcessSegment1240
+    PreprocessSegment = PreprocessSegment1240
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
@@ -93,13 +95,15 @@ print("Detecting over a time window of ",TIME_WINDOW," seconds, using ",NUM_PACK
 # Create a udpport object udpportObj that uses IPV4
 def restartListener():
     '''
-    This function is responsible for (re)starting the listener, which involves resetting or reconfiguring the socket connection as well as clearing the exisiting buffer (dataBuffer) and segment to be processed (dataSegment).
+    This function is responsible for (re)starting the listener.
+    The socket connection is re(set). The  buffer (dataBuffer) and segment to be processed (dataSegment) are cleared.
 
     In order for the changes that this function makes be observable across both threads, this function relies on global variables
 
     '''
     
     global dataBuffer, dataSegment, times, udpSocket
+    
     with socketLock:
         udpSocket.close()
         udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -168,7 +172,12 @@ def DataProcessor():
             print('Error: Integrity check failed')
             restartListener()
         else:
-            ProcessSegment(dataSegment, times, args.output_file)
+            ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_CHAN, SAMPS_PER_CHANNEL)
+            values = SegmentPulses(ch1, times)
+            if values == None:
+                continue
+            clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
+            WritePulses(clickTimes, clickAmplitudes, args.output_file)
 
 
 # Global Variables 

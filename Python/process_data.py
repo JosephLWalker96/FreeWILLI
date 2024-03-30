@@ -3,11 +3,6 @@ import time
 import datetime
 from datetime import timedelta
 
-
-def RestartListener():
-    print("Function not defined")
-
-
 def IntegrityCheck(data, times, MICRO_INCR):
     for i in range(len(times) - 1):
         if (times[i+1] - times[i]).microseconds != MICRO_INCR:
@@ -17,7 +12,7 @@ def IntegrityCheck(data, times, MICRO_INCR):
             return 0
     return 1
 
-def ProcessSegment(data, times, outputFile):
+def SegmentPulses(data, times):
     dataAbs = data.astype('float64')**2
     dataAbs = np.sqrt(dataAbs)
     print("dataAbs Size ", len(dataAbs))
@@ -49,9 +44,8 @@ def ProcessSegment(data, times, outputFile):
     nonZeroMaskRegions = np.split(filteredSignal, output)
     nonZeroRegions = np.split(data, output)
     print("OUTPUT: ", output)
-    
-    #output = np.insert(output, 0, 0)
-    #print(output)
+   
+    '''
     if len(nonZeroRegions) > 1:
         clicks = []
         output = np.insert(output, 0, 0)
@@ -68,47 +62,67 @@ def ProcessSegment(data, times, outputFile):
             #    print('ALL zero')
         print(clicks)
         WriteClicks(clicks, outputFile)
+    '''
 
-
-    ########## New code
-    output = np.where(diff != 0)[0]
-    output = np.insert(output, 0, 0)
-    clicks = []
-    for index in range(len(output)-1):
-        startPoint = output[index]
-        endPoint = output[index+1]
-        regionMask = filteredSignal[startPoint:endPoint]
-        if regionMask.any():
-            regionData = data[startPoint:endPoint]
-            seconds = (output[index] + np.argmax(regionData)) * 1e-5
-            clickTime = times[0] + timedelta(microseconds=int(seconds * 1e6))  # convert seconds to microseconds
-            peakAmp = np.max(regionData)
-            clicks.append([clickTime, peakAmp])
-    print(clicks)
-    WriteClicks(clicks, 'INDEX_clicks.txt')
-
+    if len(nonZeroRegions) > 1:
+        output = np.where(diff != 0)[0]
+        output = np.insert(output, 0, 0)
+        clickTimes = []
+        clickAmplitudes = []
+        clickStartPoints = []
+        clickEndPoints = []
+        for index in range(len(output)-1):
+            startPoint = output[index]
+            endPoint = output[index+1]
+            regionMask = filteredSignal[startPoint:endPoint]
+            if regionMask.any():
+                regionData = data[startPoint:endPoint]
+                seconds = (output[index] + np.argmax(regionData)) * 1e-5
+                clickTime = times[0] + timedelta(microseconds=int(seconds * 1e6))  # convert seconds to microseconds
+                peakAmp = np.max(regionData)
+                
+                clickTimes.append(clickTime)
+                clickAmplitudes.append(peakAmp)
+                clickStartPoints.append(startPoint)
+                clickEndPoints.append(endPoint)
+        #WritePulses(clickTimes, clickAmplitudes, 'INDEX_clicks.txt')
+        return clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints
+    else:
+        return None
    
-def ProcessSegment1550(data, times, outputFile):
-    ch1 = data[0::4] # get first channel data by getting every 4th element starting with the first
-    print("Start: ",ch1[:15])
-    print("End: ",ch1[-4:])
-    ProcessSegment(ch1, times, outputFile)
+def PreprocessSegment1550(data, NUM_CHAN, SAMPS_PER_CHANNEL):#, times, outputFile):
+    ch1 = data[0::NUM_CHAN] # get first channel data by getting every 4th element starting with the first
+    ch2 = data[1::NUM_CHAN] # get first channel data by getting every 4th element starting with the first
+    ch3 = data[2::NUM_CHAN] # get first channel data by getting every 4th element starting with the first
+    ch4 = data[3::NUM_CHAN] # get first channel data by getting every 4th element starting with the first
+    
+    #print("Start: ",ch1[:15])
+    #print("End: ",ch1[-4:])
+    
+    #ProcessSegment(ch1, times, outputFile)
+    return ch1, ch2, ch3, ch4
 
 
-def ProcessSegment1240(data, times, outputFile):
-    #ch1 = data[0::4] # This is incorrect!!!!
-    data = data.reshape(-1,4,124)  # Split the flattened array into original components
+def PreprocessSegment1240(data, NUM_CHAN, SAMPS_PER_CHANNEL):#, times, outputFile):
+    data = data.reshape(-1,NUM_CHAN,SAMPS_PER_CHANNEL)  # Split the flattened array into original components
     data = np.hstack(data)
+    
     ch1 = data[0]
-    print('HERE: ', len(ch1))
+    ch2 = data[1]
+    ch3 = data[2]
+    ch4 = data[3]
+    #print('HERE: ', len(ch1))
     #for i in range(10):
     #    print(ch1[i])
-    print("Ch1 Start: ",ch1[:15])
-    print("Ch1 End: ",ch1[-4:])
-    ProcessSegment(ch1, times, outputFile)
+    #print("Ch1 Start: ",ch1[:15])
+    #print("Ch1 End: ",ch1[-4:])
+    #ProcessSegment(ch1, times, outputFile)
+    return ch1, ch2, ch3, ch4
 
-def WriteClicks(clicks, outputFile):
+def WritePulses(times, amplitudes, outputFile):
     # Open the file in write mode and write each row from 'clicks' to the file
+    print("WRITE PULSES ", times, amplitudes)
     with open(outputFile, 'a') as file:
-        for row in clicks:
-            file.write(f"{row[0]}, {row[1]}\n")
+        for index in range(len(times)):
+            #file.write(f"{row[0]}, {row[1]}\n")
+            file.write(f"{times[index]}, {amplitudes[index]}\n")
