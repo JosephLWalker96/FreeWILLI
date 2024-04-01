@@ -25,7 +25,7 @@ import time
 import datetime
 import psutil
 import os
-from process_data import IntegrityCheck, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, WritePulses
+from process_data import IntegrityCheck, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, WritePulseAmplitudes
 from utils import CheckSystem
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)
@@ -200,19 +200,20 @@ def DataProcessor():
             with dataTimesLock:
                 dataTimes = np.append(dataTimes, dateTime) 
             with dataSegmentLock:
-                dataSegment = np.append(dataSegment,dataSamples) 
-        if not IntegrityCheck(dataSegment, dataTimes, MICRO_INCR):
+                dataSegment = np.append(dataSegment,dataSamples)
+
+        if not IntegrityCheck(dataSegment, dataTimes, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL, MICRO_INCR):
             print('Error: Integrity check failed')
             restartListener()
         else:
             with dataSegmentLock:
-                ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_CHAN, SAMPS_PER_CHANNEL)
+                ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
             with dataTimesLock:
-                values = SegmentPulses(ch1, dataTimes)
+                values = SegmentPulses(ch1, dataTimes, True)
             if values == None: # if no pulses were detected to segment, then get next segment
                 continue
             clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
-            WritePulses(clickTimes, clickAmplitudes, args.output_file)
+            WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
 
 ### In order for the changes that one thread makes to shared variables be observable across both threads, global variables are needed
 

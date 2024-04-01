@@ -137,7 +137,7 @@ while(True):
     #sleep(2*MICRO_INCR)
     #time.sleep(1)
     
-    if flag == 4000 and not args.loop:
+    if flag == 4000000 and not args.loop:
         print('Reached flag ',flag)
         break
     flag += 1
