@@ -1,3 +1,4 @@
+SAMPLE_RATE = 100000                 # sample rate (Hz)
 HEAD_SIZE = 12                     # packet head size (bytes)
 MICRO_INCR = 1240               # time between packets
 NUM_CHAN = 4;                      # number of channels per packet

@@ -22,7 +22,7 @@ def IntegrityCheck(data, times, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL, M
             return 0
     return 1
 
-def SegmentPulses(data, times, saveSegment = False):
+def SegmentPulses(data, times, SAMPLE_RATE, saveSegment = False):
     dataAbs = data.astype('float64')**2
     dataAbs = np.sqrt(dataAbs)
     print("dataAbs Size ", len(dataAbs))
@@ -68,7 +68,7 @@ def SegmentPulses(data, times, saveSegment = False):
             regionMask = filteredSignal[startPoint:endPoint]
             if regionMask.any():
                 regionData = data[startPoint:endPoint]
-                seconds = (output[index] + np.argmax(regionData)) * 1e-5
+                seconds = (output[index] + np.argmax(regionData)) / SAMPLE_RATE
                 clickTime = times[0] + timedelta(microseconds=int(seconds * 1e6))  # convert seconds to microseconds
                 peakAmp = np.max(regionData)
                 

@@ -81,7 +81,7 @@ else:
     sys.exit()  # Exiting the program
 
 TIME_WINDOW = .5                                                 # fraction of a second to consider  
-NUM_PACKS_DETECT = round(TIME_WINDOW * 100000 / SAMPS_PER_CHANNEL)  # the number of data packets that are needed to perform energy detection 
+NUM_PACKS_DETECT = round(TIME_WINDOW * SAMPLE_RATE / SAMPS_PER_CHANNEL)  # the number of data packets that are needed to perform energy detection 
 
 print('Bytes per packet:       ', REQUIRED_BYTES)
 print('Microseconds between packets:   ', MICRO_INCR)
@@ -209,7 +209,7 @@ def DataProcessor():
             with dataSegmentLock:
                 ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
             with dataTimesLock:
-                values = SegmentPulses(ch1, dataTimes, True)
+                values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, True)
             if values == None: # if no pulses were detected to segment, then get next segment
                 continue
             clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
