@@ -1,5 +1,4 @@
 """
- This code is for running a multithreaded version of datalogger_reader.py 
 
  For running with Joe's Simulator:
     sudo python multi_datalogger_reader.py --port 1045 --ip 192.168.7.2
@@ -9,12 +8,10 @@
 
  testing program for getting data from 4 ch HARP 3B04 230307
  two channels at 200kHz/ch
- UDP 1 packet = 1252 bytes = 12 bytes time header + 1240 bytes data
- 1 datagram = 1 packet
 
- based on udpGetTimes1.m
 
- 230920 smw
+ In order for the changes that this function makes be observable across both threads, this function relies on global variables
+
 """
 
 import struct
@@ -28,18 +25,18 @@ import time
 import datetime
 import psutil
 import os
-from process_data import *
+from process_data import IntegrityCheck, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, WritePulses
 from utils import CheckSystem
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)
 
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default=50000, type=int)                           # port to listen to for UDP packets
-parser.add_argument('--ip', default="192.168.100.220",type=str)                  # IP address of data logger or simulator
+parser.add_argument('--ip', default="192.168.100.220",type=str)                  # IP address of data logger (simulator)
 parser.add_argument('--fw', default = 1550, type=int)                            # firmware version
 parser.add_argument('--output_file', default = "clicks_data.txt", type=str)      # output file for logging time and peak amp. of pulses
 args = parser.parse_args()
-output_file = open(args.output_file, 'w')                 # clear contents in file
+output_file = open(args.output_file, 'w')                 # clear contents in output file
 
 UDP_IP = args.ip                                          # IP address of data logger or simulator 
 UDP_PORT = args.port                                      # Port to listen for UDP packets
@@ -92,19 +89,17 @@ print('Number of channels:     ', NUM_CHAN)
 print('Data bytes per channel: ', DATA_BYTES_PER_CHANNEL)
 print("Detecting over a time window of ",TIME_WINDOW," seconds, using ",NUM_PACKS_DETECT, " packets") 
 
-# Create a udpport object udpportObj that uses IPV4
 def restartListener():
-    '''
+    """
+    Functionality:
     This function is responsible for (re)starting the listener.
     The socket connection is re(set). The  buffer (dataBuffer) and segment to be processed (dataSegment) are cleared.
 
-    In order for the changes that this function makes be observable across both threads, this function relies on global variables
-
-    '''
+    """
     
-    global dataBuffer, dataSegment, times, udpSocket
+    global dataBuffer, dataSegment, dataTimes, udpSocket
     
-    with socketLock:
+    with udpSocketLock:
         udpSocket.close()
         udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         if UDP_IP == "192.168.100.220": # IP address of the data logger
@@ -123,17 +118,30 @@ def restartListener():
             print("ERROR: Unknown IP address" )
             sys.exit()
     
-    with bufferLock:
+    with dataBufferLock:
         dataBuffer = queue.Queue()
-    with segmentLock:
+    with dataSegmentLock:
         dataSegment = np.array([])
-        times = np.array([])
+    with dataTimesLock:
+        dataTimes = np.array([])
 
-# UDP listener function to receive data and write to the buffer
 def UdpListener():
+    """
+    Functionality:
+    This function serves as a UDP listener that continuously listens for incoming UDP packets.
+    It receives UDP packets of a specified size, checks their length, and if they meet the expected size, 
+    increments a packet counter. The received data is then placed into a shared buffer for further processing.
+
+    Global Variables:
+    - dataBuffer: shared buffer to store received data packets.
+    - packetCounter: counter to keep track of the number of received packets.
+    - udpSocket: the UDP socket used for listening to incoming packets.    
+    """
+
     global dataBuffer, packetCounter, udpSocket
+
     while True:
-        with socketLock:
+        with udpSocketLock:
             dataBytes, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes are received
 
         if len(dataBytes) != PACKET_SIZE: # check packet length
@@ -143,53 +151,85 @@ def UdpListener():
         packetCounter += 1
         if packetCounter % 500 == 0:
             print("Num packets received is ", packetCounter)
-        with bufferLock:
+        with dataBufferLock:
             dataBuffer.put(dataBytes)  # Put received data into the buffer
 
-# Function to process data from the buffer
 def DataProcessor():
-    global dataBuffer, dataSegment, times
+    """
+    Functionality:
+    This function serves as a data processor that continuously processes data segments retrieved from a shared buffer (dataBuffer).
+    It extracts the necessary information from the received data, such as timestamps and sample values, performs adjustments,
+    and stores the processed data into a segment (dataSegment). This segment is then processed.
+
+    Global Variables:
+    - dataBuffer: Shared buffer containing received data packets.
+    - dataSegment: Segment of data to be processed.
+    - dataTimes: Array containing timestamps associated with data segments. 
+    """
+    global dataBuffer, dataSegment, dataTimes
+    
     while True:
-        dataSegment = np.array([])  # clear the segment
-        times = np.array([])
+        # begin new data segment 
+        with dataSegmentLock:
+            dataSegment = np.array([])
+        with dataTimesLock:
+            dataTimes = np.array([])
+        
         while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
-            if dataBuffer.qsize() > 0:
-                with bufferLock:
+     
+            if dataBuffer.qsize() > 0: # if buffer is not empty, get byte packet from buffer 
+                with dataBufferLock:
                     dataBytes = dataBuffer.get()
             else:
                 continue
+            ####
+            # Unpacks the binary dataBytes into a tuple according to a specified format,
+            # where 'B' denotes unsigned char (1 byte) and 'H' denotes unsigned short (2 bytes),
+            # with the format dynamically constructed based on the length of dataBytes and HEAD_SIZE.
+            # '<' is a format character that specifies little-endian byte order.
             dataUnpacked = struct.unpack('<' + 'B'*HEAD_SIZE + 'H'*((len(dataBytes) - HEAD_SIZE) // 2), dataBytes)
-            dataTime = dataUnpacked[:HEAD_SIZE]  # Extract dataTime
+            ####
+
+            dataTime = dataUnpacked[:HEAD_SIZE]
             dataSamples = np.array(dataUnpacked[HEAD_SIZE:]) - 2**15  # Extract and adjust dataSamples
             
             us = (dataBytes[6],dataBytes[7],dataBytes[8],dataBytes[9])
             microSeconds = int.from_bytes(us,'big')         # get micro seconds from dataTime (unsigned char ist)
             dateTime = datetime.datetime(2000+dataTime[0], dataTime[1], dataTime[2], dataTime[3], dataTime[4], dataTime[5], microSeconds, tzinfo=datetime.timezone.utc)
-            times = np.append(times, dateTime) 
-            dataSegment = np.append(dataSegment,dataSamples)        
-            #print(dataSegment) 
-        if not IntegrityCheck(dataSegment, times, MICRO_INCR):
+            
+            with dataTimesLock:
+                dataTimes = np.append(dataTimes, dateTime) 
+            with dataSegmentLock:
+                dataSegment = np.append(dataSegment,dataSamples) 
+        if not IntegrityCheck(dataSegment, dataTimes, MICRO_INCR):
             print('Error: Integrity check failed')
             restartListener()
         else:
-            ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_CHAN, SAMPS_PER_CHANNEL)
-            values = SegmentPulses(ch1, times)
-            if values == None:
+            with dataSegmentLock:
+                ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_CHAN, SAMPS_PER_CHANNEL)
+            with dataTimesLock:
+                values = SegmentPulses(ch1, dataTimes)
+            if values == None: # if no pulses were detected to segment, then get next segment
                 continue
             clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
             WritePulses(clickTimes, clickAmplitudes, args.output_file)
 
+### In order for the changes that one thread makes to shared variables be observable across both threads, global variables are needed
 
-# Global Variables 
-packetCounter = 0                           # count the number of packets received
-udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-bufferLock = threading.Lock()               # a lock for safe buffer access
-segmentLock = threading.Lock()               # a lock for safe buffer access
-socketLock = threading.Lock()               # a lock for safe thread restarting 
+# Global Variables: counter and socket 
+packetCounter = 0                                              # counter for the number of packets received
+udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)   # udp socket that uses IPV4
 
-dataBuffer = queue.Queue() # create a buffer (Queue) for communication between threads
-dataSegment = np.array([])
-times = np.array([])
+# Global variables: data containers
+dataBuffer = queue.Queue()                                     # buffer (Queue) for communication between threads
+dataSegment = np.array([])                                     # decoded data from buffer to be processed
+dataTimes = np.array([])                                       # timestamps associated with data inside dataSegment
+
+# Global Variables: locks
+dataBufferLock = threading.Lock()                                  # a lock for safe thread access to variable "dataBuffer"
+dataSegmentLock = threading.Lock()                                 # a lock for safe thread access to variable "dataSegment"
+dataTimesLock = threading.Lock()                                   # a lock for safe thread access to variable "dataTimes"
+udpSocketLock = threading.Lock()                                   # a lock for safe thread access to variable "udpSocket"
 
 restartListener()
 

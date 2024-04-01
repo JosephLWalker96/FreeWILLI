@@ -11,6 +11,13 @@ Execute (datalogger simulator):
 Execute (datalogger):
 ./listen.exe 192.168.100.220 50000 1240
 
+
+TO DO:
+  1) Check for data and time glitches
+  2) Restart threads if glitches occur
+  3) Decode bytes from buffer once
+  3) Refactor code
+
 */
 
 
