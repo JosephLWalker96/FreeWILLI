@@ -85,7 +85,9 @@ dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.u
 absStartTime = time.time() 
 
 dataMatrix = np.array(dataMatrix,dtype=np.uint16)      # convert data to unsigned 16 bit integers
-dataMatrixBytes = dataMatrix.tobytes()                # convert the data to bytes using big_endian
+
+formatString = '>{}H'.format(len(dataMatrix))          # encode data as big-endian
+dataMatrixBytes= struct.pack(formatString, *dataMatrix)
 
 flag = 0
 print('HERE: ', len(dataMatrixBytes) // DATA_SIZE)
@@ -138,7 +140,7 @@ while(True):
     #sleep(2*MICRO_INCR)
     #time.sleep(1)
     
-    if flag == 4000 and not args.loop:
+    if flag == 8000 and not args.loop:
         print('Reached flag ',flag,time.time() - absStartTime)
         break
     flag += 1
