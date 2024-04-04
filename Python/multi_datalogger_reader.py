@@ -43,7 +43,7 @@ UDP_IP = args.ip                                          # IP address of data l
 UDP_PORT = args.port                                      # Port to listen for UDP packets
 
 print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
-
+"""
 ### Set the program to run at high priority on the system ###
 thisSystem = CheckSystem()
 if thisSystem == "Unix":
@@ -68,7 +68,7 @@ elif thisSystem == "Win":
     p.nice(psutil.HIGH_PRIORITY_CLASS)
 else:
     print("You are not using a UNIX- or Windows-based system.")
-
+"""
 ### import variables according to firmware version specified ###
 print('Assuming firmware version: ', args.fw)
 if args.fw == 1550:
@@ -187,8 +187,8 @@ def DataProcessor():
             # Unpacks the binary dataBytes into a tuple according to a specified format,
             # where 'B' denotes unsigned char (1 byte) and 'H' denotes unsigned short (2 bytes),
             # with the format dynamically constructed based on the length of dataBytes and HEAD_SIZE.
-            # '<' is a format character that specifies little-endian byte order.
-            dataUnpacked = struct.unpack('<' + 'B'*HEAD_SIZE + 'H'*((len(dataBytes) - HEAD_SIZE) // 2), dataBytes)
+            # '>' is a format character that specifies big-endian byte order.
+            dataUnpacked = struct.unpack('>' + 'B'*HEAD_SIZE + 'H'*((len(dataBytes) - HEAD_SIZE) // 2), dataBytes)
             ####
 
             dataTime = dataUnpacked[:HEAD_SIZE]
