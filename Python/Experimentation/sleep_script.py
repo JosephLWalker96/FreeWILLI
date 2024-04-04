@@ -21,7 +21,7 @@ def sleep(duration, get_now=time.perf_counter):
 
 for i in range(TRIAL_NUM):
     start = time.time()
-    sleep(.001250)
+    sleep(.001050)
     trials.append(time.time()-start)
     
 print(np.mean(trials))

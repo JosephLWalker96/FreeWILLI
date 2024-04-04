@@ -26,6 +26,7 @@ import datetime
 import psutil
 import os
 from process_data import IntegrityCheck, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, WritePulseAmplitudes
+from TDOA_estimation import GCC_PHAT
 from utils import CheckSystem
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)

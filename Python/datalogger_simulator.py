@@ -82,6 +82,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 ### Make a fake initial time for the "recorded data"
 dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
+absStartTime = time.time() 
 
 dataMatrix = np.array(dataMatrix,dtype=np.uint16)      # convert data to unsigned 16 bit integers
 dataMatrixBytes = dataMatrix.tobytes()                # convert the data to bytes using big_endian
@@ -137,8 +138,8 @@ while(True):
     #sleep(2*MICRO_INCR)
     #time.sleep(1)
     
-    if flag == 4000000 and not args.loop:
-        print('Reached flag ',flag)
+    if flag == 4000 and not args.loop:
+        print('Reached flag ',flag,time.time() - absStartTime)
         break
     flag += 1
 # Close the socket
