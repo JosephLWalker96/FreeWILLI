@@ -22,7 +22,18 @@ def IntegrityCheck(data, times, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL, M
             return 0
     return 1
 
-def SegmentPulses(data, times, SAMPLE_RATE, saveSegment = False):
+def ThresholdDetect(data, times, SAMPLE_RATE, threshold, saveSegment):
+    maxPeak = np.max(data)
+    maxPeakIndex = np.argmax(data)
+
+    if maxPeak < threshold:
+        return None
+    else:
+        seconds = maxPeakIndex / SAMPLE_RATE
+        maxPeakTime = times[0] + timedelta(microseconds=int(seconds * 1e6))      # convert seconds to microseconds
+        return [maxPeakTime], [maxPeak], maxPeakIndex, maxPeakIndex                  # format return values to be same as SegmentPulses
+
+def SegmentPulses(data, times, SAMPLE_RATE, saveSegment):
     dataAbs = data.astype('float64')**2
     dataAbs = np.sqrt(dataAbs)
     print("dataAbs Size ", len(dataAbs))

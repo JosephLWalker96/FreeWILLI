@@ -25,7 +25,7 @@ import time
 import datetime
 import psutil
 import os
-from process_data import IntegrityCheck, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, WritePulseAmplitudes
+from process_data import IntegrityCheck, ThresholdDetect, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, WritePulseAmplitudes
 from TDOA_estimation import GCC_PHAT
 from utils import CheckSystem
 
@@ -210,7 +210,8 @@ def DataProcessor():
             with dataSegmentLock:
                 ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
             with dataTimesLock:
-                values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, True)
+                #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, True) # Set true to write to file
+                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 500, True) # set true to write to file
             if values == None: # if no pulses were detected to segment, then get next segment
                 continue
             clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
