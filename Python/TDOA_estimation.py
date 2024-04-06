@@ -1,5 +1,12 @@
 import numpy as np
-from scipy.signal import firwin, lfilter
+from scipy.signal import firwin, lfilter, ellip, freqz
+
+
+def EllipticFilter(order, ripple_db, cutoff_freq, sample_rate):
+    normalized_cutoff_freq = cutoff_freq * 2 / sample_rate
+    # Design the Elliptic filter
+    b, a = ellip(order, ripple_db, 40, normalized_cutoff_freq, 'high')
+    return b, a
 
 def apply_fir_filter(signal, cutoff_freq_hz, num_taps, sampling_freq_hz):
     # Design the FIR filter
