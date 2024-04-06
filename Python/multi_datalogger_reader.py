@@ -43,7 +43,7 @@ UDP_IP = args.ip                                          # IP address of data l
 UDP_PORT = args.port                                      # Port to listen for UDP packets
 
 print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
-"""
+
 ### Set the program to run at high priority on the system ###
 thisSystem = CheckSystem()
 if thisSystem == "Unix":
@@ -68,7 +68,7 @@ elif thisSystem == "Win":
     p.nice(psutil.HIGH_PRIORITY_CLASS)
 else:
     print("You are not using a UNIX- or Windows-based system.")
-"""
+
 ### import variables according to firmware version specified ###
 print('Assuming firmware version: ', args.fw)
 if args.fw == 1550:
@@ -140,7 +140,7 @@ def UdpListener():
     """
 
     global dataBuffer, packetCounter, udpSocket
-
+    startPacketTime = time.time()
     while True:
         with udpSocketLock:
             dataBytes, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes are received
@@ -151,7 +151,8 @@ def UdpListener():
             continue
         packetCounter += 1
         if packetCounter % 500 == 0:
-            print("Num packets received is ", packetCounter)
+            print("Num packets received is ", packetCounter, (time.time() - startPacketTime)/packetCounter)
+            #startPacketTime = time.time()
         with dataBufferLock:
             dataBuffer.put(dataBytes)  # Put received data into the buffer
 

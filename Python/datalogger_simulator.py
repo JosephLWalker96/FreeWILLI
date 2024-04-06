@@ -25,7 +25,7 @@ thisSystem = CheckSystem()
 if thisSystem == "Unix":
     print("You are using a UNIX-based system.")
     try:
-        NICE_VAL = -15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
+        NICE_VAL = -20                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
         pid = os.getpid()
         process = psutil.Process(pid)     # Get the process object for the current process
         process.nice(NICE_VAL)            # Set the process priority to high
@@ -134,7 +134,7 @@ while(True):
     
     ### Sleep for the correct time
     runTime = time.time() - startTime
-    Sleep(MICRO_INCR * 1e-6 - runTime)
+    Sleep((MICRO_INCR) * 1e-6 - runTime)
     
     ### Sleep for an arbitrary time (debugging)
     #sleep(2*MICRO_INCR)
