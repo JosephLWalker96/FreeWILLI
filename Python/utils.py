@@ -21,7 +21,24 @@ def CheckSystem():
     elif sys.platform.startswith('win'):
         return "Win"
 
+def IntegrityCheck(data, times, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL, MICRO_INCR):
+    """
+    Check the integrity of data size and time stamps to ensure they are evenly spaced by a specified microsecond increment.
+    
+    Returns:
+        int: 1 if the data is of correct length and time stamps are evenly spaced by MICRO_INCR microseconds, 0 otherwise.
 
+    """
+
+    if len(data) != NUM_PACKS_DETECT * NUM_CHAN * SAMPS_PER_CHANNEL:
+        return 0
+    for i in range(len(times) - 1):
+        if (times[i+1] - times[i]).microseconds != MICRO_INCR:
+            print("Error: time stamps not evenly spaced by "+ str(MICRO_INCR) + " microseconds")
+            for time in times:
+                print(time)
+            return 0
+    return 1
 
 def Sleep(duration, getNow=time.perf_counter):
     """
@@ -102,3 +119,4 @@ def LoadTest4chData1240(filePath = '../Data/joesdata.mat', scale = 2**15, chunkI
     
     dataMatrixReshaped = dataMatrixReshaped + scale                         
     return dataMatrixReshaped
+

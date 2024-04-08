@@ -3,26 +3,7 @@ import time
 import datetime
 from datetime import timedelta
 
-def IntegrityCheck(data, times, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL, MICRO_INCR):
-    """
-    Check the integrity of data size and time stamps to ensure they are evenly spaced by a specified microsecond increment.
-    
-    Returns:
-        int: 1 if the data is of correct length and time stamps are evenly spaced by MICRO_INCR microseconds, 0 otherwise.
-
-    """
-
-    if len(data) != NUM_PACKS_DETECT * NUM_CHAN * SAMPS_PER_CHANNEL:
-        return 0
-    for i in range(len(times) - 1):
-        if (times[i+1] - times[i]).microseconds != MICRO_INCR:
-            print("Error: time stamps not evenly spaced by "+ str(MICRO_INCR) + " microseconds")
-            for time in times:
-                print(time)
-            return 0
-    return 1
-
-def ThresholdDetect(data, times, SAMPLE_RATE, threshold, saveSegment):
+def ThresholdDetect(data, times, SAMPLE_RATE, threshold):
     maxPeak = np.max(data)
     maxPeakIndex = np.argmax(data)
 
@@ -33,7 +14,7 @@ def ThresholdDetect(data, times, SAMPLE_RATE, threshold, saveSegment):
         maxPeakTime = times[0] + timedelta(microseconds=int(seconds * 1e6))      # convert seconds to microseconds
         return [maxPeakTime], [maxPeak], maxPeakIndex, maxPeakIndex                  # format return values to be same as SegmentPulses
 
-def SegmentPulses(data, times, SAMPLE_RATE, saveSegment):
+def SegmentPulses(data, times, SAMPLE_RATE, threshold, saveSegment):
     dataAbs = data.astype('float64')**2
     dataAbs = np.sqrt(dataAbs)
     print("dataAbs Size ", len(dataAbs))
@@ -49,7 +30,7 @@ def SegmentPulses(data, times, SAMPLE_RATE, saveSegment):
     print("end of filtered signal: ", filteredSignal[-4:])    
     ### remove low amplitude values
     
-    filteredSignal[filteredSignal < 80] = 0
+    filteredSignal[filteredSignal < threshold] = 0
     
     ### create a mask to segment click regions
     filt = np.ones(256)

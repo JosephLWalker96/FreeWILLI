@@ -25,9 +25,9 @@ import time
 import datetime
 import psutil
 import os
-from process_data import IntegrityCheck, ThresholdDetect, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, WritePulseAmplitudes
+from process_data import  ThresholdDetect, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, WritePulseAmplitudes
 from TDOA_estimation import GCC_PHAT
-from utils import CheckSystem
+from utils import CheckSystem, IntegrityCheck
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)
 
@@ -45,11 +45,12 @@ UDP_PORT = args.port                                      # Port to listen for U
 print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
 
 ### Set the program to run at high priority on the system ###
+
 thisSystem = CheckSystem()
 if thisSystem == "Unix":
     print("You are using a UNIX-based system.")
     try:
-        NICE_VAL = -15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
+        NICE_VAL = 15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
         pid = os.getpid()
         process = psutil.Process(pid)     # Get the process object for the current process
         process.nice(NICE_VAL)            # Set the process priority to high
@@ -141,6 +142,7 @@ def UdpListener():
 
     global dataBuffer, packetCounter, udpSocket
     startPacketTime = time.time()
+    printInterval = 500
     while True:
         with udpSocketLock:
             dataBytes, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes are received
@@ -150,9 +152,10 @@ def UdpListener():
             restartListener()
             continue
         packetCounter += 1
-        if packetCounter % 500 == 0:
-            print("Num packets received is ", packetCounter, (time.time() - startPacketTime)/packetCounter)
-            #startPacketTime = time.time()
+        if packetCounter % printInterval == 0:
+            with dataBufferLock:
+                print("Num packets received is ", packetCounter, (time.time() - startPacketTime)/printInterval,dataBuffer.qsize())
+            startPacketTime = time.time()
         with dataBufferLock:
             dataBuffer.put(dataBytes)  # Put received data into the buffer
 
@@ -179,11 +182,11 @@ def DataProcessor():
         
         while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
      
-            if dataBuffer.qsize() > 0: # if buffer is not empty, get byte packet from buffer 
-                with dataBufferLock:
+            with dataBufferLock:
+                if dataBuffer.qsize() > 0: # if buffer is not empty, get byte packet from buffer 
                     dataBytes = dataBuffer.get()
-            else:
-                continue
+                else:
+                    continue
             ####
             # Unpacks the binary dataBytes into a tuple according to a specified format,
             # where 'B' denotes unsigned char (1 byte) and 'H' denotes unsigned short (2 bytes),
@@ -211,8 +214,8 @@ def DataProcessor():
             with dataSegmentLock:
                 ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
             with dataTimesLock:
-                #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, True) # Set true to write to file
-                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 500, True) # set true to write to file
+                #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
+                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 500)
             if values == None: # if no pulses were detected to segment, then get next segment
                 continue
             clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
