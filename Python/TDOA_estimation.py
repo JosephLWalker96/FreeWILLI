@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.signal import firwin, lfilter, ellip, freqz
+from scipy.signal import firwin, ellip, freqz
 
 
 def EllipticFilter(order, ripple_db, cutoff_freq, sample_rate):
@@ -8,16 +8,14 @@ def EllipticFilter(order, ripple_db, cutoff_freq, sample_rate):
     b, a = ellip(order, ripple_db, 40, normalized_cutoff_freq, 'high')
     return b, a
 
-def apply_fir_filter(signal, cutoff_freq_hz, num_taps, sampling_freq_hz):
+def GenerateFIR_Filter(cutoff_freq_hz, num_taps, sampling_freq_hz):
     # Design the FIR filter
     nyquist_freq = sampling_freq_hz / 2.0  # Nyquist frequency is half the sampling frequency
-    normalized_cutoff_freq = cutoff_freq_hz / nyquist_freq
-    taps = firwin(num_taps, normalized_cutoff_freq, window='hamming', pass_zero='lowpass', fs=sampling_freq_hz)
+    #normalized_cutoff_freq = cutoff_freq_hz / nyquist_freq
+    taps = firwin(num_taps, cutoff_freq_hz, window='hamming', pass_zero='highpass', fs=sampling_freq_hz)
 
     # Apply the FIR filter
-    filtered_signal = lfilter(taps, 1.0, signal)
-    
-    return filtered_signal
+    return taps
 
 
 
