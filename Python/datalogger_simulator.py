@@ -52,22 +52,30 @@ parser.add_argument('--fw', default = 1550, type=int)
 parser.add_argument('--loop', action = 'store_true')
 parser.add_argument('--time_glitch', default = 0, type=int)
 parser.add_argument('--data_glitch', default = 0, type=int)
+parser.add_argument('--tdoa_sim', action = 'store_true')
 args = parser.parse_args() # Parsing the arguments
 
 UDP_IP = args.ip                   # IP address of the destination
 UDP_PORT = args.port
+DATA_SCALE = 2**15
+DATA_PATH = '../Data/joesdata.mat'
 if args.ip == "self":
     UDP_IP = "127.0.0.1"         # Port number of the destination
 
 print('Simulating firmware version: ', args.fw)
 print("Sending data to " + UDP_IP + " on port " + str(UDP_PORT))
+
+
+
+
 ### import variables according to firmware version specified
 if args.fw == 1550:
     from Firmware_config.firmware_1550 import *
-    dataMatrix = LoadTest4chData1550(filePath = '../Data/joesdata.mat', scale = 2**15)
+    dataMatrix = LoadTest4chData1550(DATA_PATH, DATA_SCALE)
 elif args.fw == 1240:
     from Firmware_config.firmware_1240 import *
-    dataMatrix = LoadTest4chData1240(filePath = '../Data/joesdata.mat', scale = 2**15, chunkInterval = SAMPS_PER_CHANNEL)
+    dataMatrix = LoadTest4chData1240(DATA_PATH, DATA_SCALE, 
+    NUM_CHAN, SAMPS_PER_CHANNEL, args.tdoa_sim)
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
