@@ -113,16 +113,18 @@ def LoadTest4chData1240(filePath, scale,  NUM_CHAN, SAMPS_PER_CHANNEL, simulateT
     dataMatrix = dataMatrix[:,:int(SAMPS_PER_CHANNEL*divisor)]                      # truncate data that doesn't evenly fit into the packets
     if simulateTDOA:
         print("Simulating TDOA")
-        for chan in range(3):
+        for chan in range(1,NUM_CHAN):
             shift = 10*chan
-            dataMatrix[chan+1, :] = numpy.roll(dataMatrix[0, :].copy(), shift)                 # set all channels to be the same as the first channel
-            dataMatrix[chan+1, :shift] = dataMatrix[0, 0]
-    else:
-        dataMatrixReshaped = dataMatrix.reshape(NUM_CHAN,divisor,SAMPS_PER_CHANNEL)     # divide each each into 'divisor' segments of length SAMPS_PER_CHANNEL
-        dataMatrixReshaped = np.hstack(np.hstack(dataMatrixReshaped))
+            print(chan, shift, dataMatrix[0,0])
+            dataMatrix[chan, :] = np.roll(dataMatrix[0, :], shift)                 # set all channels to be the same as the first channel
+            dataMatrix[chan, :shift] = dataMatrix[0, 0]
+        #dataMatrix = np.hstack(dataMatrix)
+    #else:
+    dataMatrix = dataMatrix.reshape(NUM_CHAN,divisor,SAMPS_PER_CHANNEL)     # divide each each into 'divisor' segments of length SAMPS_PER_CHANNEL
+    dataMatrix = np.hstack(np.hstack(dataMatrix))
     
-        print(dataMatrixReshaped[:SAMPS_PER_CHANNEL*3])
+    print(dataMatrix[:SAMPS_PER_CHANNEL*3])
     
-        dataMatrix = dataMatrix + scale                         
-        return dataMatrix
+    dataMatrix = dataMatrix + scale                         
+    return dataMatrix
 
