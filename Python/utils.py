@@ -93,30 +93,38 @@ def LoadTest4chData1550(filePath = '../Data/joesdata.mat', scale = 2**15):
     dataMatrixReshaped = dataMatrixReshaped + scale                         
     return dataMatrixReshaped
 
-def LoadTest4chData1240(filePath = '../Data/joesdata.mat', scale = 2**15, chunkInterval = None):
+def LoadTest4chData1240(filePath, scale,  NUM_CHAN, SAMPS_PER_CHANNEL, simulateTDOA):
     """
     Function to read in real 4 channel data and format the data according to firmware version 1240
 
     Args:
-        path (string):   The path to the data to read in
+        filePath (string):   The path to the data to read in
         scale (integer): A scaling parameter to shift the data by
 
     Returns:
         array of integers: The result of the division.
     """
-    numChannels = 4
     
     print("Loading data from file: ",filePath)
     dataMatrix = loadmat(filePath)['DATA'].T
     print("Shape of loaded data: ", dataMatrix.shape)
 
-    divisor = dataMatrix.shape[1] // chunkInterval
-    dataMatrix = dataMatrix[:,:int(chunkInterval*divisor)]
-    dataMatrixReshaped = dataMatrix.reshape(numChannels,divisor,chunkInterval)
-    dataMatrixReshaped = np.hstack(np.hstack(dataMatrixReshaped))
-    print(dataMatrixReshaped[:chunkInterval*3])
+    divisor = dataMatrix.shape[1] // SAMPS_PER_CHANNEL
+    dataMatrix = dataMatrix[:,:int(SAMPS_PER_CHANNEL*divisor)]                      # truncate data that doesn't evenly fit into the packets
+    if simulateTDOA:
+        print("Simulating TDOA")
+        for chan in range(1,NUM_CHAN):
+            shift = 10*chan
+            print(chan, shift, dataMatrix[0,0])
+            dataMatrix[chan, :] = np.roll(dataMatrix[0, :], shift)                 # set all channels to be the same as the first channel
+            dataMatrix[chan, :shift] = dataMatrix[0, 0]
+        #dataMatrix = np.hstack(dataMatrix)
+    #else:
+    dataMatrix = dataMatrix.reshape(NUM_CHAN,divisor,SAMPS_PER_CHANNEL)     # divide each each into 'divisor' segments of length SAMPS_PER_CHANNEL
+    dataMatrix = np.hstack(np.hstack(dataMatrix))
     
+    print(dataMatrix[:SAMPS_PER_CHANNEL*3])
     
-    dataMatrixReshaped = dataMatrixReshaped + scale                         
-    return dataMatrixReshaped
+    dataMatrix = dataMatrix + scale                         
+    return dataMatrix
 
