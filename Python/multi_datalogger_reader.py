@@ -25,8 +25,9 @@ import time
 import datetime
 import psutil
 import os
+from scipy.signal import filtfilt, ellip, freqz, lfilter
 from process_data import  ThresholdDetect, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, WritePulseAmplitudes
-from TDOA_estimation import GCC_PHAT
+from TDOA_estimation import EllipticFilter, GCC_PHAT, CrossCorr
 from utils import CheckSystem, IntegrityCheck
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)
@@ -173,6 +174,12 @@ def DataProcessor():
     """
     global dataBuffer, dataSegment, dataTimes
     
+    ### define filter - should be passed as function arguement
+    order = 4
+    ripple_dB = 0.1
+    cutoffFrequency = 10000
+    b, a = EllipticFilter(order, ripple_dB, cutoffFrequency, SAMPLE_RATE)
+
     while True:
         # begin new data segment 
         with dataSegmentLock:
@@ -220,6 +227,19 @@ def DataProcessor():
                 continue
             clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
             WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
+            
+            ## detection code
+            
+            ch1Filtered = filtfilt(b, a, ch1)
+            ch2Filtered = filtfilt(b, a, ch2)
+            ch3Filtered = filtfilt(b, a, ch3)
+            ch4Filtered = filtfilt(b, a, ch4)
+
+            dataMatrixFiltered = np.vstack(np.array([ch1Filtered, ch2Filtered,
+                                 ch3Filtered, ch4Filtered]))
+            tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=16)
+            print(tdoaEstimates)
+            
 
 ### In order for the changes that one thread makes to shared variables be observable across both threads, global variables are needed
 
