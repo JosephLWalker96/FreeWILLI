@@ -84,10 +84,12 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
 absStartTime = time.time() 
 
+"""
 dataMatrix = np.array(dataMatrix,dtype=np.float64)      # convert data to unsigned 16 bit integers
 dataMatrix = dataMatrix - np.min(dataMatrix)
 dataMatrix = dataMatrix / np.max(dataMatrix)
 dataMatrix = dataMatrix * 65535
+"""
 dataMatrix = np.array(dataMatrix,dtype=np.uint16)      # convert data to unsigned 16 bit integers
 
 print("DataMatrix: ", np.min(dataMatrix), np.max(dataMatrix))
