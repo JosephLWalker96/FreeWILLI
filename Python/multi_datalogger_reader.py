@@ -180,8 +180,9 @@ def DataProcessor():
     cutoffFrequency = 10000
     b, a = EllipticFilter(order, ripple_dB, cutoffFrequency, SAMPLE_RATE)
 
-    previousTime = False #datetime.datetime(1933, 1, 1, 1, 1, 1)
+    previousTime = False # initalize the previous packet time to False, update with every new packet
     while True:
+
         # begin new data segment 
         with dataSegmentLock:
             dataSegment = np.array([])
@@ -231,9 +232,10 @@ def DataProcessor():
             ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
         with dataTimesLock:
             #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
-            values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 500)
+            values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 80)
         if values == None: # if no pulses were detected to segment, then get next segment
             continue
+        print("hello")
         clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
         WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
         

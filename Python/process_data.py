@@ -6,7 +6,7 @@ from datetime import timedelta
 def ThresholdDetect(data, times, SAMPLE_RATE, threshold):
     maxPeak = np.max(data)
     maxPeakIndex = np.argmax(data)
-
+    print(data.dtype)
     if maxPeak < threshold:
         return None
     else:
