@@ -180,6 +180,7 @@ def DataProcessor():
     cutoffFrequency = 10000
     b, a = EllipticFilter(order, ripple_dB, cutoffFrequency, SAMPLE_RATE)
 
+    previousTime = False #datetime.datetime(1933, 1, 1, 1, 1, 1)
     while True:
         # begin new data segment 
         with dataSegmentLock:
@@ -188,7 +189,6 @@ def DataProcessor():
             dataTimes = np.array([])
         
         while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
-     
             with dataBufferLock:
                 if dataBuffer.qsize() > 0: # if buffer is not empty, get byte packet from buffer 
                     dataBytes = dataBuffer.get()
@@ -204,43 +204,51 @@ def DataProcessor():
 
             dataTime = dataUnpacked[:HEAD_SIZE]
             dataSamples = np.array(dataUnpacked[HEAD_SIZE:]) - 2**15  # Extract and adjust dataSamples
-            
+            #print("dataSamples: ",dataSamples)
+            #return
             us = (dataBytes[6],dataBytes[7],dataBytes[8],dataBytes[9])
             microSeconds = int.from_bytes(us,'big')         # get micro seconds from dataTime (unsigned char ist)
             dateTime = datetime.datetime(2000+dataTime[0], dataTime[1], dataTime[2], dataTime[3], dataTime[4], dataTime[5], microSeconds, tzinfo=datetime.timezone.utc)
             
+            # compare the current packet's time to the previous packet time
+            if previousTime and ((dateTime - previousTime).microseconds != MICRO_INCR):
+                print("Error: Time not incremented by ", MICRO_INCR)
+                restartListener()
+                continue
+
             with dataTimesLock:
                 dataTimes = np.append(dataTimes, dateTime) 
             with dataSegmentLock:
                 dataSegment = np.append(dataSegment,dataSamples)
 
-        if not IntegrityCheck(dataSegment, dataTimes, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL, MICRO_INCR):
-            print('Error: Integrity check failed')
-            restartListener()
-        else:
-            with dataSegmentLock:
-                ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
-            with dataTimesLock:
-                #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
-                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 500)
-            if values == None: # if no pulses were detected to segment, then get next segment
-                continue
-            clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
-            WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
-            
-            ## detection code
-            
-            ch1Filtered = filtfilt(b, a, ch1)
-            ch2Filtered = filtfilt(b, a, ch2)
-            ch3Filtered = filtfilt(b, a, ch3)
-            ch4Filtered = filtfilt(b, a, ch4)
+            previousTime = dateTime
+        
+        #if not IntegrityCheck(dataSegment, dataTimes, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL, MICRO_INCR):
+        #    print('Error: Integrity check failed')
+        #    restartListener()
+        #else:
+        with dataSegmentLock:
+            ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
+        with dataTimesLock:
+            #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
+            values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 500)
+        if values == None: # if no pulses were detected to segment, then get next segment
+            continue
+        clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
+        WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
+        
+        ### detection code
+        ch1Filtered = filtfilt(b, a, ch1)
+        ch2Filtered = filtfilt(b, a, ch2)
+        ch3Filtered = filtfilt(b, a, ch3)
+        ch4Filtered = filtfilt(b, a, ch4)
 
-            dataMatrixFiltered = np.vstack(np.array([ch1Filtered, ch2Filtered,
-                                 ch3Filtered, ch4Filtered]))
-            tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=16)
-            print(tdoaEstimates)
+        dataMatrixFiltered = np.vstack(np.array([ch1Filtered, ch2Filtered,
+                             ch3Filtered, ch4Filtered]))
+        
+        tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=16)
+        print(tdoaEstimates)
             
-
 ### In order for the changes that one thread makes to shared variables be observable across both threads, global variables are needed
 
 # Global Variables: counter and socket 
