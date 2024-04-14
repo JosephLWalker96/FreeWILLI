@@ -11,6 +11,7 @@ def ThresholdDetect(data, times, SAMPLE_RATE, threshold):
         return None
     else:
         seconds = maxPeakIndex / SAMPLE_RATE
+        #print("!!!!! HERE ", seconds)
         maxPeakTime = times[0] + timedelta(microseconds=int(seconds * 1e6))      # convert seconds to microseconds
         return [maxPeakTime], [maxPeak], maxPeakIndex, maxPeakIndex                  # format return values to be same as SegmentPulses
 
