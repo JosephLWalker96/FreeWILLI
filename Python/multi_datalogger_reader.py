@@ -83,7 +83,7 @@ else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
 
-TIME_WINDOW = .5                                                 # fraction of a second to consider  
+TIME_WINDOW = .01                                                 # fraction of a second to consider  
 NUM_PACKS_DETECT = round(TIME_WINDOW * SAMPLE_RATE / SAMPS_PER_CHANNEL)  # the number of data packets that are needed to perform energy detection 
 
 print('Bytes per packet:       ', REQUIRED_BYTES)
@@ -147,15 +147,11 @@ def UdpListener():
     while True:
         with udpSocketLock:
             dataBytes, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes are received
-
-        if len(dataBytes) != PACKET_SIZE: # check packet length
-            print('Error: recieved incorrect number of packets')
-            restartListener()
-            continue
         packetCounter += 1
         if packetCounter % printInterval == 0:
             with dataBufferLock:
-                print("Num packets received is ", packetCounter, (time.time() - startPacketTime)/printInterval,dataBuffer.qsize())
+                qSize = dataBuffer.qsize()
+            print("Num packets received is ", packetCounter, (time.time() - startPacketTime)/printInterval,qSize,packetCounter - qSize)
             startPacketTime = time.time()
         with dataBufferLock:
             dataBuffer.put(dataBytes)  # Put received data into the buffer
@@ -195,6 +191,14 @@ def DataProcessor():
                     dataBytes = dataBuffer.get()
                 else:
                     continue
+            
+            # check packet length
+            if len(dataBytes) != PACKET_SIZE:
+                print('Error: recieved incorrect number of packets')
+                previousTime = False
+                restartListener()
+                continue
+
             ####
             # Unpacks the binary dataBytes into a tuple according to a specified format,
             # where 'B' denotes unsigned char (1 byte) and 'H' denotes unsigned short (2 bytes),
@@ -214,6 +218,7 @@ def DataProcessor():
             # compare the current packet's time to the previous packet time
             if previousTime and ((dateTime - previousTime).microseconds != MICRO_INCR):
                 print("Error: Time not incremented by ", MICRO_INCR)
+                previousTime = False
                 restartListener()
                 continue
 
@@ -224,21 +229,16 @@ def DataProcessor():
 
             previousTime = dateTime
         
-        #if not IntegrityCheck(dataSegment, dataTimes, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL, MICRO_INCR):
-        #    print('Error: Integrity check failed')
-        #    restartListener()
-        #else:
         with dataSegmentLock:
             ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
         with dataTimesLock:
             #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
-            values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 80)
+            values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 300)
         if values == None: # if no pulses were detected to segment, then get next segment
             continue
-        print("hello")
+       
         clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
-        WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
-        
+        #WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
         ### detection code
         ch1Filtered = filtfilt(b, a, ch1)
         ch2Filtered = filtfilt(b, a, ch2)
@@ -249,8 +249,8 @@ def DataProcessor():
                              ch3Filtered, ch4Filtered]))
         
         tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=16)
+        #print('here')
         print(tdoaEstimates)
-            
 ### In order for the changes that one thread makes to shared variables be observable across both threads, global variables are needed
 
 # Global Variables: counter and socket 
@@ -275,4 +275,6 @@ processorThread = threading.Thread(target=DataProcessor)
 
 udpThread.start()
 processorThread.start()
+
+udpThread.join()
 processorThread.join()
