@@ -9,11 +9,19 @@ fi
 # Execute commands to block wifi and bluetooth using rfkill
 sudo rfkill block wifi
 sudo rfkill block bluetooth
-vcgencmd display_power 0
 
+sleep 15
+
+vcgencmd display_power 0
 echo "Wifi, Bluetooth, and HDMI are now blocked."
+
+sleep 5
+
+python Python/multi_datalogger_reader.py --fw 1240
+#sync
 # check if wifi and bluetooth are blocked:
 #
 # iwconfig wlan0
 # bluetoothctl show
+
 

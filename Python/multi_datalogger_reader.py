@@ -143,7 +143,7 @@ def UdpListener():
 
     global dataBuffer, packetCounter, udpSocket
     startPacketTime = time.time()
-    printInterval = 500
+    printInterval = 5000
     while True:
         with udpSocketLock:
             dataBytes, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes are received
@@ -186,11 +186,14 @@ def DataProcessor():
             dataTimes = np.array([])
         
         while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
+            
             with dataBufferLock:
-                if dataBuffer.qsize() > 0: # if buffer is not empty, get byte packet from buffer 
-                    dataBytes = dataBuffer.get()
-                else:
-                    continue
+                qSize = dataBuffer.qsize()
+            if qSize < 1:
+                time.sleep(.2)
+                continue
+            
+            dataBytes = dataBuffer.get()
             
             # check packet length
             if len(dataBytes) != PACKET_SIZE:
@@ -233,12 +236,16 @@ def DataProcessor():
             ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
         with dataTimesLock:
             #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
-            values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 300)
+            
+            thr = 800
+            if np.random.random() < .001:
+                thr = 4
+            values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, thr)
         if values == None: # if no pulses were detected to segment, then get next segment
             continue
        
         clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
-        #WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
+        WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
         ### detection code
         ch1Filtered = filtfilt(b, a, ch1)
         ch2Filtered = filtfilt(b, a, ch2)
@@ -250,7 +257,7 @@ def DataProcessor():
         
         tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=16)
         #print('here')
-        print(tdoaEstimates)
+        #print(tdoaEstimates)
 ### In order for the changes that one thread makes to shared variables be observable across both threads, global variables are needed
 
 # Global Variables: counter and socket 
