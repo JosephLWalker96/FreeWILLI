@@ -12,7 +12,7 @@ sudo rfkill block bluetooth
 
 sleep 15
 
-vcgencmd display_power 0
+sudo vcgencmd display_power 0
 echo "Wifi, Bluetooth, and HDMI are now blocked."
 
 sleep 5

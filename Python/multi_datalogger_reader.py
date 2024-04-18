@@ -26,7 +26,7 @@ import datetime
 import psutil
 import os
 from scipy.signal import filtfilt, ellip, freqz, lfilter
-from process_data import  ThresholdDetect, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, WritePulseAmplitudes
+from process_data import  ThresholdDetect, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, SaveDataSegment, WritePulseAmplitudes
 from TDOA_estimation import EllipticFilter, GCC_PHAT, CrossCorr
 from utils import CheckSystem, IntegrityCheck
 
@@ -78,7 +78,7 @@ if args.fw == 1550:
     PreprocessSegment = PreprocessSegment1550
 elif args.fw == 1240:
     from Firmware_config.firmware_1240 import *
-    PreprocessSegment = PreprocessSegment1240
+    PreprocessSegment = PreprocessSegment1550
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
@@ -237,16 +237,19 @@ def DataProcessor():
         with dataTimesLock:
             #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
             
-            thr = 800
-            if np.random.random() < .001:
-                thr = 4
+            thr = 20000
+            #if np.random.random() < .001:
+            #    thr = 4
             values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, thr)
         if values == None: # if no pulses were detected to segment, then get next segment
             continue
        
         clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
+        #SaveDataSegment(clickTimes[0], dataSegment, ch1, ch2, ch3, ch4) 
+        print("pulse detected! ", clickAmplitudes[0])
         WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
         ### detection code
+        """
         ch1Filtered = filtfilt(b, a, ch1)
         ch2Filtered = filtfilt(b, a, ch2)
         ch3Filtered = filtfilt(b, a, ch3)
@@ -258,6 +261,7 @@ def DataProcessor():
         tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=16)
         #print('here')
         #print(tdoaEstimates)
+        """
 ### In order for the changes that one thread makes to shared variables be observable across both threads, global variables are needed
 
 # Global Variables: counter and socket 

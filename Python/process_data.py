@@ -78,7 +78,7 @@ def SegmentPulses(data, times, SAMPLE_RATE, threshold, saveSegment):
     else:
         return None
    
-def PreprocessSegment1550(data, NUM_CHAN, SAMPS_PER_CHANNEL):#, times, outputFile):
+def PreprocessSegment1550(data, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL):#, times, outputFile):
     ch1 = data[0::NUM_CHAN] # get first channel data by getting every NUM_CHANth element starting with the first
     ch2 = data[1::NUM_CHAN]
     ch3 = data[2::NUM_CHAN]
@@ -110,3 +110,9 @@ def WritePulseAmplitudes(times, amplitudes, outputFile):
     with open(outputFile, 'a') as file:
         for index in range(len(times)):
             file.write(f"{times[index]}, {amplitudes[index]}\n")
+
+def SaveDataSegment(time, dataSegment, ch1, ch2, ch3, ch4):
+    timestampString = time.strftime("%Y-%m-%d %H:%M:%S.%f")
+    np.savez("CheckData/" + timestampString + "_dataSegment.npz", data=dataSegment)
+    np.savez("CheckData/" + timestampString + "_ch1.npz", data=ch1)
+    np.savez("CheckData/" + timestampString + "_ch3.npz", data=ch3)

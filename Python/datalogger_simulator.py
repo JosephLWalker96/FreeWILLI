@@ -128,7 +128,7 @@ while(True):
     microPack  = microseconds.to_bytes(4, byteorder='big')
     zeroPack = struct.pack("H", 0)
     timeHeader = timePack + microPack + zeroPack
-    
+    print("time header: ", len(timeHeader))    
     dataPacket = dataMatrixBytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
     packet  = timeHeader + dataPacket
     
