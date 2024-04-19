@@ -79,13 +79,13 @@ def Sleep(duration, getNow=time.perf_counter):
     while now < end:
         now = getNow()
         
-def SyntheticClickGenerator(signalLength, clickDur):
+def SyntheticClickGenerator(signalLength, clickDuration):
     """
     Function to generate synthetic click/impulse data
 
     Args:
         signalLength (string):   The path to the data to read in
-        clickDur (integer): A scaling parameter to shift the data by
+        clickDuration (integer): A scaling parameter to shift the data by
 
     Returns:
         float: The result of the division.
@@ -96,10 +96,10 @@ def SyntheticClickGenerator(signalLength, clickDur):
     #randNum = np.random.rand(1)
     startPosition = int(np.random.rand(1)*signalLength)
     
-    s[startPosition:startPosition + clickDur] = (s[startPosition:startPosition + clickDur] * 1.7) * (np.hamming(clickDur) + 1)
+    s[startPosition:startPosition + clickDuration] = (s[startPosition:startPosition + clickDuration] * 1.7) * (np.hamming(clickDuration) + 1)
     return s
 
-def LoadTest4chData1550(filePath = '../Data/joesdata.mat', scale = 2**15):
+def LoadTest4chDataInterleaved(filePath, scale, NUM_CHAN, SAMPS_PER_CHANNEL, simulateTDOA):
     """
     Function to read in real 4 channel data and format the data according to firmware version 1550
 
@@ -114,12 +114,21 @@ def LoadTest4chData1550(filePath = '../Data/joesdata.mat', scale = 2**15):
     print("Loading data from file: ",filePath)
     dataMatrix = loadmat(filePath)['DATA'].T
     print("Shape of loaded data: ", dataMatrix.shape)
+
+    if simulateTDOA:
+        print("Simulating TDOA")
+        for chan in range(1,NUM_CHAN):
+            shift = 10*chan
+            print(chan, shift, dataMatrix[0,0])
+            dataMatrix[chan, :] = np.roll(dataMatrix[0, :], shift)                 # set all channels to be the same as the first channel
+            dataMatrix[chan, :shift] = dataMatrix[0, 0]
+
     dataMatrixReshaped = dataMatrix.reshape(-1, order='F')                   # Interleave the values of the rows uniformly
     print("REAL dataMatrix: ",dataMatrixReshaped[:30])
     dataMatrixReshaped = dataMatrixReshaped + scale                         
     return dataMatrixReshaped
 
-def LoadTest4chData1240(filePath, scale,  NUM_CHAN, SAMPS_PER_CHANNEL, simulateTDOA):
+def LoadTest4chDataStacked(filePath, scale,  NUM_CHAN, SAMPS_PER_CHANNEL, simulateTDOA):
     """
     Function to read in real 4 channel data and format the data according to firmware version 1240
 

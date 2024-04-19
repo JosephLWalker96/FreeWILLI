@@ -21,29 +21,8 @@ import os
 import sys
 from utils import *
 
-thisSystem = CheckSystem()
-if thisSystem == "Unix":
-    print("You are using a UNIX-based system.")
-    try:
-        NICE_VAL = -20                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
-        pid = os.getpid()
-        process = psutil.Process(pid)     # Get the process object for the current process
-        process.nice(NICE_VAL)            # Set the process priority to high
-        os.nice(NICE_VAL)
-    except PermissionError as e:
-        print(f"Failed to set nice value: {e}")
-    except psutil.AccessDenied as e:
-        print(f"Failed to set nice value: {e}")
-        print("Try running using $ sudo python ... ")
-        sys.exit()
-elif thisSystem == "Win":
-    print("You are using a Windows-based system.")
-    pid = os.getpid()  # Get PID of this process
-    print("PID:", pid)
-    p = psutil.Process(pid)
-    p.nice(psutil.HIGH_PRIORITY_CLASS)  # Set to desired priority class
-else:
-    print("You are not using a UNIX- or Windows-based system.")
+
+SetHighPriority() # set this process to run at high priority (nice value = -15)
 
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default = 1045, type=int)
@@ -65,16 +44,14 @@ if args.ip == "self":
 print('Simulating firmware version: ', args.fw)
 print("Sending data to " + UDP_IP + " on port " + str(UDP_PORT))
 
-
-
-
 ### import variables according to firmware version specified
 if args.fw == 1550:
     from Firmware_config.firmware_1550 import *
-    dataMatrix = LoadTest4chData1550(DATA_PATH, DATA_SCALE)
+    dataMatrix = LoadTest4chDataInterleaved(DATA_PATH, DATA_SCALE,
+    NUM_CHAN, SAMPS_PER_CHANNEL, args.tdoa_sim)
 elif args.fw == 1240:
     from Firmware_config.firmware_1240 import *
-    dataMatrix = LoadTest4chData1240(DATA_PATH, DATA_SCALE, 
+    dataMatrix = LoadTest4chDataInterleaved(DATA_PATH, DATA_SCALE, 
     NUM_CHAN, SAMPS_PER_CHANNEL, args.tdoa_sim)
 else:
     print('ERROR: Unknown firmware version')
@@ -126,9 +103,8 @@ while(True):
     
     timePack = struct.pack("BBBBBB", *np.array([year,month,day,hour,minute,second]))
     microPack  = microseconds.to_bytes(4, byteorder='big')
-    zeroPack = struct.pack("H", 0)
+    zeroPack = struct.pack("BB", 0,0)
     timeHeader = timePack + microPack + zeroPack
-    print("time header: ", len(timeHeader))    
     dataPacket = dataMatrixBytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
     packet  = timeHeader + dataPacket
     
