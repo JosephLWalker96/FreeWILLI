@@ -46,8 +46,7 @@ UDP_PORT = args.port                                      # Port to listen for U
 
 print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
 
-### Set the program to run at high priority on the system ###
-SetHighPriority()
+SetHighPriority()            # set the program to run at a high priority on the system (nice value = -15)
 
 ### import variables according to firmware version specified ###
 print('Assuming firmware version: ', args.fw)
@@ -182,7 +181,7 @@ def DataProcessor():
                 
                 dataBytes = dataBuffer.get()
                 
-                # check packet length
+                ### check packet length
                 if len(dataBytes) != PACKET_SIZE:
                     print('Error: recieved incorrect number of packets')
                     previousTime = False
@@ -205,7 +204,7 @@ def DataProcessor():
                 microSeconds = int.from_bytes(us,'big')         # get micro seconds from dataTime (unsigned char ist)
                 dateTime = datetime.datetime(2000+dataTime[0], dataTime[1], dataTime[2], dataTime[3], dataTime[4], dataTime[5], microSeconds, tzinfo=datetime.timezone.utc)
                 
-                # compare the current packet's time to the previous packet time
+                ### compare the current packet's time to the previous packet time
                 if previousTime and ((dateTime - previousTime).microseconds != MICRO_INCR):
                     print("Error: Time not incremented by ", MICRO_INCR)
                     previousTime = False
@@ -226,9 +225,7 @@ def DataProcessor():
                 ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
             with dataTimesLock:
                 #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
-                
-                thr = 80
-                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, thr)
+                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 80)
             if values == None: # if no pulses were detected to segment, then get next segment
                 continue
            
