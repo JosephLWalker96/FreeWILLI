@@ -21,6 +21,32 @@ def CheckSystem():
     elif sys.platform.startswith('win'):
         return "Win"
 
+def SetHighPriority():
+    thisSystem = CheckSystem()
+    if thisSystem == "Unix":
+        print("You are using a UNIX-based system.")
+        try:
+            NICE_VAL = 15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
+            pid = os.getpid()
+            process = psutil.Process(pid)     # Get the process object for the current process
+            process.nice(NICE_VAL)            # Set the process priority to high
+            os.nice(NICE_VAL)
+        except PermissionError as e:
+            print(f"Failed to set nice value: {e}")
+        except psutil.AccessDenied as e:
+            print(f"Failed to set nice value: {e}")
+            print("Try running using $ sudo python ... ")
+            sys.exit()
+    elif thisSystem == "Win":
+        print("You are using a Windows-based system.")
+        pid = os.getpid()
+        print("PID:", pid)
+        p = psutil.Process(pid)
+        p.nice(psutil.HIGH_PRIORITY_CLASS)
+    else:
+        print("You are not using a UNIX- or Windows-based system.")
+
+
 def IntegrityCheck(data, times, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL, MICRO_INCR):
     """
     Check the integrity of data size and time stamps to ensure they are evenly spaced by a specified microsecond increment.

@@ -28,7 +28,7 @@ import os
 from scipy.signal import filtfilt, ellip, freqz, lfilter
 from process_data import  ThresholdDetect, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, SaveDataSegment, WritePulseAmplitudes
 from TDOA_estimation import EllipticFilter, GCC_PHAT, CrossCorr
-from utils import CheckSystem, IntegrityCheck
+from utils import SetHighPriority
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)
 
@@ -46,30 +46,7 @@ UDP_PORT = args.port                                      # Port to listen for U
 print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
 
 ### Set the program to run at high priority on the system ###
-
-thisSystem = CheckSystem()
-if thisSystem == "Unix":
-    print("You are using a UNIX-based system.")
-    try:
-        NICE_VAL = 15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
-        pid = os.getpid()
-        process = psutil.Process(pid)     # Get the process object for the current process
-        process.nice(NICE_VAL)            # Set the process priority to high
-        os.nice(NICE_VAL)
-    except PermissionError as e:
-        print(f"Failed to set nice value: {e}")
-    except psutil.AccessDenied as e:
-        print(f"Failed to set nice value: {e}")
-        print("Try running using $ sudo python ... ")
-        sys.exit()
-elif thisSystem == "Win":
-    print("You are using a Windows-based system.")
-    pid = os.getpid()
-    print("PID:", pid)
-    p = psutil.Process(pid)
-    p.nice(psutil.HIGH_PRIORITY_CLASS)
-else:
-    print("You are not using a UNIX- or Windows-based system.")
+SetHighPriority()
 
 ### import variables according to firmware version specified ###
 print('Assuming firmware version: ', args.fw)
@@ -86,11 +63,11 @@ else:
 TIME_WINDOW = .01                                                 # fraction of a second to consider  
 NUM_PACKS_DETECT = round(TIME_WINDOW * SAMPLE_RATE / SAMPS_PER_CHANNEL)  # the number of data packets that are needed to perform energy detection 
 
-print('Bytes per packet:       ', REQUIRED_BYTES)
+print('Bytes per packet:       ',         REQUIRED_BYTES)
 print('Microseconds between packets:   ', MICRO_INCR)
-print('Number of channels:     ', NUM_CHAN)
-print('Data bytes per channel: ', DATA_BYTES_PER_CHANNEL)
-print("Detecting over a time window of ",TIME_WINDOW," seconds, using ",NUM_PACKS_DETECT, " packets") 
+print('Number of channels:     ',         NUM_CHAN)
+print('Data bytes per channel: ',         DATA_BYTES_PER_CHANNEL)
+print("Detecting over a time window of ", TIME_WINDOW," seconds, using ",NUM_PACKS_DETECT, " packets") 
 
 def restartListener():
     """
@@ -270,7 +247,7 @@ udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)   # udp socket that
 
 # Global variables: data containers
 dataBuffer = queue.Queue()                                     # buffer (Queue) for communication between threads
-dataSegment = np.array([])                                     # decoded data from buffer to be processed
+dataSegment = np.array([])                                     # decoded data pulled from buffer to be processed
 dataTimes = np.array([])                                       # timestamps associated with data inside dataSegment
 
 # Global Variables: locks
@@ -279,13 +256,21 @@ dataSegmentLock = threading.Lock()                                 # a lock for 
 dataTimesLock = threading.Lock()                                   # a lock for safe thread access to variable "dataTimes"
 udpSocketLock = threading.Lock()                                   # a lock for safe thread access to variable "udpSocket"
 
-restartListener()
+while True:
+    try:
+        restartListener()
 
-udpThread = threading.Thread(target=UdpListener)
-processorThread = threading.Thread(target=DataProcessor)
+        udpThread = threading.Thread(target=UdpListener)           # create a thread for listening for incoming UDP packets
+        processorThread = threading.Thread(target=DataProcessor)   # create a thread for processing UDP packet data
 
-udpThread.start()
-processorThread.start()
+        udpThread.start()
+        processorThread.start()
+        
+        # Wait for the threads to finish before doing anything else
+        udpThread.join()
+        processorThread.join()
 
-udpThread.join()
-processorThread.join()
+    except Exception as e:
+        print(f"Error in main thread: {e}")
+        # Optionally add some delay before restarting the threads
+        time.sleep(2)
