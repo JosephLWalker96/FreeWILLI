@@ -25,8 +25,9 @@ import time
 import datetime
 import psutil
 import os
+import traceback
 from scipy.signal import filtfilt, ellip, freqz, lfilter
-from process_data import  ThresholdDetect, SegmentPulses, PreprocessSegment1550, PreprocessSegment1240, SaveDataSegment, WritePulseAmplitudes
+from process_data import  ThresholdDetect, SegmentPulses, PreprocessSegmentInterleaved, PreprocessSegmentStacked, SaveDataSegment, WritePulseAmplitudes
 from TDOA_estimation import EllipticFilter, GCC_PHAT, CrossCorr
 from utils import SetHighPriority
 
@@ -52,15 +53,15 @@ SetHighPriority()
 print('Assuming firmware version: ', args.fw)
 if args.fw == 1550:
     from Firmware_config.firmware_1550 import *
-    PreprocessSegment = PreprocessSegment1550
+    PreprocessSegment = PreprocessSegmentInterleaved
 elif args.fw == 1240:
     from Firmware_config.firmware_1240 import *
-    PreprocessSegment = PreprocessSegment1550
+    PreprocessSegment = PreprocessSegmentInterleaved
 else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
 
-TIME_WINDOW = .01                                                 # fraction of a second to consider  
+TIME_WINDOW = .5                                                         # fraction of a second to consider  
 NUM_PACKS_DETECT = round(TIME_WINDOW * SAMPLE_RATE / SAMPS_PER_CHANNEL)  # the number of data packets that are needed to perform energy detection 
 
 print('Bytes per packet:       ',         REQUIRED_BYTES)
@@ -117,21 +118,29 @@ def UdpListener():
     - packetCounter: counter to keep track of the number of received packets.
     - udpSocket: the UDP socket used for listening to incoming packets.    
     """
-
-    global dataBuffer, packetCounter, udpSocket
-    startPacketTime = time.time()
-    printInterval = 5000
-    while True:
-        with udpSocketLock:
-            dataBytes, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes are received
-        packetCounter += 1
-        if packetCounter % printInterval == 0:
+    try:
+        global dataBuffer, packetCounter, udpSocket
+        startPacketTime = time.time()
+        printInterval = 500
+        while not errorEvent.is_set():
+            
+            
+            with udpSocketLock:
+                dataBytes, addr1 = udpSocket.recvfrom(PACKET_SIZE + 1)  # + 1 to detect if more bytes are received
+                #print(dataBytes)
+                #break
+            packetCounter += 1
+            if packetCounter % printInterval == 0:
+                with dataBufferLock:
+                    qSize = dataBuffer.qsize()
+                print("Num packets received is ", packetCounter, (time.time() - startPacketTime)/printInterval,qSize,packetCounter - qSize)
+                startPacketTime = time.time()
             with dataBufferLock:
-                qSize = dataBuffer.qsize()
-            print("Num packets received is ", packetCounter, (time.time() - startPacketTime)/printInterval,qSize,packetCounter - qSize)
-            startPacketTime = time.time()
-        with dataBufferLock:
-            dataBuffer.put(dataBytes)  # Put received data into the buffer
+                dataBuffer.put(dataBytes)  # Put received data into the buffer
+    except Exception as e:
+        print(f"Error occurred in UDP listener thread: {e}")
+        traceback.print_exc()  # Print detailed traceback information
+        errorEvent.set()
 
 def DataProcessor():
     """
@@ -145,110 +154,117 @@ def DataProcessor():
     - dataSegment: Segment of data to be processed.
     - dataTimes: Array containing timestamps associated with data segments. 
     """
-    global dataBuffer, dataSegment, dataTimes
-    
-    ### define filter - should be passed as function arguement
-    order = 4
-    ripple_dB = 0.1
-    cutoffFrequency = 10000
-    b, a = EllipticFilter(order, ripple_dB, cutoffFrequency, SAMPLE_RATE)
-
-    previousTime = False # initalize the previous packet time to False, update with every new packet
-    while True:
-
-        # begin new data segment 
-        with dataSegmentLock:
-            dataSegment = np.array([])
-        with dataTimesLock:
-            dataTimes = np.array([])
+    try:
+        global dataBuffer, dataSegment, dataTimes
         
-        while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
-            
-            with dataBufferLock:
-                qSize = dataBuffer.qsize()
-            if qSize < 1:
-                time.sleep(.2)
-                continue
-            
-            dataBytes = dataBuffer.get()
-            
-            # check packet length
-            if len(dataBytes) != PACKET_SIZE:
-                print('Error: recieved incorrect number of packets')
-                previousTime = False
-                restartListener()
-                continue
+        ### define filter - should be passed as function arguement
+        order = 4
+        ripple_dB = 0.1
+        cutoffFrequency = 10000
+        b, a = EllipticFilter(order, ripple_dB, cutoffFrequency, SAMPLE_RATE)
 
-            ####
-            # Unpacks the binary dataBytes into a tuple according to a specified format,
-            # where 'B' denotes unsigned char (1 byte) and 'H' denotes unsigned short (2 bytes),
-            # with the format dynamically constructed based on the length of dataBytes and HEAD_SIZE.
-            # '>' is a format character that specifies big-endian byte order.
-            dataUnpacked = struct.unpack('>' + 'B'*HEAD_SIZE + 'H'*((len(dataBytes) - HEAD_SIZE) // 2), dataBytes)
-            ####
+        previousTime = False # initalize the previous packet time to False, update with every new packet
+        while not errorEvent.is_set():
 
-            dataTime = dataUnpacked[:HEAD_SIZE]
-            dataSamples = np.array(dataUnpacked[HEAD_SIZE:]) - 2**15  # Extract and adjust dataSamples
-            #print("dataSamples: ",dataSamples)
-            #return
-            us = (dataBytes[6],dataBytes[7],dataBytes[8],dataBytes[9])
-            microSeconds = int.from_bytes(us,'big')         # get micro seconds from dataTime (unsigned char ist)
-            dateTime = datetime.datetime(2000+dataTime[0], dataTime[1], dataTime[2], dataTime[3], dataTime[4], dataTime[5], microSeconds, tzinfo=datetime.timezone.utc)
-            
-            # compare the current packet's time to the previous packet time
-            if previousTime and ((dateTime - previousTime).microseconds != MICRO_INCR):
-                print("Error: Time not incremented by ", MICRO_INCR)
-                previousTime = False
-                restartListener()
-                continue
-
-            with dataTimesLock:
-                dataTimes = np.append(dataTimes, dateTime) 
+            # begin new data segment 
             with dataSegmentLock:
-                dataSegment = np.append(dataSegment,dataSamples)
-
-            previousTime = dateTime
-        
-        with dataSegmentLock:
-            ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
-        with dataTimesLock:
-            #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
+                dataSegment = np.array([])
+            with dataTimesLock:
+                dataTimes = np.array([])
             
-            thr = 20000
-            #if np.random.random() < .001:
-            #    thr = 4
-            values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, thr)
-        if values == None: # if no pulses were detected to segment, then get next segment
-            continue
-       
-        clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
-        #SaveDataSegment(clickTimes[0], dataSegment, ch1, ch2, ch3, ch4) 
-        print("pulse detected! ", clickAmplitudes[0])
-        WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
-        ### detection code
-        """
-        ch1Filtered = filtfilt(b, a, ch1)
-        ch2Filtered = filtfilt(b, a, ch2)
-        ch3Filtered = filtfilt(b, a, ch3)
-        ch4Filtered = filtfilt(b, a, ch4)
+            while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
+                
+                with dataBufferLock:
+                    qSize = dataBuffer.qsize()
+                if qSize < 1:
+                    time.sleep(.2)
+                    continue
+                
+                dataBytes = dataBuffer.get()
+                
+                # check packet length
+                if len(dataBytes) != PACKET_SIZE:
+                    print('Error: recieved incorrect number of packets')
+                    previousTime = False
+                    restartListener()
+                    continue
 
-        dataMatrixFiltered = np.vstack(np.array([ch1Filtered, ch2Filtered,
-                             ch3Filtered, ch4Filtered]))
-        
-        tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=16)
-        #print('here')
-        #print(tdoaEstimates)
-        """
+                ####
+                # Unpacks the binary dataBytes into a tuple according to a specified format,
+                # where 'B' denotes unsigned char (1 byte) and 'H' denotes unsigned short (2 bytes),
+                # with the format dynamically constructed based on the length of dataBytes and HEAD_SIZE.
+                # '>' is a format character that specifies big-endian byte order.
+                dataUnpacked = struct.unpack('>' + 'B'*HEAD_SIZE + 'H'*((len(dataBytes) - HEAD_SIZE) // 2), dataBytes)
+                ####
+
+                dataTime = dataUnpacked[:HEAD_SIZE]
+                dataSamples = np.array(dataUnpacked[HEAD_SIZE:]) - 2**15  # Extract and adjust dataSamples
+                #print("dataSamples: ",dataSamples)
+                #return
+                us = (dataBytes[6],dataBytes[7],dataBytes[8],dataBytes[9])
+                microSeconds = int.from_bytes(us,'big')         # get micro seconds from dataTime (unsigned char ist)
+                dateTime = datetime.datetime(2000+dataTime[0], dataTime[1], dataTime[2], dataTime[3], dataTime[4], dataTime[5], microSeconds, tzinfo=datetime.timezone.utc)
+                
+                # compare the current packet's time to the previous packet time
+                if previousTime and ((dateTime - previousTime).microseconds != MICRO_INCR):
+                    print("Error: Time not incremented by ", MICRO_INCR)
+                    previousTime = False
+                    restartListener()
+                    continue
+
+                with dataTimesLock:
+                    dataTimes = np.append(dataTimes, dateTime) 
+                with dataSegmentLock:
+                    dataSegment = np.append(dataSegment,dataSamples)
+
+                previousTime = dateTime
+            
+            #if np.random.random() < .001:
+            #    adsfasdfsaf
+
+            with dataSegmentLock:
+                ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
+            with dataTimesLock:
+                #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
+                
+                thr = 80
+                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, thr)
+            if values == None: # if no pulses were detected to segment, then get next segment
+                continue
+           
+            clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
+            #SaveDataSegment(clickTimes[0], dataSegment, ch1, ch2, ch3, ch4) 
+            #print("pulse detected! ", clickAmplitudes[0])
+            WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
+            ### detection code
+            """
+            ch1Filtered = filtfilt(b, a, ch1)
+            ch2Filtered = filtfilt(b, a, ch2)
+            ch3Filtered = filtfilt(b, a, ch3)
+            ch4Filtered = filtfilt(b, a, ch4)
+
+            dataMatrixFiltered = np.vstack(np.array([ch1Filtered, ch2Filtered,
+                                 ch3Filtered, ch4Filtered]))
+            
+            tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=16)
+            #print('here')
+            #print(tdoaEstimates)
+            """
+    except Exception as e:
+        print(f"Error occurred in Data Processor thread: {e}")
+        traceback.print_exc()  # Print detailed traceback information
+        errorEvent.set()
+
 ### In order for the changes that one thread makes to shared variables be observable across both threads, global variables are needed
 
 # Global Variables: counter and socket 
-packetCounter = 0                                              # counter for the number of packets received
-udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)   # udp socket that uses IPV4
+packetCounter = 0                                                  # counter for the number of packets received
+udpSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)       # udp socket that uses IPV4
 
 # Global variables: data containers
-dataBuffer = queue.Queue()                                     # buffer (Queue) for communication between threads
-dataSegment = np.array([])                                     # decoded data pulled from buffer to be processed
-dataTimes = np.array([])                                       # timestamps associated with data inside dataSegment
+dataBuffer = queue.Queue()                                         # buffer (Queue) for communication between threads
+dataSegment = np.array([])                                         # decoded data pulled from buffer to be processed
+dataTimes = np.array([])                                           # timestamps associated with data inside dataSegment
 
 # Global Variables: locks
 dataBufferLock = threading.Lock()                                  # a lock for safe thread access to variable "dataBuffer"
@@ -256,21 +272,25 @@ dataSegmentLock = threading.Lock()                                 # a lock for 
 dataTimesLock = threading.Lock()                                   # a lock for safe thread access to variable "dataTimes"
 udpSocketLock = threading.Lock()                                   # a lock for safe thread access to variable "udpSocket"
 
-while True:
-    try:
-        restartListener()
+errorEvent = threading.Event()
 
-        udpThread = threading.Thread(target=UdpListener)           # create a thread for listening for incoming UDP packets
-        processorThread = threading.Thread(target=DataProcessor)   # create a thread for processing UDP packet data
+while True: # Loop continuously so when a thread errors (errorEvent.set() occurs) threads will close and restart 
+ 
+    restartListener()
+    udpThread = threading.Thread(target=UdpListener)               # create a thread for listening for incoming UDP packets
+    processorThread = threading.Thread(target=DataProcessor)       # create a thread for processing UDP packet data
 
-        udpThread.start()
-        processorThread.start()
-        
-        # Wait for the threads to finish before doing anything else
-        udpThread.join()
-        processorThread.join()
+    udpThread.start()
+    processorThread.start()
+    
+    udpThread.join()
+    processorThread.join()
 
-    except Exception as e:
-        print(f"Error in main thread: {e}")
-        # Optionally add some delay before restarting the threads
-        time.sleep(2)
+    print("Restarting threads...")
+
+    errorEvent = threading.Event()
+    
+    # Global variables: data containers
+    dataBuffer = queue.Queue()                                     # buffer (Queue) for communication between threads
+    dataSegment = np.array([])                                     # decoded data pulled from buffer to be processed
+    dataTimes = np.array([])                                       # timestamps associated with data inside dataSegment

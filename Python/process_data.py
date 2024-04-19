@@ -7,6 +7,8 @@ def ThresholdDetect(data, times, SAMPLE_RATE, threshold):
     maxPeak = np.max(data)
     maxPeakIndex = np.argmax(data)
     #print(data.dtype)
+    #if np.random.random() < .001:
+    #    11 / 0
     if maxPeak < threshold:
         return None
     else:
@@ -78,7 +80,7 @@ def SegmentPulses(data, times, SAMPLE_RATE, threshold, saveSegment):
     else:
         return None
    
-def PreprocessSegment1550(data, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL):#, times, outputFile):
+def PreprocessSegmentInterleaved(data, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL):#, times, outputFile):
     ch1 = data[0::NUM_CHAN] # get first channel data by getting every NUM_CHANth element starting with the first
     ch2 = data[1::NUM_CHAN]
     ch3 = data[2::NUM_CHAN]
@@ -87,7 +89,7 @@ def PreprocessSegment1550(data, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL):#
     return ch1, ch2, ch3, ch4
 
 
-def PreprocessSegment1240(data, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL):#, times, outputFile):
+def PreprocessSegmentStacked(data, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL):#, times, outputFile):
     
     data = data.reshape(NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)  # Split the flattened array into original components
     data = np.hstack(data)
