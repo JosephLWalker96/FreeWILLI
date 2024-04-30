@@ -39,16 +39,16 @@ void PrintTimes(const vector<TimePoint>& timestamps){
 
 
 
-DetectionResult ThresholdDetect(arma::Row<int16_t>& data, vector<TimePoint>& times, int threshold){
+DetectionResult ThresholdDetect(arma::Row<float>& data, vector<TimePoint>& times, int threshold){
     DetectionResult result;
 
     int peakIndex = arma::index_max(data);
-    result.minPeakIndex = peakIndex;
-    result.maxPeakIndex = peakIndex;
-    double peakAmplitude = (double)arma::max(data);
-    result.peakAmplitude.push_back(peakAmplitude);
+    float peakAmplitude = arma::max(data);
 
     if (peakAmplitude > threshold){
+        result.minPeakIndex = peakIndex;
+        result.maxPeakIndex = peakIndex;
+        result.peakAmplitude.push_back(peakAmplitude);
         long long microseconds = (long long)peakIndex / SAMPLE_RATE * 1e6;
         std::chrono::time_point<std::chrono::system_clock> maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
         result.peakTimes.push_back(maxPeakTime);
@@ -57,7 +57,7 @@ DetectionResult ThresholdDetect(arma::Row<int16_t>& data, vector<TimePoint>& tim
     return result;
 }
 
-void ProcessSegment(arma::Row<int16_t>& data, vector<TimePoint>& times, const string& outputFile) {
+void ProcessSegment(arma::Row<float>& data, vector<TimePoint>& times, const string& outputFile) {
     arma::Row<double> dataAbsolute = arma::abs(arma::conv_to<arma::Row<double>>::from(data));
     
     #ifdef PRINT_PROCESS_SEGMENT
@@ -116,7 +116,7 @@ void ProcessSegment(arma::Row<int16_t>& data, vector<TimePoint>& times, const st
         vector<TimePoint> timestamps;
         segmentBoundary.insert_rows(0, 1);
         segmentBoundary(0) = 0;
-        vector<int16_t> clickPeakAmps;
+        vector<float> clickPeakAmps;
         for (size_t i = 0; i < segmentBoundary.size() - 1; ++i) {
             int start_point = segmentBoundary[i];
             int end_point = segmentBoundary[i + 1];
@@ -124,11 +124,11 @@ void ProcessSegment(arma::Row<int16_t>& data, vector<TimePoint>& times, const st
             // Check if there's any non-zero value in the region
             if (arma::any(dataSmoothed.subvec(start_point, end_point - 1) != 0.0)) {
                 //arma::vec region_data = data.subvec(start_point, end_point - 1);
-                arma::Row<int16_t> clickSegment = data.subvec(start_point, end_point - 1);
+                arma::Row<float> clickSegment = data.subvec(start_point, end_point - 1);
 
                 // Calculate the index (avoid potential iterator subtraction issues)
                 int peakIndex = arma::index_max(clickSegment);
-                int16_t peakAmplitude = arma::max(clickSegment);
+                float peakAmplitude = arma::max(clickSegment);
                 
                 // Calculate click time based on sampling rate and peak index
                 long long seconds = ((start_point + peakIndex) * 10); // divide (...) by 1e5 then times 1e6
@@ -138,11 +138,11 @@ void ProcessSegment(arma::Row<int16_t>& data, vector<TimePoint>& times, const st
                 timestamps.push_back(peakAmplitudeTime);
             }
         }
-        WriteClicks(clickPeakAmps,timestamps, "Ccode_clicks.txt");
+        //WriteClicks(clickPeakAmps,timestamps, "Ccode_clicks.txt");
     }
 }
 
-void ProcessSegmentStacked(vector<int16_t>& data, vector<TimePoint>& times, const string& outputFile) {
+void ProcessSegmentStacked(vector<float>& data, vector<TimePoint>& times, const string& outputFile) {
     
     #ifdef PRINT_PROCESS_SEGMENT_1240
         cout << "Inside ProcessSegment1240() " << endl;
@@ -177,11 +177,11 @@ void ProcessSegmentStacked(vector<int16_t>& data, vector<TimePoint>& times, cons
         cout << endl;
     #endif
 
-    ProcessSegment(ch1, times, outputFile);  // Use memptr to access raw data
+    //ProcessSegment(ch1, times, outputFile);  // Use memptr to access raw data
 }
 
 
-void ProcessSegmentInterleaved(vector<int16_t>& data, vector<TimePoint>& times, const string& outputFile, arma::Row<int16_t>& ch1, arma::Row<int16_t>& ch2, arma::Row<int16_t>& ch3, arma::Row<int16_t>& ch4) {
+void ProcessSegmentInterleaved(vector<float>& data, vector<TimePoint>& times, const string& outputFile, arma::Row<float>& ch1, arma::Row<float>& ch2, arma::Row<float>& ch3, arma::Row<float>& ch4) {
     
     size_t channelSize = data.size() / NUM_CHAN;
     ch1.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance)
@@ -215,7 +215,7 @@ void ProcessSegmentInterleaved(vector<int16_t>& data, vector<TimePoint>& times, 
 
 }
 
-void WriteClicks(const vector<int16_t>& clickPeakAmps,
+void WritePulseAmplitudes(const vector<float>& clickPeakAmps,
                  const vector<TimePoint>& timestamps,
                  const string& filename) {
   std::ofstream outfile(filename, std::ios::app);

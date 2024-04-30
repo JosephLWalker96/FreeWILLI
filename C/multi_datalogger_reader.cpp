@@ -133,8 +133,8 @@ void UdpListener(int datagramSocket) {
     }
 }
 
-void DataProcessor(void (*ProcessingFunction)(vector<int16_t>&, vector<TimePoint>&, const string&, 
-arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t>&)) {
+void DataProcessor(void (*ProcessingFunction)(vector<float>&, vector<TimePoint>&, const string&, 
+arma::Row<float>&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&)) {
     /*
     Functionality:
     This function serves as a data processor that continuously processes data segments retrieved from a shared buffer (dataBuffer).
@@ -157,7 +157,7 @@ arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t
             vector<std::chrono::system_clock::time_point> dataTimes;
             dataTimesLock.unlock();
             dataTimesLock.lock();
-            vector<int16_t> dataSegment;
+            vector<float> dataSegment;
             dataTimesLock.unlock();
             
             while (dataSegment.size() < DATA_SEGMENT_LENGTH) {
@@ -208,8 +208,8 @@ arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t
                 // Convert byte data to signed 16bit ints
                 vector<int16_t> data;
                 for (size_t i = 0; i < DATA_SIZE; i += 2) {
-                    int16_t value = static_cast<int16_t>(dataBytes[12+i]) +
-                                   (static_cast<int16_t>(dataBytes[i + 13]) << 8);
+                    int16_t value = (static_cast<int16_t>(dataBytes[12+i]) << 8) +
+                                   static_cast<int16_t>(dataBytes[i + 13]);
                     data.push_back(value - 32768);
                 }
 
@@ -217,8 +217,15 @@ arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t
                 dataTimes.push_back(specificTime);
                 dataTimesLock.unlock();
                 
+                // convert data to float
+                vector<float> floatData;
+                floatData.reserve(data.size());
+                std::transform(data.begin(), data.end(), std::back_inserter(floatData),
+                [](const auto& element) { return static_cast<float>(element); });
+
+
                 dataSegmentLock.lock();
-                dataSegment.insert(dataSegment.end(), data.begin(), data.end());
+                dataSegment.insert(dataSegment.end(), floatData.begin(), floatData.end());
                 dataSegmentLock.unlock();
 
                 previousTime = specificTime;
@@ -233,17 +240,16 @@ arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t
                 cout << endl;
             #endif
            
-            arma::Row<int16_t> ch1, ch2, ch3, ch4;
+            arma::Row<float> ch1, ch2, ch3, ch4;
             dataSegmentLock.lock();
             ProcessingFunction(dataSegment, dataTimes, OUTPUT_FILE, ch1, ch2, ch3, ch4);
             dataSegmentLock.unlock();
             int threshold = 80;
             DetectionResult values = ThresholdDetect(ch1, dataTimes, threshold);
-            if (values.peakTimes.size() == 0){
-                cout << "No pulse detected!!!!!" << endl;
+            if (values.maxPeakIndex < 0){
                 continue;
             }
-            //WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file);
+            WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, "Ccode_clicks.txt");
         }
     } catch (const std::exception& e ){
         // Handle the exception
@@ -255,13 +261,17 @@ arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t
 int main(int argc, char *argv[]){
     
     string UDP_IP = argv[1];                                         // IP address of data logger or simulator
+    if (UDP_IP == "self"){
+        UDP_IP = "127.0.0.1";
+    }
+    
     int UDP_PORT = std::stoi(argv[2]);                                     // Port to listen for UDP packets
     int firmwareVersion = std::stoi(argv[3]);
     printf("Listening to IP address %s and port %d \n", UDP_IP.c_str(),UDP_PORT);
 
     //import variables according to firmware version specified
     cout << "Assuming firmware version: " << firmwareVersion << endl;
-    void(*ProcessFncPtr)(vector<int16_t>&, vector<TimePoint>&, const string&, arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t>&, arma::Row<int16_t>&) = nullptr;
+    void(*ProcessFncPtr)(vector<float>&, vector<TimePoint>&, const string&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&) = nullptr;
     if (firmwareVersion == 1550){
         ProcessFile("1550_config.txt");
         ProcessFncPtr = ProcessSegmentInterleaved;
