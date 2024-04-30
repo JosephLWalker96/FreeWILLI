@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <chrono>
-#include <eigen3/Eigen/Dense>
+//#include <eigen3/Eigen/Dense>
 #include <iostream>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 #include <iomanip> // for output formatting
@@ -35,6 +35,26 @@ void PrintTimes(const vector<TimePoint>& timestamps){
             << timeData.tm_sec << ':'
             << microsecs << endl;
     }
+}
+
+
+
+DetectionResult ThresholdDetect(arma::Row<int16_t>& data, vector<TimePoint>& times, int threshold){
+    DetectionResult result;
+
+    int peakIndex = arma::index_max(data);
+    result.minPeakIndex = peakIndex;
+    result.maxPeakIndex = peakIndex;
+    double peakAmplitude = (double)arma::max(data);
+    result.peakAmplitude.push_back(peakAmplitude);
+
+    if (peakAmplitude > threshold){
+        long long microseconds = (long long)peakIndex / SAMPLE_RATE * 1e6;
+        std::chrono::time_point<std::chrono::system_clock> maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
+        result.peakTimes.push_back(maxPeakTime);
+    }
+
+    return result;
 }
 
 void ProcessSegment(arma::Row<int16_t>& data, vector<TimePoint>& times, const string& outputFile) {
@@ -122,7 +142,7 @@ void ProcessSegment(arma::Row<int16_t>& data, vector<TimePoint>& times, const st
     }
 }
 
-void ProcessSegment1240(vector<int16_t>& data, vector<TimePoint>& times, const string& outputFile) {
+void ProcessSegmentStacked(vector<int16_t>& data, vector<TimePoint>& times, const string& outputFile) {
     
     #ifdef PRINT_PROCESS_SEGMENT_1240
         cout << "Inside ProcessSegment1240() " << endl;
@@ -161,13 +181,20 @@ void ProcessSegment1240(vector<int16_t>& data, vector<TimePoint>& times, const s
 }
 
 
-void ProcessSegment1550(vector<int16_t>& data, vector<TimePoint>& times, const string& outputFile) {
-    arma::Row<int16_t> ch1;
-    ch1.set_size(data.size() / NUM_CHAN);                    // Reserve space in the arma::Row (optional but can improve performance)
+void ProcessSegmentInterleaved(vector<int16_t>& data, vector<TimePoint>& times, const string& outputFile, arma::Row<int16_t>& ch1, arma::Row<int16_t>& ch2, arma::Row<int16_t>& ch3, arma::Row<int16_t>& ch4) {
+    
+    size_t channelSize = data.size() / NUM_CHAN;
+    ch1.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance)
+    ch2.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance)
+    ch3.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance)
+    ch4.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance)
 
     // Iterate through the data vector and save every 4th element into the arma::Row
     for (size_t i = 0, j = 0; i < data.size(); i += NUM_CHAN, ++j) {
-        ch1(j) = data[i]; // Saving every 4th element into ch1
+        ch1(j) = data[i];  // Saving every 4th element into ch1
+        ch2(j) = data[i+1]; // Saving every 4th element into ch1
+        ch3(j) = data[i+2]; // Saving every 4th element into ch1
+        ch4(j) = data[i+3]; // Saving every 4th element into ch1
     }
     #ifdef PRINT_PROCESS_SEGMENT_1550
         cout << "Inside ProcessSegment1550() " << endl;
@@ -184,7 +211,8 @@ void ProcessSegment1550(vector<int16_t>& data, vector<TimePoint>& times, const s
         cout << endl;
     #endif
         
-    ProcessSegment(ch1, times, outputFile);  
+    //ProcessSegment(ch1, times, outputFile);
+
 }
 
 void WriteClicks(const vector<int16_t>& clickPeakAmps,
