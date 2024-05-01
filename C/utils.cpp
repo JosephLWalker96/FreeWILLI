@@ -5,6 +5,7 @@
 #include <fstream>
 #include <queue>
 #include <vector>
+#include <random>
 
 using std::cerr;
 using std::endl;
@@ -27,4 +28,13 @@ void ProcessFile(const string& fileName) {
 void ClearQueue(std::queue<std::vector<uint8_t>>& q){
     std::queue<std::vector<uint8_t>> empty;
     std::swap(q, empty);
+}
+
+bool withProbability(double probability){
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.0, 1.0);
+
+    double randomValue = dis(gen);
+    return randomValue < probability;
 }

@@ -31,6 +31,9 @@ TO DO:
 #include <queue>
 #include <vector>
 #include <chrono>
+#include <atomic>
+#include <stdexcept>
+#include <random>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -82,6 +85,8 @@ std::mutex dataBufferLock;                       // For thread-safe buffer acces
 std::mutex dataSegmentLock;                       // For thread-safe buffer access
 std::mutex dataTimesLock;                       // For thread-safe buffer access
 std::mutex udpSocketLock;                       // For thread-safe buffer access
+
+std::atomic<bool> errorOccurred(false);
 
 int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0); // udp socket
 
@@ -152,7 +157,7 @@ void UdpListener() {
         vector<uint8_t> dataBytes(receiveSize);
         auto startPacketTime = std::chrono::high_resolution_clock::now();
         
-        while (true) {
+        while (!errorOccurred) {
             
             udpSocketLock.lock();
             bytesReceived = recvfrom(datagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr*)&addr, &addrLength);
@@ -182,6 +187,7 @@ void UdpListener() {
     } catch (const std::exception& e ){
         // Handle the exception
         cerr << "Error occured in UDPListener Thread" << endl;
+        errorOccurred = true;
 
     }
 }
@@ -209,7 +215,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
         bool previousTimeSet = false;
         std::chrono::time_point<std::chrono::system_clock> previousTime = std::chrono::time_point<std::chrono::system_clock>::min(); // CHECK VALUE
 
-        while (true) {
+        while (!errorOccurred) {
             
             dataTimesLock.lock();
             dataTimes.clear();
@@ -298,6 +304,11 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
 
                 previousTime = specificTime;
                 previousTimeSet = true;
+
+                if (withProbability(0.001)){
+                    throw std::runtime_error("An error occurred");
+                }
+
             }
             
             #ifdef PRINT_DATA_PROCESSOR // print first few values in dataSegment
@@ -328,6 +339,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
     } catch (const std::exception& e ){
         // Handle the exception
         cerr << "Error occured in data processor  Thread" << endl;
+        errorOccurred = true;
       }
 }
 
@@ -386,13 +398,23 @@ int main(int argc, char *argv[]){
     }
 
     
-    //while (true)
-    restartListener();
-    std::thread udpThread(UdpListener);//, datagramSocket);
-    std::thread processorThread(DataProcessor, ProcessFncPtr);
+    while (true){
+        restartListener();
+        
+        std::thread udpThread(UdpListener);
+        std::thread processorThread(DataProcessor, ProcessFncPtr);
 
-    udpThread.join();
-    processorThread.join();
-    
+        udpThread.join();
+        processorThread.join();
+       
+        if (errorOccurred){
+            cout << "Error occurred, restarting threads..." << endl;
+        }
+        else {
+            cout << "Unknown problemed occurred" << endl;
+        }
+
+        errorOccurred = false;
+    }
     return 0;
 }
