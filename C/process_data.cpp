@@ -39,11 +39,11 @@ void PrintTimes(const vector<TimePoint>& timestamps){
 
 
 
-DetectionResult ThresholdDetect(arma::Row<float>& data, vector<TimePoint>& times, int threshold){
+DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& times, int threshold){
     DetectionResult result;
 
     int peakIndex = arma::index_max(data);
-    float peakAmplitude = arma::max(data);
+    double peakAmplitude = arma::max(data);
 
     if (peakAmplitude > threshold){
         result.minPeakIndex = peakIndex;
@@ -57,8 +57,8 @@ DetectionResult ThresholdDetect(arma::Row<float>& data, vector<TimePoint>& times
     return result;
 }
 
-void ProcessSegment(arma::Row<float>& data, vector<TimePoint>& times, const string& outputFile) {
-    arma::Row<double> dataAbsolute = arma::abs(arma::conv_to<arma::Row<double>>::from(data));
+void ProcessSegment(arma::Col<double>& data, vector<TimePoint>& times, const string& outputFile) {
+    arma::Col<double> dataAbsolute = arma::abs(arma::conv_to<arma::Col<double>>::from(data));
     
     #ifdef PRINT_PROCESS_SEGMENT
         cout << "Inside ProcessSegment() " << endl;
@@ -71,7 +71,7 @@ void ProcessSegment(arma::Row<float>& data, vector<TimePoint>& times, const stri
     #endif
    
     // define the filter for click regions
-    arma::Row<double> smoothFilter(1.0, 256, arma::fill::ones); // Filter of size 256 with all ones
+    arma::Col<double> smoothFilter(1.0, 256, arma::fill::ones); // Filter of size 256 with all ones
     smoothFilter /= 256.0;
     
     #ifdef PRINT_PROCESS_SEGMENT
@@ -83,7 +83,7 @@ void ProcessSegment(arma::Row<float>& data, vector<TimePoint>& times, const stri
     #endif
 
     // Convolve abs_data with the filter
-    arma::Row<double> dataSmoothed = arma::conv(dataAbsolute, smoothFilter, "same");
+    arma::Col<double> dataSmoothed = arma::conv(dataAbsolute, smoothFilter, "same");
 
     #ifdef PRINT_PROCESS_SEGMENT
         cout << "first few elements in dataSmoothed: " << endl;
@@ -103,20 +103,20 @@ void ProcessSegment(arma::Row<float>& data, vector<TimePoint>& times, const stri
     dataSmoothed.elem(arma::find(dataSmoothed < 80.0)).fill(0.0);
     
     // Create a mask for click regions (ones filter)
-    arma::Row<double> segmentationFilter(1.0,256,arma::fill::ones);
-    arma::Row<double> dataMasked = arma::conv(dataSmoothed, segmentationFilter, "same");
+    arma::Col<double> segmentationFilter(1.0,256,arma::fill::ones);
+    arma::Col<double> dataMasked = arma::conv(dataSmoothed, segmentationFilter, "same");
     dataMasked.elem(arma::find(dataMasked > 0.0)).fill(1.0);
     
 
     // Find click region indices based on differences
-    arma::Row<double> diff = arma::diff(dataMasked);
+    arma::Col<double> diff = arma::diff(dataMasked);
     arma::uvec segmentBoundary = arma::find(diff != 0.0);
 
     if (segmentBoundary.n_elem > 0){
         vector<TimePoint> timestamps;
         segmentBoundary.insert_rows(0, 1);
         segmentBoundary(0) = 0;
-        vector<float> clickPeakAmps;
+        vector<double> clickPeakAmps;
         for (size_t i = 0; i < segmentBoundary.size() - 1; ++i) {
             int start_point = segmentBoundary[i];
             int end_point = segmentBoundary[i + 1];
@@ -124,11 +124,11 @@ void ProcessSegment(arma::Row<float>& data, vector<TimePoint>& times, const stri
             // Check if there's any non-zero value in the region
             if (arma::any(dataSmoothed.subvec(start_point, end_point - 1) != 0.0)) {
                 //arma::vec region_data = data.subvec(start_point, end_point - 1);
-                arma::Row<float> clickSegment = data.subvec(start_point, end_point - 1);
+                arma::Col<double> clickSegment = data.subvec(start_point, end_point - 1);
 
                 // Calculate the index (avoid potential iterator subtraction issues)
                 int peakIndex = arma::index_max(clickSegment);
-                float peakAmplitude = arma::max(clickSegment);
+                double peakAmplitude = arma::max(clickSegment);
                 
                 // Calculate click time based on sampling rate and peak index
                 long long seconds = ((start_point + peakIndex) * 10); // divide (...) by 1e5 then times 1e6
@@ -142,16 +142,16 @@ void ProcessSegment(arma::Row<float>& data, vector<TimePoint>& times, const stri
     }
 }
 
-void ProcessSegmentStacked(vector<float>& data, vector<TimePoint>& times, const string& outputFile) {
+void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const string& outputFile) {
     
     #ifdef PRINT_PROCESS_SEGMENT_1240
         cout << "Inside ProcessSegment1240() " << endl;
         cout << "data.size(): " << data.size() << endl;
     #endif
     
-    arma::Row<int16_t> ch1;
+    arma::Col<int16_t> ch1;
     int channelSize = data.size() / NUM_CHAN;
-    ch1.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance) 
+    ch1.set_size(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance) 
     
     // Iterate over the data in steps of 100
     for (size_t i = 0; i < NUM_PACKS_DETECT; ++i) {
@@ -181,15 +181,15 @@ void ProcessSegmentStacked(vector<float>& data, vector<TimePoint>& times, const 
 }
 
 
-void ProcessSegmentInterleaved(vector<float>& data, vector<TimePoint>& times, const string& outputFile, arma::Row<float>& ch1, arma::Row<float>& ch2, arma::Row<float>& ch3, arma::Row<float>& ch4) {
+void ProcessSegmentInterleaved(vector<double>& data, vector<TimePoint>& times, const string& outputFile, arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4) {
     
     size_t channelSize = data.size() / NUM_CHAN;
-    ch1.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance)
-    ch2.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance)
-    ch3.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance)
-    ch4.set_size(channelSize);                    // Reserve space in the arma::Row (optional but can improve performance)
+    ch1.set_size(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
+    ch2.set_size(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
+    ch3.set_size(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
+    ch4.set_size(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
 
-    // Iterate through the data vector and save every 4th element into the arma::Row
+    // Iterate through the data vector and save every 4th element into the arma::Col
     for (size_t i = 0, j = 0; i < data.size(); i += NUM_CHAN, ++j) {
         ch1(j) = data[i];  // Saving every 4th element into ch1
         ch2(j) = data[i+1]; // Saving every 4th element into ch1
@@ -215,7 +215,7 @@ void ProcessSegmentInterleaved(vector<float>& data, vector<TimePoint>& times, co
 
 }
 
-void WritePulseAmplitudes(const vector<float>& clickPeakAmps,
+void WritePulseAmplitudes(const vector<double>& clickPeakAmps,
                  const vector<TimePoint>& timestamps,
                  const string& filename) {
   std::ofstream outfile(filename, std::ios::app);

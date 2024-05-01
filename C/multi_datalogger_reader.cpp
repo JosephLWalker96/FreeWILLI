@@ -4,6 +4,7 @@ This is a C++ version of Python/multi_datalogger_reader.py
 
 Compile code manually:
 g++ multi_datalogger_reader.cpp process_data.cpp utils.cpp -o listen -larmadillo
+g++ -std=c++20 multi_datalogger_reader.cpp process_data.cpp utils.cpp -o listen -larmadillo -I/usr/include/sigpack-1.2.7/sigpack
 
 Execute (datalogger simulator):
 ./listen 192.168.7.2 1045 1240
@@ -28,9 +29,9 @@ TO DO:
 #include <cstdio>
 #include <string>
 #include <fstream>
+#include <mutex>
 #include <thread>
 #include <queue>
-#include <mutex>
 #include <vector>
 #include <chrono>
 #include <arpa/inet.h>
@@ -41,7 +42,7 @@ TO DO:
 #include <ctime>
 #include <cstdint>
 #include <armadillo>
-
+#include <sigpack.h>
 #include "process_data.h"
 #include "utils.h"
 #include "my_globals.h"
@@ -70,14 +71,69 @@ int MICRO_INCR;                                // time between packets
 const float TIME_WINDOW = 0.5;                 // fraction of a second to consider  
 const string OUTPUT_FILE = "clicks_data.txt";
 
+// Global Variables
+int UDP_PORT;              // Listening port
+string UDP_IP;             // IP address of data logger or simulator
+
+std::string outputFile = "Ccode_clicks.txt"; // Change to your desired file name
+
 std::queue<vector<uint8_t>> dataBuffer;
+vector<double> dataSegment;
+vector<std::chrono::system_clock::time_point> dataTimes;
 
 std::mutex dataBufferLock;                       // For thread-safe buffer access
 std::mutex dataSegmentLock;                       // For thread-safe buffer access
 std::mutex dataTimesLock;                       // For thread-safe buffer access
 std::mutex udpSocketLock;                       // For thread-safe buffer access
 
-void UdpListener(int datagramSocket) {
+int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0); // udp socket
+
+void restartListener(){
+    /*
+    Functionality:
+    This function is responsible for (re)starting the listener.
+    The socket connection is re(set). The  buffer (dataBuffer) and segment to be processed (dataSegment) are cleared.
+
+    */
+
+    udpSocketLock.lock();
+    if (close(datagramSocket) == -1) {
+        std::cerr << "Failed to close socket" << std::endl;
+        throw std::runtime_error("Failed to close socket");
+    }
+
+
+    datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (datagramSocket == -1) {
+        cerr << "Error creating socket" << endl;
+        throw std::runtime_error("Error creating socket");
+    }
+
+    struct sockaddr_in serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = inet_addr(UDP_IP.c_str());
+    serverAddr.sin_port = htons(UDP_PORT);
+
+    if (bind(datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+        cerr << "Error binding socket" << endl;
+        throw std::runtime_error("Error binding socket");
+    }
+    udpSocketLock.unlock();
+
+    dataBufferLock.lock();
+    ClearQueue(dataBuffer);
+    dataBufferLock.unlock();
+
+    dataSegmentLock.lock();
+    dataSegment.clear();
+    dataSegmentLock.unlock();
+
+    dataTimesLock.lock();
+    dataTimes.clear();
+    dataTimesLock.unlock();
+}
+
+void UdpListener() {
     /*
     Functionality:
     This function serves as a UDP listener that continuously listens for incoming UDP packets.
@@ -95,7 +151,7 @@ void UdpListener(int datagramSocket) {
         socklen_t addrLength = sizeof(addr);
         int bytesReceived;
         int printInterval = 500;
-        vector<uint8_t> dataBytes(PACKET_SIZE + 1); // + 1 to detect if an erroneous amount of data is being sent
+        vector<uint8_t> dataBytes(PACKET_SIZE + 2); // + 1 to detect if an erroneous amount of data is being sent
         auto startPacketTime = std::chrono::high_resolution_clock::now();
         
         while (true) {
@@ -108,8 +164,11 @@ void UdpListener(int datagramSocket) {
                 cerr << "Error in recvfrom" << endl;
                 continue;
             }
-
             dataBytes.resize(bytesReceived); // Adjust size based on actual bytes received
+            if (dataBytes.size() != bytesReceived){
+                cout << dataBytes.size() << endl;
+                cout << bytesReceived << endl;
+            }
             packetCounter += 1;
             if (packetCounter % printInterval == 0) {
                 auto endPacketTime = std::chrono::high_resolution_clock::now();
@@ -133,8 +192,8 @@ void UdpListener(int datagramSocket) {
     }
 }
 
-void DataProcessor(void (*ProcessingFunction)(vector<float>&, vector<TimePoint>&, const string&, 
-arma::Row<float>&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&)) {
+void DataProcessor(void (*ProcessingFunction)(vector<double>&, vector<TimePoint>&, const string&, 
+arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&)) {
     /*
     Functionality:
     This function serves as a data processor that continuously processes data segments retrieved from a shared buffer (dataBuffer).
@@ -148,16 +207,22 @@ arma::Row<float>&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&)) {
     */
 
     try {
+        // Define FIR filter
+        sp::FIR_filt<double, double, double> fir_filt;
+        arma::Col<double> b = sp::fir1_hp(16, 0.2);
+        fir_filt.set_coeffs(b);
+    
         bool previousTimeSet = false;
         std::chrono::time_point<std::chrono::system_clock> previousTime = std::chrono::time_point<std::chrono::system_clock>::min(); // CHECK VALUE
 
         while (true) {
             
             dataTimesLock.lock();
-            vector<std::chrono::system_clock::time_point> dataTimes;
+            dataTimes.clear();
             dataTimesLock.unlock();
+            
             dataTimesLock.lock();
-            vector<float> dataSegment;
+            dataSegment.clear();
             dataTimesLock.unlock();
             
             while (dataSegment.size() < DATA_SEGMENT_LENGTH) {
@@ -179,37 +244,64 @@ arma::Row<float>&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&)) {
                 if (dataBytes.size() != PACKET_SIZE){
                     cerr << "Error: recieved incorrect number of packets" << endl;
                     previousTimeSet = false; 
-                    //restartListener()
+                    restartListener();
                     continue;
                 }
                 
                 std::tm timeStruct;
+                //timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
+                //timeStruct.tm_mon = dataBytes[1] - 1;                     // Months are 0-indexed
+                //timeStruct.tm_mday = dataBytes[2];
                 timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
-                timeStruct.tm_mon = dataBytes[1] - 1;                     // Months are 0-indexed
-                timeStruct.tm_mday = dataBytes[2];
-                timeStruct.tm_hour = dataBytes[3];
-                timeStruct.tm_min = dataBytes[4];
-                timeStruct.tm_sec = dataBytes[5];
+                timeStruct.tm_mon = (int)dataBytes[1] - 1;                     // Months are 0-indexed
+                timeStruct.tm_mday = (int)dataBytes[2];
+                timeStruct.tm_hour = (int)dataBytes[3];
+                timeStruct.tm_min = (int)dataBytes[4];
+                timeStruct.tm_sec = (int)dataBytes[5];
 
-                uint32_t microSec = (static_cast<uint32_t>(dataBytes[6]) << 24) |
-                         (static_cast<uint32_t>(dataBytes[7]) << 16) |
-                         (static_cast<uint32_t>(dataBytes[8]) << 8) |
+                uint32_t microSec = (static_cast<uint32_t>(dataBytes[6]) << 24) +
+                         (static_cast<uint32_t>(dataBytes[7]) << 16) +
+                         (static_cast<uint32_t>(dataBytes[8]) << 8) +
                          static_cast<uint32_t>(dataBytes[9]);
                 
                 std::chrono::time_point<std::chrono::system_clock> specificTime = std::chrono::system_clock::from_time_t(mktime(&timeStruct));
                 specificTime += std::chrono::microseconds(microSec);
                 
-                if (previousTimeSet && (std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count()) != MICRO_INCR){
-                    cerr << "Error: Time not incremented by " <<  MICRO_INCR << endl; 
+                int microsecondDuration = std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count(); 
+                double elapsed_time_ms = std::chrono::duration<double, std::micro>(specificTime-previousTime).count();
+                
+                //cout << "microduration: " << microsecondDuration << " " << microSec <<  endl;
+                //cout << "elapsed_time_ms: " << elapsed_time_ms << " " << microSec << endl; 
+                
+                if (previousTimeSet && (microsecondDuration != MICRO_INCR)){
+                    //auto testVar = std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count();
+                    cerr << "Error: Time not incremented by " <<  MICRO_INCR << " " << microsecondDuration <<  endl; 
+                    
+                    std::time_t timeSpec = std::chrono::system_clock::to_time_t(specificTime);
+                    std::time_t timePrev = std::chrono::system_clock::to_time_t(previousTime);
+                    
+                    //int micSpec = std::chrono::duration_cast<std::chrono::microseconds>(specificTime);
+                    //int micPrev = std::chrono::duration_cast<std::chrono::microseconds>(previousTime);
+
+                    //cout << "spec time: " << std::ctime(&timeSpec) << endl;
+                    //cout << "prev time: " << std::ctime(&timePrev) << endl;
+                    
+                    
+                    dataTimesLock.lock();
+                    dataTimes.push_back(specificTime);
+                    dataTimesLock.unlock();
+                    
+                    PrintTimes(dataTimes);
+
                     previousTimeSet = false;
-                    //restartListener;
+                    //restartListener();
                     continue;
                 }
                 // Convert byte data to signed 16bit ints
-                vector<int16_t> data;
+                vector<double> data;
                 for (size_t i = 0; i < DATA_SIZE; i += 2) {
-                    int16_t value = (static_cast<int16_t>(dataBytes[12+i]) << 8) +
-                                   static_cast<int16_t>(dataBytes[i + 13]);
+                    double value = static_cast<double>(static_cast<int16_t>(dataBytes[12+i]) << 8) +
+                                   static_cast<double>(dataBytes[i + 13]);
                     data.push_back(value - 32768);
                 }
 
@@ -217,18 +309,12 @@ arma::Row<float>&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&)) {
                 dataTimes.push_back(specificTime);
                 dataTimesLock.unlock();
                 
-                // convert data to float
-                vector<float> floatData;
-                floatData.reserve(data.size());
-                std::transform(data.begin(), data.end(), std::back_inserter(floatData),
-                [](const auto& element) { return static_cast<float>(element); });
-
-
                 dataSegmentLock.lock();
-                dataSegment.insert(dataSegment.end(), floatData.begin(), floatData.end());
+                dataSegment.insert(dataSegment.end(), data.begin(), data.end());
                 dataSegmentLock.unlock();
 
                 previousTime = specificTime;
+                previousTimeSet = true;
             }
             
             #ifdef PRINT_DATA_PROCESSOR // print first few values in dataSegment
@@ -240,7 +326,7 @@ arma::Row<float>&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&)) {
                 cout << endl;
             #endif
            
-            arma::Row<float> ch1, ch2, ch3, ch4;
+            arma::Col<double> ch1, ch2, ch3, ch4;
             dataSegmentLock.lock();
             ProcessingFunction(dataSegment, dataTimes, OUTPUT_FILE, ch1, ch2, ch3, ch4);
             dataSegmentLock.unlock();
@@ -249,7 +335,12 @@ arma::Row<float>&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&)) {
             if (values.maxPeakIndex < 0){
                 continue;
             }
-            WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, "Ccode_clicks.txt");
+            WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, outputFile);
+            
+            arma::Col<double> ch1_filtered = fir_filt.filter(ch1);
+            arma::Col<double> ch2_filtered = fir_filt.filter(ch2);
+            arma::Col<double> ch3_filtered = fir_filt.filter(ch3);
+            arma::Col<double> ch4_filtered = fir_filt.filter(ch4);
         }
     } catch (const std::exception& e ){
         // Handle the exception
@@ -260,18 +351,18 @@ arma::Row<float>&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&)) {
 
 int main(int argc, char *argv[]){
     
-    string UDP_IP = argv[1];                                         // IP address of data logger or simulator
+    UDP_IP = argv[1];                                         // IP address of data logger or simulator
     if (UDP_IP == "self"){
         UDP_IP = "127.0.0.1";
     }
     
-    int UDP_PORT = std::stoi(argv[2]);                                     // Port to listen for UDP packets
+    UDP_PORT = std::stoi(argv[2]);                                     // Port to listen for UDP packets
     int firmwareVersion = std::stoi(argv[3]);
     printf("Listening to IP address %s and port %d \n", UDP_IP.c_str(),UDP_PORT);
 
     //import variables according to firmware version specified
     cout << "Assuming firmware version: " << firmwareVersion << endl;
-    void(*ProcessFncPtr)(vector<float>&, vector<TimePoint>&, const string&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&, arma::Row<float>&) = nullptr;
+    void(*ProcessFncPtr)(vector<double>&, vector<TimePoint>&, const string&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&) = nullptr;
     if (firmwareVersion == 1550){
         ProcessFile("1550_config.txt");
         ProcessFncPtr = ProcessSegmentInterleaved;
@@ -297,45 +388,28 @@ int main(int argc, char *argv[]){
     cout << "Data bytes per channel: " << DATA_BYTES_PER_CHANNEL << endl;
     cout << "Detecting over a time window of " << TIME_WINDOW << " seconds, using " << NUM_PACKS_DETECT <<  " packets" << endl;
 
-    std::string output_file = "Ccode_clicks.txt"; // Change to your desired file name
     
     // Open the file in write mode and clear its contents if it exists, create a new file otherwise
-    std::ofstream file(output_file, std::ofstream::out | std::ofstream::trunc);
+    std::ofstream file(outputFile, std::ofstream::out | std::ofstream::trunc);
 
     if (file.is_open()) {
         // Write header row (optional)
         file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << endl;
         file.close();
-        cout << "File created and cleared: " << output_file << endl;
+        cout << "File created and cleared: " << outputFile << endl;
     } else {
-        cerr << "Error: Unable to open file for writing: " << output_file << endl;
+        cerr << "Error: Unable to open file for writing: " << outputFile << endl;
         return 1; // Indicate error
     }
 
-    int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (datagramSocket == -1) {
-        cerr << "Error creating socket" << endl;
-        return 1;
-    }
-
-    struct sockaddr_in serverAddr;
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = inet_addr(UDP_IP.c_str());
-    serverAddr.sin_port = htons(UDP_PORT);
-
-    if (bind(datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
-        cerr << "Error binding socket" << endl;
-        return 1;
-    }
     
-
     //while (true)
-    std::thread udpThread(UdpListener, datagramSocket);
+    restartListener();
+    std::thread udpThread(UdpListener);//, datagramSocket);
     std::thread processorThread(DataProcessor, ProcessFncPtr);
 
     udpThread.join();
     processorThread.join();
     
-
     return 0;
 }

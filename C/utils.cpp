@@ -3,6 +3,8 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <queue>
+#include <vector>
 
 using std::cerr;
 using std::endl;
@@ -20,4 +22,9 @@ void ProcessFile(const string& fileName) {
     PACKET_SIZE = HEAD_SIZE + DATA_SIZE;                             //packet size (bytes) = 1252
     REQUIRED_BYTES = DATA_SIZE + HEAD_SIZE;
     DATA_BYTES_PER_CHANNEL = SAMPS_PER_CHANNEL * BYTES_PER_SAMP;     //number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
+}
+
+void ClearQueue(std::queue<std::vector<uint8_t>>& q){
+    std::queue<std::vector<uint8_t>> empty;
+    std::swap(q, empty);
 }
