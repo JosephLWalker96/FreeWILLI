@@ -49,7 +49,7 @@ DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& time
         result.minPeakIndex = peakIndex;
         result.maxPeakIndex = peakIndex;
         result.peakAmplitude.push_back(peakAmplitude);
-        long long microseconds = (long long)peakIndex / SAMPLE_RATE * 1e6;
+        long microseconds = ((long)peakIndex * 1e6) / SAMPLE_RATE;
         std::chrono::time_point<std::chrono::system_clock> maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
         result.peakTimes.push_back(maxPeakTime);
     }

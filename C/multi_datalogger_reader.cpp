@@ -14,11 +14,8 @@ Execute (datalogger):
 
 
 TO DO:
-  1) Check for data and time glitches
-  2) Restart threads if glitches occur
-  3) Decode bytes from buffer once
-  4) Refactor code
-  5) handle thread exceptions
+  1) Restart threads if glitches occur
+  2) handle thread exceptions
 
 
 */
@@ -151,13 +148,14 @@ void UdpListener() {
         socklen_t addrLength = sizeof(addr);
         int bytesReceived;
         int printInterval = 500;
-        vector<uint8_t> dataBytes(PACKET_SIZE + 2); // + 1 to detect if an erroneous amount of data is being sent
+        int receiveSize = PACKET_SIZE + 1;      // + 1 to detect if an erroneous amount of data is being sent
+        vector<uint8_t> dataBytes(receiveSize);
         auto startPacketTime = std::chrono::high_resolution_clock::now();
         
         while (true) {
             
             udpSocketLock.lock();
-            int bytesReceived = recvfrom(datagramSocket, dataBytes.data(), PACKET_SIZE, 0, (struct sockaddr*)&addr, &addrLength);
+            bytesReceived = recvfrom(datagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr*)&addr, &addrLength);
             udpSocketLock.unlock();
             
             if (bytesReceived == -1) {
@@ -165,10 +163,6 @@ void UdpListener() {
                 continue;
             }
             dataBytes.resize(bytesReceived); // Adjust size based on actual bytes received
-            if (dataBytes.size() != bytesReceived){
-                cout << dataBytes.size() << endl;
-                cout << bytesReceived << endl;
-            }
             packetCounter += 1;
             if (packetCounter % printInterval == 0) {
                 auto endPacketTime = std::chrono::high_resolution_clock::now();
@@ -221,9 +215,9 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             dataTimes.clear();
             dataTimesLock.unlock();
             
-            dataTimesLock.lock();
+            dataSegmentLock.lock();
             dataSegment.clear();
-            dataTimesLock.unlock();
+            dataSegmentLock.unlock();
             
             while (dataSegment.size() < DATA_SEGMENT_LENGTH) {
                 
@@ -248,10 +242,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                     continue;
                 }
                 
-                std::tm timeStruct;
-                //timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
-                //timeStruct.tm_mon = dataBytes[1] - 1;                     // Months are 0-indexed
-                //timeStruct.tm_mday = dataBytes[2];
+                std::tm timeStruct{};
                 timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
                 timeStruct.tm_mon = (int)dataBytes[1] - 1;                     // Months are 0-indexed
                 timeStruct.tm_mday = (int)dataBytes[2];
@@ -259,48 +250,40 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                 timeStruct.tm_min = (int)dataBytes[4];
                 timeStruct.tm_sec = (int)dataBytes[5];
 
-                uint32_t microSec = (static_cast<uint32_t>(dataBytes[6]) << 24) +
-                         (static_cast<uint32_t>(dataBytes[7]) << 16) +
-                         (static_cast<uint32_t>(dataBytes[8]) << 8) +
-                         static_cast<uint32_t>(dataBytes[9]);
+                int64_t microSec = (static_cast<int64_t>(dataBytes[6]) << 24) +
+                         (static_cast<int64_t>(dataBytes[7]) << 16) +
+                         (static_cast<int64_t>(dataBytes[8]) << 8) +
+                         static_cast<int64_t>(dataBytes[9]);
+                                
                 
-                std::chrono::time_point<std::chrono::system_clock> specificTime = std::chrono::system_clock::from_time_t(mktime(&timeStruct));
+                // Use std::mktime to convert std::tm to std::time_t
+                std::time_t timeResult = std::mktime(&timeStruct);
+
+                if (timeResult == std::time_t(-1)) {
+                    cerr << "failure in mktime!! " << endl;
+               }
+
+
+                std::chrono::time_point<std::chrono::system_clock> specificTime = std::chrono::system_clock::from_time_t(timeResult);
                 specificTime += std::chrono::microseconds(microSec);
                 
-                int microsecondDuration = std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count(); 
-                double elapsed_time_ms = std::chrono::duration<double, std::micro>(specificTime-previousTime).count();
                 
-                //cout << "microduration: " << microsecondDuration << " " << microSec <<  endl;
-                //cout << "elapsed_time_ms: " << elapsed_time_ms << " " << microSec << endl; 
+                auto duration = specificTime - previousTime;
                 
-                if (previousTimeSet && (microsecondDuration != MICRO_INCR)){
-                    //auto testVar = std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count();
-                    cerr << "Error: Time not incremented by " <<  MICRO_INCR << " " << microsecondDuration <<  endl; 
-                    
-                    std::time_t timeSpec = std::chrono::system_clock::to_time_t(specificTime);
-                    std::time_t timePrev = std::chrono::system_clock::to_time_t(previousTime);
-                    
-                    //int micSpec = std::chrono::duration_cast<std::chrono::microseconds>(specificTime);
-                    //int micPrev = std::chrono::duration_cast<std::chrono::microseconds>(previousTime);
+                unsigned long long elapsed_time_ms = std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count();
 
-                    //cout << "spec time: " << std::ctime(&timeSpec) << endl;
-                    //cout << "prev time: " << std::ctime(&timePrev) << endl;
-                    
-                    
-                    dataTimesLock.lock();
-                    dataTimes.push_back(specificTime);
-                    dataTimesLock.unlock();
-                    
-                    PrintTimes(dataTimes);
 
+                if (previousTimeSet && (elapsed_time_ms != MICRO_INCR)){
+                    cerr << "Error: Time not incremented by " <<  MICRO_INCR << " " << elapsed_time_ms <<  endl; 
                     previousTimeSet = false;
-                    //restartListener();
+                    restartListener();
                     continue;
                 }
+
                 // Convert byte data to signed 16bit ints
                 vector<double> data;
                 for (size_t i = 0; i < DATA_SIZE; i += 2) {
-                    double value = static_cast<double>(static_cast<int16_t>(dataBytes[12+i]) << 8) +
+                    double value = static_cast<double>(static_cast<uint16_t>(dataBytes[12+i]) << 8) +
                                    static_cast<double>(dataBytes[i + 13]);
                     data.push_back(value - 32768);
                 }
