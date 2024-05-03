@@ -24,7 +24,7 @@ extern int NUM_PACKS_DETECT;
 extern int MICRO_INCR;              // time between packets
 extern int SAMPLE_RATE;
 
-extern const float TIME_WINDOW;        // fraction of a second to consider  
+extern const double TIME_WINDOW;        // fraction of a second to consider  
 extern const std::string OUTPUT_FILE;
 extern int DATA_SEGMENT_LENGTH;
 #endif

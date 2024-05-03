@@ -43,7 +43,9 @@ TO DO:
 #include <cstdint>
 #include <armadillo>
 #include <sigpack.h>
+
 #include "process_data.h"
+#include "TDOA_estimation.h"
 #include "utils.h"
 #include "my_globals.h"
 
@@ -54,6 +56,7 @@ using std::string;
 using std::cerr;
 using std::vector;
 using std::ifstream;
+using namespace std::chrono_literals;
 
 int HEAD_SIZE;                                 //packet head size (bytes)
 int NUM_CHAN;                                  //number of channels per packet
@@ -68,7 +71,7 @@ int packetCounter = 0;
 int DATA_SEGMENT_LENGTH;
 int SAMPLE_RATE = 1e5;
 int MICRO_INCR;                                // time between packets
-const float TIME_WINDOW = 0.5;                 // fraction of a second to consider  
+const double TIME_WINDOW = 0.01;                 // fraction of a second to consider  
 const string OUTPUT_FILE = "clicks_data.txt";
 
 // Global Variables
@@ -232,7 +235,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                 dataBufferLock.unlock();
 
                 if (qSize < 1){
-                    // sleep function here
+                    std::this_thread::sleep_for(200ms);
                     continue;
                 }
                 
@@ -287,27 +290,27 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                 }
 
                 // Convert byte data to signed 16bit ints
-                vector<double> data;
+                //vector<double> data;
+                dataSegmentLock.lock();
                 for (size_t i = 0; i < DATA_SIZE; i += 2) {
-                    double value = static_cast<double>(static_cast<uint16_t>(dataBytes[12+i]) << 8) +
-                                   static_cast<double>(dataBytes[i + 13]);
-                    data.push_back(value - 32768);
+                    double value = static_cast<double>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
+                                   static_cast<double>(dataBytes[i + HEAD_SIZE + 1]);
+                    dataSegment.push_back(value - 32768.0);
                 }
+                dataSegmentLock.unlock();
 
                 dataTimesLock.lock();
                 dataTimes.push_back(specificTime);
                 dataTimesLock.unlock();
                 
-                dataSegmentLock.lock();
-                dataSegment.insert(dataSegment.end(), data.begin(), data.end());
-                dataSegmentLock.unlock();
-
                 previousTime = specificTime;
                 previousTimeSet = true;
-
+                
+                /*
                 if (withProbability(0.001)){
                     throw std::runtime_error("An error occurred");
                 }
+                */
 
             }
             
@@ -321,20 +324,37 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             #endif
            
             arma::Col<double> ch1, ch2, ch3, ch4;
+            
             dataSegmentLock.lock();
             ProcessingFunction(dataSegment, dataTimes, OUTPUT_FILE, ch1, ch2, ch3, ch4);
             dataSegmentLock.unlock();
-            int threshold = 80;
+            
+            double threshold = 80.0;
+            
             DetectionResult values = ThresholdDetect(ch1, dataTimes, threshold);
             if (values.maxPeakIndex < 0){
+                cout << "No pulse detected" << endl;
                 continue;
             }
+            cout << "Pulse detected" << endl;
             WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, outputFile);
             
             arma::Col<double> ch1_filtered = fir_filt.filter(ch1);
             arma::Col<double> ch2_filtered = fir_filt.filter(ch2);
             arma::Col<double> ch3_filtered = fir_filt.filter(ch3);
             arma::Col<double> ch4_filtered = fir_filt.filter(ch4);
+            
+            arma::Mat<double> data(ch1_filtered.n_elem, 4);
+            
+            data.insert_cols(0,ch1_filtered);
+            data.insert_cols(1,ch2_filtered);
+            data.insert_cols(2,ch3_filtered);
+            data.insert_cols(3,ch4_filtered);
+            cout << "Made it to function call" << endl; 
+            int interp = 16;
+            GCC_PHAT(data, interp);
+        
+
         }
     } catch (const std::exception& e ){
         // Handle the exception

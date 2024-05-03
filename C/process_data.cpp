@@ -39,8 +39,8 @@ void PrintTimes(const vector<TimePoint>& timestamps){
 
 
 
-DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& times, int threshold){
-    DetectionResult result;
+DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& times, double threshold){
+    DetectionResult result{};
 
     int peakIndex = arma::index_max(data);
     double peakAmplitude = arma::max(data);
@@ -143,7 +143,11 @@ void ProcessSegment(arma::Col<double>& data, vector<TimePoint>& times, const str
 }
 
 void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const string& outputFile) {
-    
+    //
+    // THIS FUNCTION IS DEPRICATED
+    //
+
+
     #ifdef PRINT_PROCESS_SEGMENT_1240
         cout << "Inside ProcessSegment1240() " << endl;
         cout << "data.size(): " << data.size() << endl;

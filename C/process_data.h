@@ -22,6 +22,6 @@ void ProcessSegment(arma::Col<double>& data, std::vector<TimePoint>& times, cons
 void ProcessSegmentStacked(std::vector<double>& data, std::vector<TimePoint>& times, const std::string& OUTPUT_FILE);
 void ProcessSegmentInterleaved(std::vector<double>& data, std::vector<TimePoint>& times, const std::string& OUTPUT_FILE,
                                arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4);
-DetectionResult ThresholdDetect(arma::Col<double>& data, std::vector<TimePoint>& times, int threshold);
+DetectionResult ThresholdDetect(arma::Col<double>& data, std::vector<TimePoint>& times, double threshold);
 void WritePulseAmplitudes(const std::vector<double>& click_amps, const std::vector<std::chrono::system_clock::time_point>& timestamps, const std::string& filename);
 #endif
