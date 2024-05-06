@@ -220,11 +220,21 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
         sp::FIR_filt<double, double, double> fir_filt;
         arma::Col<double> b = sp::fir1_hp(16, 0.2);
         fir_filt.set_coeffs(b);
+        //cout << "b: " << b << endl;
+
         
         // Define FIR filter using the liquid library
-        unsigned int h_len=21;  // filter order
-        float h[h_len];         // filter coefficients
-        firfilt_crcf q = firfilt_crcf_create(h,h_len);// create filter object
+        unsigned int h_len=31;  // filter order
+        float h[h_len] = { 8.5304705e-18, -1.2040846e-03, -2.7904883e-03, -4.2366693e-03,
+ -3.9514871e-03, -9.6724173e-18,  8.2750460e-03,  1.8624326e-02,
+  2.5445996e-02,  2.1282293e-02,  2.4025036e-17, -3.9675705e-02,
+ -9.2092186e-02, -1.4542012e-01, -1.8531199e-01,  8.0040973e-01,
+ -1.8531199e-01, -1.4542012e-01, -9.2092186e-02, -3.9675705e-02,
+  2.4025036e-17,  2.1282293e-02,  2.5445996e-02,  1.8624326e-02,
+  8.2750460e-03, -9.6724173e-18, -3.9514871e-03, -4.2366693e-03,
+ -2.7904883e-03, -1.2040846e-03,  8.5304705e-18};         // filter coefficients
+        firfilt_rrrf q = firfilt_rrrf_create(h,h_len);// create filter object
+        // options
 
         bool previousTimeSet = false;
         std::chrono::time_point<std::chrono::system_clock> previousTime = std::chrono::time_point<std::chrono::system_clock>::min(); // CHECK VALUE
@@ -353,25 +363,48 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             
 
             // example using the liquid library
-            std::complex<float> ch1_filtered_test;
-            std::complex<float> ch1_conv = arma::conv_to<std::complex<float>>::from(ch1);
-            firfilt_crcf_push(q, ch1_conv);    // push input sample
-            firfilt_crcf_execute(q,&ch1_filtered_test); // compute output
+            //cout << "ch1.n_elem " << ch1.n_elem << endl;
+            float ch1_filtered_test[ch1.n_elem];
+            float ch2_filtered_test[ch1.n_elem];
+            float ch3_filtered_test[ch1.n_elem];
+            float ch4_filtered_test[ch1.n_elem];
+            
 
+            for (int i=0; i<ch1.n_elem; i++) {
+                firfilt_rrrf_push(q, ch1(i));
+                firfilt_rrrf_execute(q, &ch1_filtered_test[i]);
+            }
+            for (int i=0; i<ch2.n_elem; i++) {
+                firfilt_rrrf_push(q, ch2(i));
+                firfilt_rrrf_execute(q, &ch2_filtered_test[i]);
+            }
+            for (int i=0; i<ch3.n_elem; i++) {
+                firfilt_rrrf_push(q, ch3(i));
+                firfilt_rrrf_execute(q, &ch3_filtered_test[i]);
+            }
+            for (int i=0; i<ch4.n_elem; i++) {
+                firfilt_rrrf_push(q, ch4(i));
+                firfilt_rrrf_execute(q, &ch4_filtered_test[i]);
+            }
+
+
+
+            /*
             arma::Col<double> ch1_filtered = fir_filt.filter(ch1);
             arma::Col<double> ch2_filtered = fir_filt.filter(ch2);
             arma::Col<double> ch3_filtered = fir_filt.filter(ch3);
             arma::Col<double> ch4_filtered = fir_filt.filter(ch4);
-            
-            arma::Mat<double> data(ch1_filtered.n_elem, 4);
+            */ 
+            arma::Mat<double> data(ch1.n_elem, 4);
             
             data.insert_cols(0,ch1_filtered);
             data.insert_cols(1,ch1_filtered);
             data.insert_cols(2,ch1_filtered);
             data.insert_cols(3,ch1_filtered);
+            
             //cout << "Made it to function call" << endl; 
             int interp = 16;
-            GCC_PHAT(data, interp);
+            //GCC_PHAT(data, interp);
         
 
         }
@@ -385,6 +418,8 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
 
 
 int main(int argc, char *argv[]){
+    arma::arma_version ver;
+    cout << "ARMA version: "<< ver.as_string() << endl;
     
     UDP_IP = argv[1];                                         // IP address of data logger or simulator
     if (UDP_IP == "self"){
