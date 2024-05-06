@@ -5,6 +5,7 @@ This is a C++ version of Python/multi_datalogger_reader.py
 Compile code manually:
 g++ multi_datalogger_reader.cpp process_data.cpp utils.cpp -o listen -larmadillo
 g++ -std=c++20 multi_datalogger_reader.cpp process_data.cpp utils.cpp -o listen -larmadillo -I/usr/include/sigpack-1.2.7/sigpack
+g++ -std=c++20 multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -larmadillo -I/usr/include/sigpack-1.2.7/sigpack -lliquid
 
 Execute (datalogger simulator):
 ./listen 192.168.7.2 1045 1240
@@ -43,6 +44,10 @@ TO DO:
 #include <cstdint>
 #include <armadillo>
 #include <sigpack.h>
+
+#include <complex>
+#include <liquid/liquid.h>
+//#include <liquid.h>
 
 #include "process_data.h"
 #include "TDOA_estimation.h"
@@ -189,7 +194,8 @@ void UdpListener() {
         }
     } catch (const std::exception& e ){
         // Handle the exception
-        cerr << "Error occured in UDPListener Thread" << endl;
+        cerr << "Error occured in UDP Listener Thread: " << endl;
+        cerr << e.what() << endl;
         errorOccurred = true;
 
     }
@@ -214,7 +220,19 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
         sp::FIR_filt<double, double, double> fir_filt;
         arma::Col<double> b = sp::fir1_hp(16, 0.2);
         fir_filt.set_coeffs(b);
-    
+        
+        // options
+        unsigned int h_len=21;  // filter order
+        float h[h_len];         // filter coefficients
+
+        // ... initialize filter coefficients ...
+
+        // create filter object
+        firfilt_crcf q = firfilt_crcf_create(h,h_len);
+
+        std::complex<float> x;    // input sample
+        std::complex<float> y;    // output sample
+        
         bool previousTimeSet = false;
         std::chrono::time_point<std::chrono::system_clock> previousTime = std::chrono::time_point<std::chrono::system_clock>::min(); // CHECK VALUE
 
@@ -309,8 +327,10 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                 /*
                 if (withProbability(0.001)){
                     throw std::runtime_error("An error occurred");
+
                 }
                 */
+                
 
             }
             
@@ -333,10 +353,10 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             
             DetectionResult values = ThresholdDetect(ch1, dataTimes, threshold);
             if (values.maxPeakIndex < 0){
-                cout << "No pulse detected" << endl;
+                //cout << "No pulse detected" << endl;
                 continue;
             }
-            cout << "Pulse detected" << endl;
+            //cout << "Pulse detected" << endl;
             WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, outputFile);
             
             arma::Col<double> ch1_filtered = fir_filt.filter(ch1);
@@ -350,7 +370,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             data.insert_cols(1,ch2_filtered);
             data.insert_cols(2,ch3_filtered);
             data.insert_cols(3,ch4_filtered);
-            cout << "Made it to function call" << endl; 
+            //cout << "Made it to function call" << endl; 
             int interp = 16;
             GCC_PHAT(data, interp);
         
@@ -358,7 +378,8 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
         }
     } catch (const std::exception& e ){
         // Handle the exception
-        cerr << "Error occured in data processor  Thread" << endl;
+        cerr << "Error occured in data processor thread" << endl;
+        cerr << e.what() << endl;
         errorOccurred = true;
       }
 }
@@ -428,7 +449,7 @@ int main(int argc, char *argv[]){
         processorThread.join();
        
         if (errorOccurred){
-            cout << "Error occurred, restarting threads..." << endl;
+            cout << "Restarting threads..." << endl;
         }
         else {
             cout << "Unknown problemed occurred" << endl;
