@@ -216,23 +216,16 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
     */
 
     try {
-        // Define FIR filter
+        // Define FIR filter using SigPack library
         sp::FIR_filt<double, double, double> fir_filt;
         arma::Col<double> b = sp::fir1_hp(16, 0.2);
         fir_filt.set_coeffs(b);
         
-        // options
+        // Define FIR filter using the liquid library
         unsigned int h_len=21;  // filter order
         float h[h_len];         // filter coefficients
+        firfilt_crcf q = firfilt_crcf_create(h,h_len);// create filter object
 
-        // ... initialize filter coefficients ...
-
-        // create filter object
-        firfilt_crcf q = firfilt_crcf_create(h,h_len);
-
-        std::complex<float> x;    // input sample
-        std::complex<float> y;    // output sample
-        
         bool previousTimeSet = false;
         std::chrono::time_point<std::chrono::system_clock> previousTime = std::chrono::time_point<std::chrono::system_clock>::min(); // CHECK VALUE
 
@@ -327,7 +320,6 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                 /*
                 if (withProbability(0.001)){
                     throw std::runtime_error("An error occurred");
-
                 }
                 */
                 
@@ -359,6 +351,13 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             //cout << "Pulse detected" << endl;
             WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, outputFile);
             
+
+            // example using the liquid library
+            std::complex<float> ch1_filtered_test;
+            std::complex<float> ch1_conv = arma::conv_to<std::complex<float>>::from(ch1);
+            firfilt_crcf_push(q, ch1_conv);    // push input sample
+            firfilt_crcf_execute(q,&ch1_filtered_test); // compute output
+
             arma::Col<double> ch1_filtered = fir_filt.filter(ch1);
             arma::Col<double> ch2_filtered = fir_filt.filter(ch2);
             arma::Col<double> ch3_filtered = fir_filt.filter(ch3);
@@ -367,9 +366,9 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             arma::Mat<double> data(ch1_filtered.n_elem, 4);
             
             data.insert_cols(0,ch1_filtered);
-            data.insert_cols(1,ch2_filtered);
-            data.insert_cols(2,ch3_filtered);
-            data.insert_cols(3,ch4_filtered);
+            data.insert_cols(1,ch1_filtered);
+            data.insert_cols(2,ch1_filtered);
+            data.insert_cols(3,ch1_filtered);
             //cout << "Made it to function call" << endl; 
             int interp = 16;
             GCC_PHAT(data, interp);
