@@ -60,7 +60,7 @@ else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
 
-TIME_WINDOW = .5                                                         # fraction of a second to consider  
+TIME_WINDOW = .01                                                         # fraction of a second to consider  
 NUM_PACKS_DETECT = round(TIME_WINDOW * SAMPLE_RATE / SAMPS_PER_CHANNEL)  # the number of data packets that are needed to perform energy detection 
 
 print('Bytes per packet:       ',         REQUIRED_BYTES)
