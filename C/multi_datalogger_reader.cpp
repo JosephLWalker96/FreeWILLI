@@ -233,6 +233,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
   2.4025036e-17,  2.1282293e-02,  2.5445996e-02,  1.8624326e-02,
   8.2750460e-03, -9.6724173e-18, -3.9514871e-03, -4.2366693e-03,
  -2.7904883e-03, -1.2040846e-03,  8.5304705e-18};         // filter coefficients
+        
         firfilt_rrrf q = firfilt_rrrf_create(h,h_len);// create filter object
         // options
 
@@ -394,7 +395,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             arma::Col<double> ch2_filtered = fir_filt.filter(ch2);
             arma::Col<double> ch3_filtered = fir_filt.filter(ch3);
             arma::Col<double> ch4_filtered = fir_filt.filter(ch4);
-            */ 
+             
             arma::Mat<double> data(ch1.n_elem, 4);
             
             data.insert_cols(0,ch1_filtered);
@@ -405,7 +406,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             //cout << "Made it to function call" << endl; 
             int interp = 16;
             //GCC_PHAT(data, interp);
-        
+            */
 
         }
     } catch (const std::exception& e ){
@@ -420,7 +421,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
 int main(int argc, char *argv[]){
     arma::arma_version ver;
     cout << "ARMA version: "<< ver.as_string() << endl;
-    
+
     UDP_IP = argv[1];                                         // IP address of data logger or simulator
     if (UDP_IP == "self"){
         UDP_IP = "127.0.0.1";

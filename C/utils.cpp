@@ -1,4 +1,3 @@
-
 #include "my_globals.h"
 #include <iostream>
 #include <string>
