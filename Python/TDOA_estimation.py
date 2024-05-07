@@ -33,6 +33,7 @@ def GCC_PHAT(channel_matrix, fs, max_tau=None, interp=16):
         for ref_ind in range(sig_ind+1,len(channel_matrix)):
             sig = np.abs(channel_matrix[sig_ind])
             refsig = np.abs(channel_matrix[ref_ind])
+            print("sig len: ", len(sig))
             
             #return
             # make sure the length for the FFT is larger or equal than len(sig) + len(refsig)

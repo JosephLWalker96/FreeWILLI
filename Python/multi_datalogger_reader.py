@@ -92,6 +92,8 @@ def restartListener():
         elif UDP_IP == "192.168.7.2": # IP address of Joe's simulator
             udpSocket.bind((UDP_IP, UDP_PORT))
             print('Listening to simulator')
+        elif UDP_IP == "192.168.7.7": # IP address of Joe's simulator
+            udpSocket.bind((UDP_IP, UDP_PORT))
         elif UDP_IP == "self": # IP address of Joe's simulator
             udpSocket.bind(("127.0.0.1", UDP_PORT))
         else:
@@ -176,6 +178,7 @@ def DataProcessor():
                 with dataBufferLock:
                     qSize = dataBuffer.qsize()
                 if qSize < 1:
+                    print("sleeping")
                     time.sleep(.2)
                     continue
                 
@@ -234,7 +237,7 @@ def DataProcessor():
             #print("pulse detected! ", clickAmplitudes[0])
             WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
             ### detection code
-            """
+            
             ch1Filtered = filtfilt(b, a, ch1)
             ch2Filtered = filtfilt(b, a, ch2)
             ch3Filtered = filtfilt(b, a, ch3)
@@ -243,10 +246,12 @@ def DataProcessor():
             dataMatrixFiltered = np.vstack(np.array([ch1Filtered, ch2Filtered,
                                  ch3Filtered, ch4Filtered]))
             
-            tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=16)
+            gccStart = time.time()
+            tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=1)
+            print("GCC: ", time.time() - gccStart)
             #print('here')
             #print(tdoaEstimates)
-            """
+            
     except Exception as e:
         print(f"Error occurred in Data Processor thread: {e}")
         traceback.print_exc()  # Print detailed traceback information

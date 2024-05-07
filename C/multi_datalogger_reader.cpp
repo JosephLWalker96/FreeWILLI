@@ -426,7 +426,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             }
 
             auto beforeGCC = std::chrono::steady_clock::now();
-            GCC_PHAT_Eigen(dataE, interp);
+            GCC_PHAT(dataMatrix, interp);
             auto afterGCC = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
             cout << "GCC: " << durationGCC.count() << endl;
