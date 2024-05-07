@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <chrono>
-//#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <iostream>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 #include <iomanip> // for output formatting
@@ -187,11 +187,6 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
 
 void ProcessSegmentInterleaved(vector<double>& data, vector<TimePoint>& times, const string& outputFile, arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4) {
     
-    size_t channelSize = data.size() / NUM_CHAN;
-    ch1.set_size(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
-    ch2.set_size(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
-    ch3.set_size(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
-    ch4.set_size(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
 
     // Iterate through the data vector and save every 4th element into the arma::Col
     for (size_t i = 0, j = 0; i < data.size(); i += NUM_CHAN, ++j) {

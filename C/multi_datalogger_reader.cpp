@@ -6,6 +6,7 @@ Compile code manually:
 g++ multi_datalogger_reader.cpp process_data.cpp utils.cpp -o listen -larmadillo
 g++ -std=c++20 multi_datalogger_reader.cpp process_data.cpp utils.cpp -o listen -larmadillo -I/usr/include/sigpack-1.2.7/sigpack
 g++ -std=c++20 multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -larmadillo -I/usr/include/sigpack-1.2.7/sigpack -lliquid
+g++ -Ofast -std=c++20 -march=native -flto multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -DARMA_DONT_USE_WRAPPER -DNDEBUG -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid
 
 Execute (datalogger simulator):
 ./listen 192.168.7.2 1045 1240
@@ -20,7 +21,6 @@ TO DO:
 
 
 */
-
 
 #include <iostream>
 #include <cstring>
@@ -44,6 +44,8 @@ TO DO:
 #include <cstdint>
 #include <armadillo>
 #include <sigpack.h>
+//#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 
 #include <complex>
 #include <liquid/liquid.h>
@@ -72,7 +74,6 @@ int PACKET_SIZE;                               //packet size (bytes)
 int REQUIRED_BYTES;
 int DATA_BYTES_PER_CHANNEL;                    //number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
 int NUM_PACKS_DETECT;
-int packetCounter = 0;
 int DATA_SEGMENT_LENGTH;
 int SAMPLE_RATE = 1e5;
 int MICRO_INCR;                                // time between packets
@@ -97,8 +98,10 @@ std::mutex udpSocketLock;                       // For thread-safe buffer access
 std::atomic<bool> errorOccurred(false);
 
 int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0); // udp socket
+int packetCounter = 0;
 
 void restartListener(){
+    cout << "restarting listener: " << endl;
     /*
     Functionality:
     This function is responsible for (re)starting the listener.
@@ -159,7 +162,7 @@ void UdpListener() {
     try {
         struct sockaddr_in addr;
         socklen_t addrLength = sizeof(addr);
-        int bytesReceived;
+        //int bytesReceived;
         int printInterval = 500;
         int receiveSize = PACKET_SIZE + 1;      // + 1 to detect if an erroneous amount of data is being sent
         vector<uint8_t> dataBytes(receiveSize);
@@ -168,7 +171,7 @@ void UdpListener() {
         while (!errorOccurred) {
             
             udpSocketLock.lock();
-            bytesReceived = recvfrom(datagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr*)&addr, &addrLength);
+            ssize_t bytesReceived = recvfrom(datagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr*)&addr, &addrLength);
             udpSocketLock.unlock();
             
             if (bytesReceived == -1) {
@@ -249,14 +252,24 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             dataSegmentLock.lock();
             dataSegment.clear();
             dataSegmentLock.unlock();
+    
+            size_t channelSize = DATA_SEGMENT_LENGTH / NUM_CHAN;
+            //arma::Col<double> ch1, ch2, ch3, ch4;
+            arma::Col<double> ch1(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
+            arma::Col<double> ch2(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
+            arma::Col<double> ch3(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
+            arma::Col<double> ch4(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
+            
+            arma::Mat<double> dataMatrix(ch1.n_elem, 4);
             
             while (dataSegment.size() < DATA_SEGMENT_LENGTH) {
                 
                 dataBufferLock.lock();
                 int qSize = dataBuffer.size();
                 dataBufferLock.unlock();
-
+                //cout << "qSize before: " << qSize << endl;
                 if (qSize < 1){
+                    cout << "qSize: " << qSize << endl;
                     std::this_thread::sleep_for(200ms);
                     continue;
                 }
@@ -346,7 +359,6 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                 cout << endl;
             #endif
            
-            arma::Col<double> ch1, ch2, ch3, ch4;
             
             dataSegmentLock.lock();
             ProcessingFunction(dataSegment, dataTimes, OUTPUT_FILE, ch1, ch2, ch3, ch4);
@@ -365,6 +377,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
 
             // example using the liquid library
             //cout << "ch1.n_elem " << ch1.n_elem << endl;
+            /*
             float ch1_filtered_test[ch1.n_elem];
             float ch2_filtered_test[ch1.n_elem];
             float ch3_filtered_test[ch1.n_elem];
@@ -387,25 +400,43 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                 firfilt_rrrf_push(q, ch4(i));
                 firfilt_rrrf_execute(q, &ch4_filtered_test[i]);
             }
+            */
 
 
-
-            /*
+            
             arma::Col<double> ch1_filtered = fir_filt.filter(ch1);
             arma::Col<double> ch2_filtered = fir_filt.filter(ch2);
             arma::Col<double> ch3_filtered = fir_filt.filter(ch3);
             arma::Col<double> ch4_filtered = fir_filt.filter(ch4);
-             
-            arma::Mat<double> data(ch1.n_elem, 4);
             
-            data.insert_cols(0,ch1_filtered);
-            data.insert_cols(1,ch1_filtered);
-            data.insert_cols(2,ch1_filtered);
-            data.insert_cols(3,ch1_filtered);
+            
+            dataMatrix.insert_cols(0,ch1);
+            dataMatrix.insert_cols(1,ch2);
+            dataMatrix.insert_cols(2,ch3);
+            dataMatrix.insert_cols(3,ch4);
             
             //cout << "Made it to function call" << endl; 
-            int interp = 16;
-            //GCC_PHAT(data, interp);
+            int interp = 1;
+            
+            Eigen::MatrixXd dataE(dataMatrix.n_rows, dataMatrix.n_cols);
+            for (int i = 0; i < dataMatrix.n_rows; ++i) {
+                for (int j = 0; j < dataMatrix.n_cols; ++j) {
+                    dataE(i, j) = dataMatrix(i, j);
+                }
+            }
+
+            auto beforeGCC = std::chrono::steady_clock::now();
+            GCC_PHAT_Eigen(dataE, interp);
+            auto afterGCC = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
+            cout << "GCC: " << durationGCC.count() << endl;
+            
+            /*
+            auto beforeTest = std::chrono::high_resolution_clock::now();
+            std::this_thread::sleep_for(200ms);
+            auto afterTest = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> durationTest = afterTest - beforeTest;
+            cout << "Test: " << durationTest.count() << endl;
             */
 
         }
