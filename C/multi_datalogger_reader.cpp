@@ -426,7 +426,10 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             }
 
             auto beforeGCC = std::chrono::steady_clock::now();
-            GCC_PHAT(dataMatrix, interp);
+            
+            //arma::Mat<double> resultMatrix = GCC_PHAT(dataMatrix, interp);
+            Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, interp);
+            
             auto afterGCC = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
             cout << "GCC: " << durationGCC.count() << endl;
@@ -438,6 +441,16 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             std::chrono::duration<double> durationTest = afterTest - beforeTest;
             cout << "Test: " << durationTest.count() << endl;
             */
+
+            // Print the matrix (optional)
+            
+            for (int ii = 0; ii < 4; ++ii) {
+                for (int jj = 0; jj < 4; ++jj) {
+                    cout << resultMatrix(ii, jj) << " ";
+                }
+                cout << endl;
+            }
+            
 
         }
     } catch (const std::exception& e ){

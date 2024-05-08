@@ -27,10 +27,9 @@ using std::vector;
 using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
-
-void GCC_PHAT(arma::Mat<double>& data, int interp){
+arma::Mat<double> GCC_PHAT(arma::Mat<double>& data, int interp){
     
-    double tau_matrix[NUM_CHAN][NUM_CHAN] = {0.0};
+    arma::Mat<double> tau_matrix(NUM_CHAN, NUM_CHAN, arma::fill::zeros);
 
     for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++ ){
         for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
@@ -43,6 +42,12 @@ void GCC_PHAT(arma::Mat<double>& data, int interp){
 
             arma::cx_vec SIG1 = arma::fft(sig1,n);
             arma::cx_vec SIG2 = arma::fft(sig2,n);
+            
+            cout << "SIG1: "; 
+            for (int i = 0; i < 20; i++){
+                cout << SIG1(i) << " ";
+            }
+            cout << endl;
 
             arma::cx_vec R = SIG1 % arma::conj(SIG2);
             arma::cx_vec R_normed = R / arma::abs(R);
@@ -60,7 +65,7 @@ void GCC_PHAT(arma::Mat<double>& data, int interp){
             double shift = (double)arma::index_max(arma::abs(CCnew)) - max_shift;
             double tau = shift / (interp * SAMPLE_RATE );
 
-            tau_matrix[sig2_ind][sig1_ind] = tau;
+            tau_matrix(sig2_ind, sig1_ind) = tau;
 
     // Print the matrix (optional)
     /*
@@ -75,9 +80,10 @@ void GCC_PHAT(arma::Mat<double>& data, int interp){
 
         }
     }
+    return tau_matrix;
 }
 
-void GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp) {
+Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp) {
 
   // Pre-allocate Eigen matrices (consider using Eigen::aligned_vector for performance)
   Eigen::VectorXd sig1(data.rows());
@@ -91,58 +97,67 @@ void GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp) {
 
   Eigen::FFT<double> fft;  // Create FFT object
 
-  for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++) {
-    for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
+  Eigen::MatrixXd tau_matrix(NUM_CHAN, NUM_CHAN);
+  tau_matrix.setZero();
+  
+    for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++) {
+        for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
 
-      // Extract signal columns
-      sig1 = data.col(sig1_ind);
-      sig2 = data.col(sig2_ind);
-      //cout << "After col" << endl;
+        // Extract signal columns
+        sig1 = data.col(sig1_ind).array().cwiseAbs();
+        sig2 = data.col(sig2_ind).array().cwiseAbs();
+        //cout << "After col" << endl;
 
-      // Combine for FFT (zero-padding)
-      SIG1.setZero();
-      SIG1.head(data.rows()) = sig1;
-      SIG2.setZero();
-      SIG2.head(data.rows()) = sig2;
-      //cout << "After head" << endl;
-      // Perform FFTs
-      fft.fwd(SIG1, SIG1);
-      fft.fwd(SIG2, SIG2);
-      //cout << "After fft.fwd" << endl;
+        // Combine for FFT (zero-padding)
+        SIG1.setZero();
+        SIG1.head(data.rows()) = sig1;
+        SIG2.setZero();
+        SIG2.head(data.rows()) = sig2;
+        //cout << "After head" << endl;
+        // Perform FFTs
+        fft.fwd(SIG1, SIG1);
+        fft.fwd(SIG2, SIG2);
+        
+        cout << "SIG1: "; 
+        for (int i = 0; i < 20; i++){
+            cout << SIG1(i) << " ";
+        }
+        cout << endl;
 
-      // Calculate cross-correlation
-      R = SIG1.conjugate().array() * SIG2.array();
-      //cout << "After conj" << endl;
-      //R_normed = R / R.abs();
-      R_normed = R.array() / R.cwiseAbs().array();
-      //cout << "After R_normed" << endl;
+        // Calculate cross-correlation
+        R = SIG2.array() * SIG1.conjugate().array();
+        //cout << "After conj" << endl;
+        //R_normed = R / R.abs();
+        R_normed = R.array() / R.cwiseAbs().array();
+        //cout << "After R_normed" << endl;
 
-      // Perform IFFT with zero-padding
-      fft.inv(CC_blah, R_normed);
-      //CC = CC_blah.real().abs();
-      CC = CC_blah.real().cwiseAbs();
+        // Perform IFFT with zero-padding
+        fft.inv(CC_blah, R_normed);
+        //CC = CC_blah.real().abs();
+        CC = CC_blah.real().cwiseAbs();
 
-      int max_shift = interp * data.rows() / 2;
+        int max_shift = interp * data.rows() / 2;
 
-      // Extract relevant parts for peak finding
-      Eigen::VectorXd sub1 = CC.tail(max_shift);
-      Eigen::VectorXd sub2 = CC.head(max_shift);
+        // Extract relevant parts for peak finding
+        Eigen::VectorXd sub1 = CC.tail(max_shift);
+        Eigen::VectorXd sub2 = CC.head(max_shift);
 
-      // Combine and find peak index
-      Eigen::VectorXd CCnew(sub1.size() + sub2.size());
-      CCnew << sub1, sub2;
-      //Eigen::VectorXd CCnew = sub1.join(sub2);
-      
-      //int peak_idx = CCnew.abs().argmax();
-      //int peak_idx = CCnew.cwiseAbs().argmax();
-      Eigen::Index maxIndex;
-      double throwAway = CCnew.maxCoeff(&maxIndex);
+        // Combine and find peak index
+        Eigen::VectorXd CCnew(sub1.size() + sub2.size());
+        CCnew << sub1, sub2;
+        //Eigen::VectorXd CCnew = sub1.join(sub2);
 
-      // Calculate time delay
-      double shift = static_cast<double>(maxIndex) - max_shift;
-      double tau = shift / (interp * SAMPLE_RATE);
+        //int peak_idx = CCnew.abs().argmax();
+        //int peak_idx = CCnew.cwiseAbs().argmax();
+        Eigen::Index maxIndex;
+        double throwAway = CCnew.maxCoeff(&maxIndex);
 
-      //tau_matrix[sig2_ind][sig1_ind] = tau;
+        // Calculate time delay
+        double shift = static_cast<double>(maxIndex) - max_shift;
+        double tau = shift / (interp * SAMPLE_RATE);
+
+        tau_matrix(sig2_ind, sig1_ind) = tau;
+        }
     }
-  }
+    return tau_matrix;
 }
