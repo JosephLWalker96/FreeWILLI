@@ -7,6 +7,11 @@ g++ multi_datalogger_reader.cpp process_data.cpp utils.cpp -o listen -larmadillo
 g++ -std=c++20 multi_datalogger_reader.cpp process_data.cpp utils.cpp -o listen -larmadillo -I/usr/include/sigpack-1.2.7/sigpack
 g++ -std=c++20 multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -larmadillo -I/usr/include/sigpack-1.2.7/sigpack -lliquid
 g++ -Ofast -std=c++20 -march=native -flto multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -DARMA_DONT_USE_WRAPPER -DNDEBUG -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid
+g++ -Ofast -std=c++20 -march=native -DEIGEN_FFT_BACKEND=FFTW -flto -msse2 multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -DARMA_DONT_USE_WRAPPER -DNDEBUG -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid -lfftw3
+g++ -Ofast -std=c++20 -march=native -DEIGEN_FFT_BACKEND=FFTW -flto -msse2 multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid -lfftw3
+g++ -Ofast -std=c++20 -march=native -flto multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid -lfftw3
+
+
 
 Execute (datalogger simulator):
 ./listen 192.168.7.2 1045 1240
@@ -43,9 +48,12 @@ TO DO:
 #include <ctime>
 #include <cstdint>
 #include <armadillo>
+
 #include <sigpack.h>
+#include <fftw/fftw.h>
 //#include <Eigen/Dense>
 #include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Core>
 
 #include <complex>
 #include <liquid/liquid.h>
@@ -166,8 +174,8 @@ void UdpListener() {
         int printInterval = 500;
         int receiveSize = PACKET_SIZE + 1;      // + 1 to detect if an erroneous amount of data is being sent
         vector<uint8_t> dataBytes(receiveSize);
-        auto startPacketTime = std::chrono::high_resolution_clock::now();
         
+        auto startPacketTime = std::chrono::steady_clock::now();
         while (!errorOccurred) {
             
             udpSocketLock.lock();
@@ -181,13 +189,15 @@ void UdpListener() {
             dataBytes.resize(bytesReceived); // Adjust size based on actual bytes received
             packetCounter += 1;
             if (packetCounter % printInterval == 0) {
-                auto endPacketTime = std::chrono::high_resolution_clock::now();
-                auto durationPacketTime = std::chrono::duration_cast<std::chrono::seconds>(endPacketTime - startPacketTime).count();
+                auto endPacketTime = std::chrono::steady_clock::now();
+                //auto durationPacketTime = std::chrono::duration_cast<std::chrono::seconds>(endPacketTime - startPacketTime);
+                std::chrono::duration<double> durationPacketTime = endPacketTime - startPacketTime;
                 dataBufferLock.lock();
                 size_t qSize = dataBuffer.size();
                 dataBufferLock.unlock();
-                float define = (float)durationPacketTime / packetCounter; 
+                double define = durationPacketTime.count() / printInterval; 
                 cout << "Num packets received is " <<  packetCounter << " " << define  << " " << qSize << " " << packetCounter - qSize << endl;
+                startPacketTime = std::chrono::steady_clock::now();
                 //startPacketTime = std::chrono::high_resolution_clock::now();
 
             }
@@ -238,6 +248,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
  -2.7904883e-03, -1.2040846e-03,  8.5304705e-18};         // filter coefficients
         
         firfilt_rrrf q = firfilt_rrrf_create(h,h_len);// create filter object
+        sp::FFTW fftw(1984, FFTW_ESTIMATE);
         // options
 
         bool previousTimeSet = false;
@@ -262,6 +273,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             
             arma::Mat<double> dataMatrix(ch1.n_elem, 4);
             
+            
             while (dataSegment.size() < DATA_SEGMENT_LENGTH) {
                 
                 dataBufferLock.lock();
@@ -269,7 +281,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                 dataBufferLock.unlock();
                 //cout << "qSize before: " << qSize << endl;
                 if (qSize < 1){
-                    cout << "qSize: " << qSize << endl;
+                    cout << "Sleeping: " << endl;
                     std::this_thread::sleep_for(200ms);
                     continue;
                 }
@@ -417,18 +429,34 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             
             //cout << "Made it to function call" << endl; 
             int interp = 1;
-            
+            /*
             Eigen::MatrixXd dataE(dataMatrix.n_rows, dataMatrix.n_cols);
             for (int i = 0; i < dataMatrix.n_rows; ++i) {
                 for (int j = 0; j < dataMatrix.n_cols; ++j) {
-                    dataE(i, j) = dataMatrix(i, j);
+                    dataE(i, j) = dataMatrix(i, j) / 10000;
                 }
             }
+            */
+            
+            /* 
+            cout << "dataMatrix: ";
+            for (int ll = 0; ll < 10; ll++){
+                cout << dataMatrix(ll,0) << " ";
+            }
+            cout << endl;
+            cout << "dataE: ";
+            for (int lll = 0; lll < 10; lll++){
+                cout << dataE(lll,0) << " ";
+            }
+            cout << endl;
+            */
+
+
 
             auto beforeGCC = std::chrono::steady_clock::now();
             
-            //arma::Mat<double> resultMatrix = GCC_PHAT(dataMatrix, interp);
-            Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, interp);
+            arma::Mat<double> resultMatrix = GCC_PHAT(dataMatrix, interp, fftw);
+            //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, interp);
             
             auto afterGCC = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
@@ -443,13 +471,14 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             */
 
             // Print the matrix (optional)
-            
+            /*
             for (int ii = 0; ii < 4; ++ii) {
                 for (int jj = 0; jj < 4; ++jj) {
                     cout << resultMatrix(ii, jj) << " ";
                 }
                 cout << endl;
             }
+            */
             
 
         }

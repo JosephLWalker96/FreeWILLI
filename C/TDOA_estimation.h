@@ -9,8 +9,10 @@ This file contains all function prototypes for TDOA_estimation.cpp
 
 #include <armadillo>
 #include <eigen3/Eigen/Dense>
+#include <sigpack.h>
+#include <fftw/fftw.h>
 //#include <Eigen/Dense>
-arma::Mat<double> GCC_PHAT(arma::Mat<double>& data, int interp);
+arma::Mat<double> GCC_PHAT(arma::Mat<double>& data, int interp, sp::FFTW& fftw);
 Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp);
 
 #endif
