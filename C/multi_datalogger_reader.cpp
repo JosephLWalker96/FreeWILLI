@@ -21,10 +21,10 @@ Execute (datalogger):
 
 
 TO DO:
-  1) Restart threads if glitches occur
-  2) handle thread exceptions
 
 
+RESOURCES:
+    debugging (core dump): https://www.youtube.com/watch?v=3T3ZDquDDVg&t=190s
 */
 
 #include <iostream>
@@ -63,6 +63,7 @@ TO DO:
 #include "TDOA_estimation.h"
 #include "utils.h"
 #include "my_globals.h"
+#include "filters.h"
 
 using std::cout;
 using std::cin;
@@ -229,31 +230,48 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
     */
 
     try {
-        // Define FIR filter using SigPack library
-        sp::FIR_filt<double, double, double> fir_filt;
-        arma::Col<double> b = sp::fir1_hp(16, 0.2);
-        fir_filt.set_coeffs(b);
-        //cout << "b: " << b << endl;
-
+        
+        int channelSize = DATA_SEGMENT_LENGTH / NUM_CHAN; // the number of samples per channel within a dataSegment
+        
+        // declare FFT object
+        sp::FFTW fftw(channelSize, FFTW_ESTIMATE); // no 0 padding is currently being used
         
         // Define FIR filter using the liquid library
-        unsigned int h_len=31;  // filter order
-        float h[h_len] = { 8.5304705e-18, -1.2040846e-03, -2.7904883e-03, -4.2366693e-03,
- -3.9514871e-03, -9.6724173e-18,  8.2750460e-03,  1.8624326e-02,
-  2.5445996e-02,  2.1282293e-02,  2.4025036e-17, -3.9675705e-02,
- -9.2092186e-02, -1.4542012e-01, -1.8531199e-01,  8.0040973e-01,
- -1.8531199e-01, -1.4542012e-01, -9.2092186e-02, -3.9675705e-02,
-  2.4025036e-17,  2.1282293e-02,  2.5445996e-02,  1.8624326e-02,
-  8.2750460e-03, -9.6724173e-18, -3.9514871e-03, -4.2366693e-03,
- -2.7904883e-03, -1.2040846e-03,  8.5304705e-18};         // filter coefficients
+        arma::Col<double> h = { 8.5304705e-18, -1.2040846e-03, -2.7904883e-03, -4.2366693e-03,
+         -3.9514871e-03, -9.6724173e-18,  8.2750460e-03,  1.8624326e-02,
+          2.5445996e-02,  2.1282293e-02,  2.4025036e-17, -3.9675705e-02,
+         -9.2092186e-02, -1.4542012e-01, -1.8531199e-01,  8.0040973e-01,
+         -1.8531199e-01, -1.4542012e-01, -9.2092186e-02, -3.9675705e-02,
+          2.4025036e-17,  2.1282293e-02,  2.5445996e-02,  1.8624326e-02,
+          8.2750460e-03, -9.6724173e-18, -3.9514871e-03, -4.2366693e-03,
+         -2.7904883e-03, -1.2040846e-03,  8.5304705e-18};         // filter coefficients
         
-        firfilt_rrrf q = firfilt_rrrf_create(h,h_len);// create filter object
-        sp::FFTW fftw(1984, FFTW_ESTIMATE);
-        // options
+        // Define FIR filter using the liquid library 
+        //firfilt_rrrf q = firfilt_rrrf_create(h,h.n_elem);// create filter object
+        
+        
+        // Define IIR filter using SigPack library
+        /*
+        sp::IIR_filt<double, double, double> iir_filt;
+        arma::Col<double> b_iir = {0.49580191, -1.9260157, 2.8613285, -1.9260157, 0.49580191};
+        arma::Col<double> a_iir = {1.0, -2.53934052, 2.67821627, -1.31270499, 0.26392123};
+        iir_filt.set_coeffs(b_iir,a_iir);
+        */
+
+        // Define FIR filter using SigPack library
+        sp::FIR_filt<double, double, double> fir_filt;
+        fir_filt.set_coeffs(h);
 
         bool previousTimeSet = false;
         std::chrono::time_point<std::chrono::system_clock> previousTime = std::chrono::time_point<std::chrono::system_clock>::min(); // CHECK VALUE
 
+        // Initialize armadillo containers to be used for number crunching
+        arma::Col<double> ch1(channelSize);
+        arma::Col<double> ch2(channelSize);
+        arma::Col<double> ch3(channelSize);
+        arma::Col<double> ch4(channelSize);
+        arma::Mat<double> dataMatrix(ch1.n_elem, 4);
+        
         while (!errorOccurred) {
             
             dataTimesLock.lock();
@@ -263,17 +281,9 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             dataSegmentLock.lock();
             dataSegment.clear();
             dataSegmentLock.unlock();
-    
-            size_t channelSize = DATA_SEGMENT_LENGTH / NUM_CHAN;
-            //arma::Col<double> ch1, ch2, ch3, ch4;
-            arma::Col<double> ch1(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
-            arma::Col<double> ch2(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
-            arma::Col<double> ch3(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
-            arma::Col<double> ch4(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance)
-            
-            arma::Mat<double> dataMatrix(ch1.n_elem, 4);
-            
-            
+
+            //arma::Col<double> pad(15, arma::fill::zeros);
+
             while (dataSegment.size() < DATA_SEGMENT_LENGTH) {
                 
                 dataBufferLock.lock();
@@ -362,16 +372,6 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
 
             }
             
-            #ifdef PRINT_DATA_PROCESSOR // print first few values in dataSegment
-                cout << "Inside DataProcessor() " << endl;
-                cout << "dataSegment Size: " << dataSegment.size() << " should be same as " << NUM_PACKS_DETECT * (DATA_SIZE / 2) << endl;
-                for (size_t j = 0; j < 50; j++){
-                    cout << dataSegment[j] << " ";
-                }
-                cout << endl;
-            #endif
-           
-            
             dataSegmentLock.lock();
             ProcessingFunction(dataSegment, dataTimes, OUTPUT_FILE, ch1, ch2, ch3, ch4);
             dataSegmentLock.unlock();
@@ -380,107 +380,54 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             
             DetectionResult values = ThresholdDetect(ch1, dataTimes, threshold);
             if (values.maxPeakIndex < 0){
-                //cout << "No pulse detected" << endl;
                 continue;
             }
-            //cout << "Pulse detected" << endl;
             WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, outputFile);
             
-
-            // example using the liquid library
-            //cout << "ch1.n_elem " << ch1.n_elem << endl;
-            /*
-            float ch1_filtered_test[ch1.n_elem];
-            float ch2_filtered_test[ch1.n_elem];
-            float ch3_filtered_test[ch1.n_elem];
-            float ch4_filtered_test[ch1.n_elem];
-            
-
-            for (int i=0; i<ch1.n_elem; i++) {
-                firfilt_rrrf_push(q, ch1(i));
-                firfilt_rrrf_execute(q, &ch1_filtered_test[i]);
+            /*cout << "chan 1 examples:  ";
+            for (int yy = 0; yy < 10; yy++){
+                cout << ch1(yy) << " "; 
             }
-            for (int i=0; i<ch2.n_elem; i++) {
-                firfilt_rrrf_push(q, ch2(i));
-                firfilt_rrrf_execute(q, &ch2_filtered_test[i]);
-            }
-            for (int i=0; i<ch3.n_elem; i++) {
-                firfilt_rrrf_push(q, ch3(i));
-                firfilt_rrrf_execute(q, &ch3_filtered_test[i]);
-            }
-            for (int i=0; i<ch4.n_elem; i++) {
-                firfilt_rrrf_push(q, ch4(i));
-                firfilt_rrrf_execute(q, &ch4_filtered_test[i]);
-            }
+            cout << endl;
             */
-
-
             
-            arma::Col<double> ch1_filtered = fir_filt.filter(ch1);
-            arma::Col<double> ch2_filtered = fir_filt.filter(ch2);
-            arma::Col<double> ch3_filtered = fir_filt.filter(ch3);
-            arma::Col<double> ch4_filtered = fir_filt.filter(ch4);
+            auto beforeFilter = std::chrono::steady_clock::now();
+            filterWithFIR(ch1,ch2,ch3,ch4, fir_filt);
+            //filterWithLiquidFIR(ch1,ch2,ch3,ch4, fir_filt);
+            //filterWithIIR(ch1,ch2,ch3,ch4, iir_filt);
+            auto afterFilter = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
+            //cout << "C FIR Filter: " << durationFilter.count() << endl;
             
+            
+            /*cout << "chan 1 filt  examples:  ";
+            for (int y = 0; y < 10; y++){
+                cout << ch1(y) << " "; 
+            }
+            cout << endl;
+            */
             
             dataMatrix.insert_cols(0,ch1);
             dataMatrix.insert_cols(1,ch2);
             dataMatrix.insert_cols(2,ch3);
             dataMatrix.insert_cols(3,ch4);
             
-            //cout << "Made it to function call" << endl; 
             int interp = 1;
-            /*
-            Eigen::MatrixXd dataE(dataMatrix.n_rows, dataMatrix.n_cols);
-            for (int i = 0; i < dataMatrix.n_rows; ++i) {
-                for (int j = 0; j < dataMatrix.n_cols; ++j) {
-                    dataE(i, j) = dataMatrix(i, j) / 10000;
-                }
-            }
-            */
-            
-            /* 
-            cout << "dataMatrix: ";
-            for (int ll = 0; ll < 10; ll++){
-                cout << dataMatrix(ll,0) << " ";
-            }
-            cout << endl;
-            cout << "dataE: ";
-            for (int lll = 0; lll < 10; lll++){
-                cout << dataE(lll,0) << " ";
-            }
-            cout << endl;
-            */
-
-
-
             auto beforeGCC = std::chrono::steady_clock::now();
-            
-            arma::Mat<double> resultMatrix = GCC_PHAT(dataMatrix, interp, fftw);
-            //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, interp);
-            
+            arma::Mat<double> resultMatrix = GCC_PHAT(dataMatrix, interp, fftw, channelSize);
+            //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, interp); // need to create dataE matrix 
             auto afterGCC = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
-            cout << "GCC: " << durationGCC.count() << endl;
+            cout << "C GCC: " << durationGCC.count() << endl;
             
-            /*
-            auto beforeTest = std::chrono::high_resolution_clock::now();
-            std::this_thread::sleep_for(200ms);
-            auto afterTest = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> durationTest = afterTest - beforeTest;
-            cout << "Test: " << durationTest.count() << endl;
-            */
 
             // Print the matrix (optional)
-            /*
             for (int ii = 0; ii < 4; ++ii) {
                 for (int jj = 0; jj < 4; ++jj) {
                     cout << resultMatrix(ii, jj) << " ";
                 }
                 cout << endl;
             }
-            */
-            
-
         }
     } catch (const std::exception& e ){
         // Handle the exception

@@ -5,23 +5,16 @@
 #include <cstdlib>
 #include <fstream>
 #include <chrono>
-//#include <eigen3/Eigen/Dense>
 #include <iostream>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 #include <iomanip> // for output formatting
-//#include <sigpack.h>
 
 #include <eigen3/Eigen/Dense>
-//#include <Eigen/Dense>
 #include <eigen3/unsupported/Eigen/FFT>
-//#include <eigen3/Eigen/FFT>
 #include <eigen3/Eigen/Core>
-//#include <unsupported/Eigen/FFT>
-//#include <eigen3/Eigen/FFT>  // Include FFT module
 
 #include "my_globals.h"
 #include "TDOA_estimation.h"
-//#include "sp/FFTW.h" // Include SigPack's FFTW header
 
 #include <sigpack.h>
 #include <fftw/fftw.h>
@@ -33,69 +26,49 @@ using std::vector;
 using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
-arma::Mat<double> GCC_PHAT(arma::Mat<double>& data, int interp, sp::FFTW& fftw){
+arma::Mat<double> GCC_PHAT(arma::Mat<double>& data, int interp, sp::FFTW& fftw, int fftLength){
     
     arma::Mat<double> tau_matrix(NUM_CHAN, NUM_CHAN, arma::fill::zeros);
-    int n = 1984;    
+    int n = fftLength;    
+
     //int n = data.col(0).n_elem + data.col(1).n_elem;
-    //cout << "n " << n << endl;
 
     for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++ ){
         for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
             //cout << "combo: " << sig1_ind << " " << sig2_ind << endl; 
             arma::vec sig1 = data.col(sig1_ind);
             arma::vec sig2 = data.col(sig2_ind);
-            //cout << "sig1 len: " << sig1.n_elem << endl;
-
-            /*
-            arma::cx_vec SIG1 = arma::fft(sig1,n);
-            auto beforeFFT = std::chrono::steady_clock::now();
-            arma::cx_vec SIG2 = arma::fft(sig2,n);
-            auto afterFFT = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationFFT = afterFFT - beforeFFT;
-            cout << "FFT time: " << durationFFT.count() << endl;
-            */
-
-
-
-
-
-
-            // Allocate space for the FFT output (complex-valued)
-            //arma::cx_vec fft_result(n);
-
-            // Perform the FFT using SigPack's FFTW object
-            //arma::vec x(n);
-            //auto beforeFFTW = std::chrono::steady_clock::now();
-            arma::cx_vec SIG1 = fftw.fft(sig1);
-            arma::cx_vec SIG2 = fftw.fft(sig2);
-            //auto afterFFTW = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
-            //cout << "FFTW time: " << durationFFTW.count() << endl;
-
-
-
-
-
-
-
-
-            arma::cx_vec R = SIG1 % arma::conj(SIG2);
             
-            /*cout << "R: "; 
-            for (int i = 0; i < 20; i++){
-                cout << R(i) << " ";
+            /*            
+            cout << "sig1: " << sig1.n_elem;
+            for (int i = 0; i < 10; i++){
+                cout << sig1(i) << " ";
             }
             cout << endl;
             */
+
+            // Perform the FFT using SigPack's FFTW object
+            arma::cx_vec SIG1 = fftw.fft(sig1);
+            arma::cx_vec SIG2 = fftw.fft(sig2);
+            
+            /*
+            cout << "SIG1: ";
+            for (int i = 0; i < 10; i++){
+                cout << SIG1(i) << " ";
+            }
+            cout << endl;
+            */
+
+            arma::cx_vec R = SIG1 % arma::conj(SIG2);
+            
             arma::cx_vec R_normed = R / arma::abs(R);
 
-            //arma::cx_vec CC_blah = arma::ifft(R_normed, interp * n);
             arma::cx_vec CC_blah = fftw.ifft_cx(R_normed);
             arma::vec CC = arma::abs(CC_blah);
             
-            /*cout << "CC: "; 
-            for (int i = 0; i < 20; i++){
+            /*
+            cout << "CC: ";
+            for (int i = 0; i < 10; i++){
                 cout << CC(i) << " ";
             }
             cout << endl;
@@ -130,23 +103,22 @@ arma::Mat<double> GCC_PHAT(arma::Mat<double>& data, int interp, sp::FFTW& fftw){
 }
 
 Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp) {
-  //cout << "EIGEN_VECTORIZE: " << EIGEN_VECTORIZE << endl;
-  // Pre-allocate Eigen matrices (consider using Eigen::aligned_vector for performance)
-  Eigen::VectorXd sig1(data.rows());
-  Eigen::VectorXd sig2(data.rows());
-  Eigen::VectorXcd SIG1(data.rows() + interp * data.rows());  // Combined vector for FFT
-  Eigen::VectorXcd SIG1_freq(data.rows() + interp * data.rows());  // Combined vector for FFT
-  Eigen::VectorXcd SIG2(data.rows() + interp * data.rows());
-  Eigen::VectorXcd SIG2_freq(data.rows() + interp * data.rows());
-  Eigen::VectorXcd R(data.rows() + interp * data.rows());
-  Eigen::VectorXcd R_normed(data.rows() + interp * data.rows());
-  Eigen::VectorXcd CC_blah(data.rows() + interp * data.rows());
-  Eigen::VectorXd CC(data.rows() + interp * data.rows());
+    // This is the same algorithm as GCC_PHAT above but implemented using the Eigen library
+    Eigen::VectorXd sig1(data.rows());
+    Eigen::VectorXd sig2(data.rows());
+    Eigen::VectorXcd SIG1(data.rows() + interp * data.rows());  // Combined vector for FFT
+    Eigen::VectorXcd SIG1_freq(data.rows() + interp * data.rows());  // Combined vector for FFT
+    Eigen::VectorXcd SIG2(data.rows() + interp * data.rows());
+    Eigen::VectorXcd SIG2_freq(data.rows() + interp * data.rows());
+    Eigen::VectorXcd R(data.rows() + interp * data.rows());
+    Eigen::VectorXcd R_normed(data.rows() + interp * data.rows());
+    Eigen::VectorXcd CC_blah(data.rows() + interp * data.rows());
+    Eigen::VectorXd CC(data.rows() + interp * data.rows());
 
-  Eigen::FFT<double> fft;  // Create FFT object
+    Eigen::FFT<double> fft;  // Create FFT object
 
-  Eigen::MatrixXd tau_matrix(NUM_CHAN, NUM_CHAN);
-  tau_matrix.setZero();
+    Eigen::MatrixXd tau_matrix(NUM_CHAN, NUM_CHAN);
+    tau_matrix.setZero();
   
     for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++) {
         for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
@@ -167,12 +139,10 @@ Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp) {
         // Calculate cross-correlation
         R = SIG1_freq.array() * SIG2_freq.conjugate().array();
 
-        //R_normed = R / R.abs();
         R_normed = R.array() / R.cwiseAbs().array();
 
         // Perform IFFT with zero-padding
         fft.inv(CC_blah, R_normed);
-        //CC = CC_blah.real().abs();
         CC = CC_blah.real().cwiseAbs();
         
         int max_shift = interp * data.rows() / 2;
@@ -184,16 +154,10 @@ Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp) {
         // Combine and find peak index
         Eigen::VectorXd CCnew(sub1.size() + sub2.size());
         CCnew << sub1, sub2;
-        //Eigen::VectorXd CCnew = sub1.join(sub2);
 
         Eigen::Index maxIndex;
         double throwAway = CCnew.maxCoeff(&maxIndex);
         
-        //cout << "check NaN: ";
-        //cout << CCnew(maxIndex - 1) << " " << CCnew(maxIndex) << " "<< CCnew(maxIndex + 1) << endl;
-
-
-        // Calculate time delay
         double shift = static_cast<double>(maxIndex) - max_shift;
         double tau = shift / (interp * SAMPLE_RATE);
 

@@ -5,7 +5,7 @@ LIBS = -lopenblas -llapack -lliquid -lfftw3
 INCLUDES = -I/usr/include/sigpack-1.2.7/sigpack
 
 # Source files
-SRCS = multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp
+SRCS = multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp filters.cpp
 OBJS = $(SRCS:.cpp=.o)
 TARGET = listen
 
