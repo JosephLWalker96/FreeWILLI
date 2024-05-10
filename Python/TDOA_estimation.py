@@ -27,17 +27,17 @@ def GCC_PHAT(channel_matrix, fs, max_tau=None, interp=16):
     '''
     
     tau_matrix = np.zeros((4,4))
+    n = channel_matrix[0].shape[0]# + refsig.shape[0]
     #cc_matrix = np.zeros((4,4))
     
     for sig_ind in range(len(channel_matrix)-1):
         for ref_ind in range(sig_ind+1,len(channel_matrix)):
             sig = np.abs(channel_matrix[sig_ind])
             refsig = np.abs(channel_matrix[ref_ind])
-            print("sig len: ", len(sig))
+            #print("sig len: ", len(sig))
             
             #return
             # make sure the length for the FFT is larger or equal than len(sig) + len(refsig)
-            n = sig.shape[0] + refsig.shape[0]
 
             # Generalized Cross Correlation Phase Transform
             SIG = np.fft.rfft(sig, n=n)

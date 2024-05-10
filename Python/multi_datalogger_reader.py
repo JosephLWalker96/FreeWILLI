@@ -28,7 +28,7 @@ import os
 import traceback
 from scipy.signal import filtfilt, ellip, freqz, lfilter
 from process_data import  ThresholdDetect, SegmentPulses, PreprocessSegmentInterleaved, PreprocessSegmentStacked, SaveDataSegment, WritePulseAmplitudes
-from TDOA_estimation import EllipticFilter, GCC_PHAT, CrossCorr
+from TDOA_estimation import EllipticFilter, GCC_PHAT, CrossCorr, GenerateFIR_Filter
 from utils import SetHighPriority
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)
@@ -158,11 +158,22 @@ def DataProcessor():
     try:
         global dataBuffer, dataSegment, dataTimes
         
-        ### define filter - should be passed as function arguement
+        ### define IIR filter - should be passed as function arguement
+        '''
         order = 4
         ripple_dB = 0.1
         cutoffFrequency = 10000
         b, a = EllipticFilter(order, ripple_dB, cutoffFrequency, SAMPLE_RATE)
+        print('b: ', b)
+        print('a: ', a)
+        '''
+
+        ### define FIR filter - should be passed as function arguement 
+        cutoffFrequency = 10000  # Cutoff frequency for highpass filter
+        numTaps = 31  # Number of taps for the FIR filter
+        taps = GenerateFIR_Filter(cutoffFrequency, numTaps, SAMPLE_RATE)
+        print(taps)
+
 
         previousTime = False # initalize the previous packet time to False, update with every new packet
         while not errorEvent.is_set():
@@ -236,19 +247,30 @@ def DataProcessor():
             #SaveDataSegment(clickTimes[0], dataSegment, ch1, ch2, ch3, ch4) 
             #print("pulse detected! ", clickAmplitudes[0])
             WritePulseAmplitudes(clickTimes, clickAmplitudes, args.output_file)
-            ### detection code
             
+            ### IIR code
+            '''
             ch1Filtered = filtfilt(b, a, ch1)
             ch2Filtered = filtfilt(b, a, ch2)
             ch3Filtered = filtfilt(b, a, ch3)
             ch4Filtered = filtfilt(b, a, ch4)
+            '''
 
-            dataMatrixFiltered = np.vstack(np.array([ch1Filtered, ch2Filtered,
-                                 ch3Filtered, ch4Filtered]))
+            ### FIR code
+            #print('ch1 examples: ', ch1[:10])
+            prefiltTime = time.time()            
+            ch1 = lfilter(taps, 1.0, ch1)
+            ch2 = lfilter(taps, 1.0, ch2)
+            ch3 = lfilter(taps, 1.0, ch3)
+            ch4 = lfilter(taps, 1.0, ch4)
+            #print('P FIR: ', time.time() - prefiltTime)
+            #print('ch1 filt examples: ', ch1[:10])
+
+            dataMatrixFiltered = np.vstack(np.array([ch1, ch2, ch3, ch4]))
             
             gccStart = time.time()
             tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=1)
-            print("GCC: ", time.time() - gccStart)
+            print("P GCC: ", time.time() - gccStart)
             #print('here')
             #print(tdoaEstimates)
             
