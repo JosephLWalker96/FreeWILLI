@@ -1,4 +1,3 @@
-#include "my_globals.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -6,10 +5,62 @@
 #include <vector>
 #include <random>
 
+#include "my_globals.h"
+#include "utils.h"
+
 using std::cerr;
 using std::endl;
 using std::cout;
 using std::string;
+using std::vector;
+
+void restartListener(Session& sess){
+    /*
+    Functionality:
+    This function is responsible for (re)starting the listener.
+    The socket connection is re(set). The  buffer (dataBuffer) and segment to be processed (dataSegment) are cleared.
+
+    */
+    
+    
+    cout << "restarting listener: " << endl;
+
+    sess.udpSocketLock.lock();
+    if (close(sess.datagramSocket) == -1) {
+        std::cerr << "Failed to close socket" << std::endl;
+        throw std::runtime_error("Failed to close socket");
+    }
+
+
+    sess.datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sess.datagramSocket == -1) {
+        cerr << "Error creating socket" << endl;
+        throw std::runtime_error("Error creating socket");
+    }
+
+    struct sockaddr_in serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = inet_addr(sess.UDP_IP.c_str());
+    serverAddr.sin_port = htons(sess.UDP_PORT);
+
+    if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+        cerr << "Error binding socket" << endl;
+        throw std::runtime_error("Error binding socket");
+    }
+    sess.udpSocketLock.unlock();
+
+    sess.dataBufferLock.lock();
+    ClearQueue(sess.dataBuffer);
+    sess.dataBufferLock.unlock();
+
+    sess.dataSegmentLock.lock();
+    sess.dataSegment.clear();
+    sess.dataSegmentLock.unlock();
+
+    sess.dataTimesLock.lock();
+    sess.dataTimes.clear();
+    sess.dataTimesLock.unlock();
+}
 
 void ProcessFile(const string& fileName) {
     std::ifstream inputFile(fileName);

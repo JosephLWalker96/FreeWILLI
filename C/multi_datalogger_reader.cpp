@@ -30,6 +30,7 @@ RESOURCES:
 #include <iostream>
 #include <cstring>
 #include <cstdio>
+#include <ostream>
 #include <string>
 #include <fstream>
 #include <mutex>
@@ -74,6 +75,7 @@ using std::vector;
 using std::ifstream;
 using namespace std::chrono_literals;
 
+// Global Constants
 int HEAD_SIZE;                                 //packet head size (bytes)
 int NUM_CHAN;                                  //number of channels per packet
 int SAMPS_PER_CHANNEL;                         //samples per packet per channel, for 2 channels, this value is 5*62  = 310
@@ -84,78 +86,18 @@ int REQUIRED_BYTES;
 int DATA_BYTES_PER_CHANNEL;                    //number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
 int NUM_PACKS_DETECT;
 int DATA_SEGMENT_LENGTH;
-int SAMPLE_RATE = 1e5;
 int MICRO_INCR;                                // time between packets
+const int SAMPLE_RATE = 1e5;
 const double TIME_WINDOW = 0.01;                 // fraction of a second to consider  
 const string OUTPUT_FILE = "clicks_data.txt";
-
-// Global Variables
-int UDP_PORT;              // Listening port
-string UDP_IP;             // IP address of data logger or simulator
-
 std::string outputFile = "Ccode_clicks.txt"; // Change to your desired file name
 
-std::queue<vector<uint8_t>> dataBuffer;
-vector<double> dataSegment;
-vector<std::chrono::system_clock::time_point> dataTimes;
 
-std::mutex dataBufferLock;                       // For thread-safe buffer access
-std::mutex dataSegmentLock;                       // For thread-safe buffer access
-std::mutex dataTimesLock;                       // For thread-safe buffer access
-std::mutex udpSocketLock;                       // For thread-safe buffer access
 
-std::atomic<bool> errorOccurred(false);
-
-int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0); // udp socket
 int packetCounter = 0;
 
-void restartListener(){
-    cout << "restarting listener: " << endl;
-    /*
-    Functionality:
-    This function is responsible for (re)starting the listener.
-    The socket connection is re(set). The  buffer (dataBuffer) and segment to be processed (dataSegment) are cleared.
 
-    */
-
-    udpSocketLock.lock();
-    if (close(datagramSocket) == -1) {
-        std::cerr << "Failed to close socket" << std::endl;
-        throw std::runtime_error("Failed to close socket");
-    }
-
-
-    datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (datagramSocket == -1) {
-        cerr << "Error creating socket" << endl;
-        throw std::runtime_error("Error creating socket");
-    }
-
-    struct sockaddr_in serverAddr;
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_addr.s_addr = inet_addr(UDP_IP.c_str());
-    serverAddr.sin_port = htons(UDP_PORT);
-
-    if (bind(datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
-        cerr << "Error binding socket" << endl;
-        throw std::runtime_error("Error binding socket");
-    }
-    udpSocketLock.unlock();
-
-    dataBufferLock.lock();
-    ClearQueue(dataBuffer);
-    dataBufferLock.unlock();
-
-    dataSegmentLock.lock();
-    dataSegment.clear();
-    dataSegmentLock.unlock();
-
-    dataTimesLock.lock();
-    dataTimes.clear();
-    dataTimesLock.unlock();
-}
-
-void UdpListener() {
+void UdpListener(Session& sess) {
     /*
     Functionality:
     This function serves as a UDP listener that continuously listens for incoming UDP packets.
@@ -177,11 +119,11 @@ void UdpListener() {
         vector<uint8_t> dataBytes(receiveSize);
         
         auto startPacketTime = std::chrono::steady_clock::now();
-        while (!errorOccurred) {
+        while (!sess.errorOccurred) {
             
-            udpSocketLock.lock();
-            ssize_t bytesReceived = recvfrom(datagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr*)&addr, &addrLength);
-            udpSocketLock.unlock();
+            sess.udpSocketLock.lock();
+            ssize_t bytesReceived = recvfrom(sess.datagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr*)&addr, &addrLength);
+            sess.udpSocketLock.unlock();
             
             if (bytesReceived == -1) {
                 cerr << "Error in recvfrom" << endl;
@@ -193,30 +135,28 @@ void UdpListener() {
                 auto endPacketTime = std::chrono::steady_clock::now();
                 //auto durationPacketTime = std::chrono::duration_cast<std::chrono::seconds>(endPacketTime - startPacketTime);
                 std::chrono::duration<double> durationPacketTime = endPacketTime - startPacketTime;
-                dataBufferLock.lock();
-                size_t qSize = dataBuffer.size();
-                dataBufferLock.unlock();
+                sess.dataBufferLock.lock();
+                size_t qSize = sess.dataBuffer.size();
+                sess.dataBufferLock.unlock();
                 double define = durationPacketTime.count() / printInterval; 
                 cout << "Num packets received is " <<  packetCounter << " " << define  << " " << qSize << " " << packetCounter - qSize << endl;
                 startPacketTime = std::chrono::steady_clock::now();
-                //startPacketTime = std::chrono::high_resolution_clock::now();
-
             }
-            dataBufferLock.lock();
-            dataBuffer.push(dataBytes);
-            dataBufferLock.unlock();
+            sess.dataBufferLock.lock();
+            sess.dataBuffer.push(dataBytes);
+            sess.dataBufferLock.unlock();
         }
     } catch (const std::exception& e ){
         // Handle the exception
         cerr << "Error occured in UDP Listener Thread: " << endl;
         cerr << e.what() << endl;
-        errorOccurred = true;
+        sess.errorOccurred = true;
 
     }
 }
 
 void DataProcessor(void (*ProcessingFunction)(vector<double>&, vector<TimePoint>&, const string&, 
-arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&)) {
+arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&), Session& sess) {
     /*
     Functionality:
     This function serves as a data processor that continuously processes data segments retrieved from a shared buffer (dataBuffer).
@@ -272,23 +212,23 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
         arma::Col<double> ch4(channelSize);
         arma::Mat<double> dataMatrix(ch1.n_elem, 4);
         
-        while (!errorOccurred) {
+        while (!sess.errorOccurred) {
             
-            dataTimesLock.lock();
-            dataTimes.clear();
-            dataTimesLock.unlock();
+            sess.dataTimesLock.lock();
+            sess.dataTimes.clear();
+            sess.dataTimesLock.unlock();
             
-            dataSegmentLock.lock();
-            dataSegment.clear();
-            dataSegmentLock.unlock();
+            sess.dataSegmentLock.lock();
+            sess.dataSegment.clear();
+            sess.dataSegmentLock.unlock();
 
             //arma::Col<double> pad(15, arma::fill::zeros);
 
-            while (dataSegment.size() < DATA_SEGMENT_LENGTH) {
+            while (sess.dataSegment.size() < DATA_SEGMENT_LENGTH) {
                 
-                dataBufferLock.lock();
-                int qSize = dataBuffer.size();
-                dataBufferLock.unlock();
+                sess.dataBufferLock.lock();
+                int qSize = sess.dataBuffer.size();
+                sess.dataBufferLock.unlock();
                 //cout << "qSize before: " << qSize << endl;
                 if (qSize < 1){
                     cout << "Sleeping: " << endl;
@@ -296,15 +236,15 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                     continue;
                 }
                 
-                dataBufferLock.lock();
-                vector<uint8_t> dataBytes = dataBuffer.front();
-                dataBuffer.pop();
-                dataBufferLock.unlock();
+                sess.dataBufferLock.lock();
+                vector<uint8_t> dataBytes = sess.dataBuffer.front();
+                sess.dataBuffer.pop();
+                sess.dataBufferLock.unlock();
 
                 if (dataBytes.size() != PACKET_SIZE){
                     cerr << "Error: recieved incorrect number of packets" << endl;
                     previousTimeSet = false; 
-                    restartListener();
+                    restartListener(sess);
                     continue;
                 }
                 
@@ -315,6 +255,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                 timeStruct.tm_hour = (int)dataBytes[3];
                 timeStruct.tm_min = (int)dataBytes[4];
                 timeStruct.tm_sec = (int)dataBytes[5];
+
 
                 int64_t microSec = (static_cast<int64_t>(dataBytes[6]) << 24) +
                          (static_cast<int64_t>(dataBytes[7]) << 16) +
@@ -327,7 +268,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
 
                 if (timeResult == std::time_t(-1)) {
                     cerr << "failure in mktime!! " << endl;
-               }
+                }
 
 
                 std::chrono::time_point<std::chrono::system_clock> specificTime = std::chrono::system_clock::from_time_t(timeResult);
@@ -336,29 +277,28 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
                 
                 auto duration = specificTime - previousTime;
                 
-                unsigned long long elapsed_time_ms = std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count();
+                auto elapsed_time_ms = std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count();
 
 
                 if (previousTimeSet && (elapsed_time_ms != MICRO_INCR)){
                     cerr << "Error: Time not incremented by " <<  MICRO_INCR << " " << elapsed_time_ms <<  endl; 
                     previousTimeSet = false;
-                    restartListener();
+                    restartListener(sess);
                     continue;
                 }
-
                 // Convert byte data to signed 16bit ints
                 //vector<double> data;
-                dataSegmentLock.lock();
+                sess.dataSegmentLock.lock();
                 for (size_t i = 0; i < DATA_SIZE; i += 2) {
                     double value = static_cast<double>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
                                    static_cast<double>(dataBytes[i + HEAD_SIZE + 1]);
-                    dataSegment.push_back(value - 32768.0);
+                   sess.dataSegment.push_back(value - 32768.0);
                 }
-                dataSegmentLock.unlock();
+                sess.dataSegmentLock.unlock();
 
-                dataTimesLock.lock();
-                dataTimes.push_back(specificTime);
-                dataTimesLock.unlock();
+                sess.dataTimesLock.lock();
+                sess.dataTimes.push_back(specificTime);
+                sess.dataTimesLock.unlock();
                 
                 previousTime = specificTime;
                 previousTimeSet = true;
@@ -372,13 +312,13 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
 
             }
             
-            dataSegmentLock.lock();
-            ProcessingFunction(dataSegment, dataTimes, OUTPUT_FILE, ch1, ch2, ch3, ch4);
-            dataSegmentLock.unlock();
+            sess.dataSegmentLock.lock();
+            ProcessingFunction(sess.dataSegment, sess.dataTimes, OUTPUT_FILE, ch1, ch2, ch3, ch4);
+            sess.dataSegmentLock.unlock();
             
             double threshold = 80.0;
             
-            DetectionResult values = ThresholdDetect(ch1, dataTimes, threshold);
+            DetectionResult values = ThresholdDetect(ch1, sess.dataTimes, threshold);
             if (values.maxPeakIndex < 0){
                 continue;
             }
@@ -390,7 +330,6 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             }
             cout << endl;
             */
-            
             auto beforeFilter = std::chrono::steady_clock::now();
             filterWithFIR(ch1,ch2,ch3,ch4, fir_filt);
             //filterWithLiquidFIR(ch1,ch2,ch3,ch4, fir_filt);
@@ -399,7 +338,8 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
             //cout << "C FIR Filter: " << durationFilter.count() << endl;
             
-            
+
+
             /*cout << "chan 1 filt  examples:  ";
             for (int y = 0; y < 10; y++){
                 cout << ch1(y) << " "; 
@@ -418,7 +358,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
             //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, interp); // need to create dataE matrix 
             auto afterGCC = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
-            cout << "C GCC: " << durationGCC.count() << endl;
+            //cout << "C GCC: " << durationGCC.count() << endl;
             
 
             // Print the matrix (optional)
@@ -433,7 +373,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&))
         // Handle the exception
         cerr << "Error occured in data processor thread" << endl;
         cerr << e.what() << endl;
-        errorOccurred = true;
+        sess.errorOccurred = true;
       }
 }
 
@@ -442,13 +382,13 @@ int main(int argc, char *argv[]){
     arma::arma_version ver;
     cout << "ARMA version: "<< ver.as_string() << endl;
 
-    UDP_IP = argv[1];                                         // IP address of data logger or simulator
+    string UDP_IP = argv[1];                                         // IP address of data logger or simulator
     if (UDP_IP == "self"){
         UDP_IP = "127.0.0.1";
     }
-    
-    UDP_PORT = std::stoi(argv[2]);                                     // Port to listen for UDP packets
+    int UDP_PORT = std::stoi(argv[2]);                                     // Port to listen for UDP packets
     int firmwareVersion = std::stoi(argv[3]);
+    
     printf("Listening to IP address %s and port %d \n", UDP_IP.c_str(),UDP_PORT);
 
     //import variables according to firmware version specified
@@ -488,29 +428,32 @@ int main(int argc, char *argv[]){
         file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << endl;
         file.close();
         cout << "File created and cleared: " << outputFile << endl;
-    } else {
+    } 
+    else {
         cerr << "Error: Unable to open file for writing: " << outputFile << endl;
         return 1; // Indicate error
     }
 
     
     while (true){
-        restartListener();
+        Session sess;
+        sess.UDP_PORT = UDP_PORT;
+        sess.UDP_IP = UDP_IP;
         
-        std::thread udpThread(UdpListener);
-        std::thread processorThread(DataProcessor, ProcessFncPtr);
+        restartListener(sess);
+        
+        std::thread udpThread(UdpListener, std::ref(sess));
+        std::thread processorThread(DataProcessor, ProcessFncPtr, std::ref(sess));
 
         udpThread.join();
         processorThread.join();
        
-        if (errorOccurred){
+        if (sess.errorOccurred){
             cout << "Restarting threads..." << endl;
         }
         else {
-            cout << "Unknown problemed occurred" << endl;
+            cout << "Unknown problem occurred" << endl;
         }
-
-        errorOccurred = false;
     }
     return 0;
 }
