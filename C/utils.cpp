@@ -7,7 +7,7 @@
 
 #include "my_globals.h"
 #include "utils.h"
-
+#include <filesystem>
 using std::cerr;
 using std::endl;
 using std::cout;
@@ -63,13 +63,17 @@ void restartListener(Session& sess){
 }
 
 void ProcessFile(const string& fileName) {
+    cout << "Entered ProcessFile: " << fileName <<  endl;
+    cout << "HERE " << std::filesystem::current_path() << endl;
     std::ifstream inputFile(fileName);
     if (!inputFile.is_open()) {
-        cerr << "Error: Unable to open file '" << fileName << "'." << endl;
+        cerr << "Error: Unable ERRR to open file '" << fileName << "'." << endl;
         return;
     }
     inputFile >> HEAD_SIZE >> MICRO_INCR >> NUM_CHAN >> SAMPS_PER_CHANNEL >> BYTES_PER_SAMP;
     DATA_SIZE = SAMPS_PER_CHANNEL * NUM_CHAN * BYTES_PER_SAMP;       //packet data size (bytes) = 1240
+    
+    cout << "NUM_CHAN: " << NUM_CHAN << endl;
     PACKET_SIZE = HEAD_SIZE + DATA_SIZE;                             //packet size (bytes) = 1252
     REQUIRED_BYTES = DATA_SIZE + HEAD_SIZE;
     DATA_BYTES_PER_CHANNEL = SAMPS_PER_CHANNEL * BYTES_PER_SAMP;     //number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels

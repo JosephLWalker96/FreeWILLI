@@ -1,5 +1,3 @@
-
-
 #ifndef GLOBAL_VARS
 #define GLOBAL_VARS
 
@@ -35,21 +33,20 @@ struct Session {
     std::atomic<bool> errorOccurred = false;
 };
         
-extern int HEAD_SIZE;                  //packet head size (bytes)
-extern int NUM_CHAN;                   //number of channels per packet
-extern int SAMPS_PER_CHANNEL;          //samples per packet per channel, for 2 channels, this value is 5*62  = 310
-extern int BYTES_PER_SAMP;             //bytes per sample
+extern unsigned int HEAD_SIZE;                  //packet head size (bytes)
+extern unsigned int NUM_CHAN;                   //number of channels per packet
+extern unsigned int SAMPS_PER_CHANNEL;          //samples per packet per channel, for 2 channels, this value is 5*62  = 310
+extern unsigned int BYTES_PER_SAMP;             //bytes per sample
 
-extern int DATA_SIZE;                  //packet data size (bytes)
-extern int PACKET_SIZE;                //packet size (bytes)
-extern int REQUIRED_BYTES;
-extern int DATA_BYTES_PER_CHANNEL;     //number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
-extern int NUM_PACKS_DETECT;
+extern unsigned int DATA_SIZE;                  //packet data size (bytes)
+extern unsigned int PACKET_SIZE;                //packet size (bytes)
+extern unsigned int REQUIRED_BYTES;
+extern unsigned int DATA_BYTES_PER_CHANNEL;     //number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
+extern unsigned int NUM_PACKS_DETECT;
+extern unsigned int DATA_SEGMENT_LENGTH;
+extern unsigned int MICRO_INCR;              // time between packets
 
-extern int MICRO_INCR;              // time between packets
-extern const int SAMPLE_RATE;
-
+extern unsigned const int SAMPLE_RATE;
 extern const double TIME_WINDOW;        // fraction of a second to consider  
 extern const std::string OUTPUT_FILE;
-extern int DATA_SEGMENT_LENGTH;
 #endif

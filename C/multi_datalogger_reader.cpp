@@ -1,5 +1,4 @@
 /*
-
 This is a C++ version of Python/multi_datalogger_reader.py
 
 Compile code manually:
@@ -11,17 +10,13 @@ g++ -Ofast -std=c++20 -march=native -DEIGEN_FFT_BACKEND=FFTW -flto -msse2 multi_
 g++ -Ofast -std=c++20 -march=native -DEIGEN_FFT_BACKEND=FFTW -flto -msse2 multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid -lfftw3
 g++ -Ofast -std=c++20 -march=native -flto multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid -lfftw3
 
-
-
 Execute (datalogger simulator):
 ./listen 192.168.7.2 1045 1240
 
 Execute (datalogger):
 ./listen.exe 192.168.100.220 50000 1240
 
-
 TO DO:
-
 
 RESOURCES:
     debugging (core dump): https://www.youtube.com/watch?v=3T3ZDquDDVg&t=190s
@@ -76,26 +71,23 @@ using std::ifstream;
 using namespace std::chrono_literals;
 
 // Global Constants
-int HEAD_SIZE;                                 //packet head size (bytes)
-int NUM_CHAN;                                  //number of channels per packet
-int SAMPS_PER_CHANNEL;                         //samples per packet per channel, for 2 channels, this value is 5*62  = 310
-int BYTES_PER_SAMP;                            //bytes per sample
-int DATA_SIZE;                                 //packet data size (bytes)
-int PACKET_SIZE;                               //packet size (bytes)
-int REQUIRED_BYTES;
-int DATA_BYTES_PER_CHANNEL;                    //number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
-int NUM_PACKS_DETECT;
-int DATA_SEGMENT_LENGTH;
-int MICRO_INCR;                                // time between packets
-const int SAMPLE_RATE = 1e5;
+unsigned int HEAD_SIZE;                                 //packet head size (bytes)
+unsigned int NUM_CHAN;                                  //number of channels per packet
+unsigned int SAMPS_PER_CHANNEL;                         //samples per packet per channel, for 2 channels, this value is 5*62  = 310
+unsigned int BYTES_PER_SAMP;                            //bytes per sample
+unsigned int DATA_SIZE;                                 //packet data size (bytes)
+unsigned int PACKET_SIZE;                               //packet size (bytes)
+unsigned int REQUIRED_BYTES;
+unsigned int DATA_BYTES_PER_CHANNEL;                    //number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
+unsigned int NUM_PACKS_DETECT;
+unsigned int DATA_SEGMENT_LENGTH;
+unsigned int MICRO_INCR;                                // time between packets
+const unsigned int SAMPLE_RATE = 1e5;
 const double TIME_WINDOW = 0.01;                 // fraction of a second to consider  
 const string OUTPUT_FILE = "clicks_data.txt";
 std::string outputFile = "Ccode_clicks.txt"; // Change to your desired file name
 
-
-
 int packetCounter = 0;
-
 
 void UdpListener(Session& sess) {
     /*
@@ -113,16 +105,19 @@ void UdpListener(Session& sess) {
     try {
         struct sockaddr_in addr;
         socklen_t addrLength = sizeof(addr);
-        //int bytesReceived;
+        int bytesReceived;
         int printInterval = 500;
         int receiveSize = PACKET_SIZE + 1;      // + 1 to detect if an erroneous amount of data is being sent
         vector<uint8_t> dataBytes(receiveSize);
-        
+        std::chrono::duration<double> durationPacketTime;
         auto startPacketTime = std::chrono::steady_clock::now();
+        auto endPacketTime = startPacketTime;
+        int qSize;
+        double define;
         while (!sess.errorOccurred) {
             
             sess.udpSocketLock.lock();
-            ssize_t bytesReceived = recvfrom(sess.datagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr*)&addr, &addrLength);
+            bytesReceived = recvfrom(sess.datagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr*)&addr, &addrLength);
             sess.udpSocketLock.unlock();
             
             if (bytesReceived == -1) {
@@ -132,13 +127,12 @@ void UdpListener(Session& sess) {
             dataBytes.resize(bytesReceived); // Adjust size based on actual bytes received
             packetCounter += 1;
             if (packetCounter % printInterval == 0) {
-                auto endPacketTime = std::chrono::steady_clock::now();
-                //auto durationPacketTime = std::chrono::duration_cast<std::chrono::seconds>(endPacketTime - startPacketTime);
-                std::chrono::duration<double> durationPacketTime = endPacketTime - startPacketTime;
+                endPacketTime = std::chrono::steady_clock::now();
+                durationPacketTime = endPacketTime - startPacketTime;
                 sess.dataBufferLock.lock();
-                size_t qSize = sess.dataBuffer.size();
+                qSize = sess.dataBuffer.size();
                 sess.dataBufferLock.unlock();
-                double define = durationPacketTime.count() / printInterval; 
+                define = durationPacketTime.count() / printInterval; 
                 cout << "Num packets received is " <<  packetCounter << " " << define  << " " << qSize << " " << packetCounter - qSize << endl;
                 startPacketTime = std::chrono::steady_clock::now();
             }
@@ -151,7 +145,6 @@ void UdpListener(Session& sess) {
         cerr << "Error occured in UDP Listener Thread: " << endl;
         cerr << e.what() << endl;
         sess.errorOccurred = true;
-
     }
 }
 
@@ -212,6 +205,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
         arma::Col<double> ch4(channelSize);
         arma::Mat<double> dataMatrix(ch1.n_elem, 4);
         
+        vector<uint8_t> dataBytes;
         while (!sess.errorOccurred) {
             
             sess.dataTimesLock.lock();
@@ -237,7 +231,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
                 }
                 
                 sess.dataBufferLock.lock();
-                vector<uint8_t> dataBytes = sess.dataBuffer.front();
+                dataBytes = sess.dataBuffer.front();
                 sess.dataBuffer.pop();
                 sess.dataBufferLock.unlock();
 
@@ -276,9 +270,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
                 
                 
                 auto duration = specificTime - previousTime;
-                
                 auto elapsed_time_ms = std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count();
-
 
                 if (previousTimeSet && (elapsed_time_ms != MICRO_INCR)){
                     cerr << "Error: Time not incremented by " <<  MICRO_INCR << " " << elapsed_time_ms <<  endl; 
@@ -286,8 +278,8 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
                     restartListener(sess);
                     continue;
                 }
-                // Convert byte data to signed 16bit ints
-                //vector<double> data;
+                
+                // Convert byte data to doubles
                 sess.dataSegmentLock.lock();
                 for (size_t i = 0; i < DATA_SIZE; i += 2) {
                     double value = static_cast<double>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
@@ -331,7 +323,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
             cout << endl;
             */
             auto beforeFilter = std::chrono::steady_clock::now();
-            filterWithFIR(ch1,ch2,ch3,ch4, fir_filt);
+            FilterWithFIR(ch1,ch2,ch3,ch4, fir_filt);
             //filterWithLiquidFIR(ch1,ch2,ch3,ch4, fir_filt);
             //filterWithIIR(ch1,ch2,ch3,ch4, iir_filt);
             auto afterFilter = std::chrono::steady_clock::now();
@@ -395,11 +387,11 @@ int main(int argc, char *argv[]){
     cout << "Assuming firmware version: " << firmwareVersion << endl;
     void(*ProcessFncPtr)(vector<double>&, vector<TimePoint>&, const string&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&) = nullptr;
     if (firmwareVersion == 1550){
-        ProcessFile("1550_config.txt");
+        ProcessFile("ConfigFiles/1550_config.txt");
         ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else if (firmwareVersion == 1240){
-        ProcessFile("1240_config.txt");
+        ProcessFile("ConfigFiles/1240_config.txt");
         ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else{

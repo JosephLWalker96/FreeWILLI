@@ -12,12 +12,13 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/unsupported/Eigen/FFT>
 #include <eigen3/Eigen/Core>
+#include <sigpack.h>
 
 #include "my_globals.h"
 #include "filters.h"
-#include "TDOA_estimation.h"
+//#include "TDOA_estimation.h"
 
-#include <sigpack.h>
+#include "gtest/gtest.h"
 #include <fftw/fftw.h>
 
 using std::cout;
@@ -27,7 +28,7 @@ using std::vector;
 using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
-void filterWithFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::FIR_filt<double, double, double>& fir_filt){
+void FilterWithFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::FIR_filt<double, double, double>& fir_filt){
     ch1 = fir_filt.filter(ch1);
     fir_filt.clear();
     ch2 = fir_filt.filter(ch2);
@@ -38,7 +39,7 @@ void filterWithFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<dou
     fir_filt.clear();
 }
 
-void filterWithLiquidFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::FIR_filt<double, double, double>& fir_filt){
+void FilterWithLiquidFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::FIR_filt<double, double, double>& fir_filt){
     //
     // THIS FUNCTION IS DEPRICATED
     //
@@ -70,7 +71,7 @@ void filterWithLiquidFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::C
 }
 
 
-void filterWithIIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::IIR_filt<double, double, double>& iir_filt){
+void FilterWithIIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::IIR_filt<double, double, double>& iir_filt){
     //
     // THIS FUNCTION IS DEPRICATED
     //
