@@ -22,7 +22,7 @@ TEST(FilterTest, BasicFiltering) {
     arma::Col<double> ch3(10, arma::fill::randn);
     arma::Col<double> ch4(10, arma::fill::randn);
     
-    arma::Col<double> ch1_fil = {   2.5591e-17, -3.6123e-03, -1.1984e-02, -2.4694e-02, -3.6548e-02, -3.6548e-02, -1.1723e-02, 4.4150e-02, 1.2049e-01, 1.8433e-01};
+    arma::Col<double> ch1_fil = {2.5591e-17, -3.6123e-03, -1.1984e-02, -2.4694e-02, -3.6548e-02, -3.6548e-02, -1.1723e-02, 4.4150e-02, 1.2049e-01, 1.8433e-01};
     // Mock FIR filter (replace with actual filter creation if needed)
     std::cout << "Original ch1:\n" << ch1 << std::endl;  // Print using standard output
     // Apply filter (function under test)
@@ -31,4 +31,5 @@ TEST(FilterTest, BasicFiltering) {
     // Verify filtered data (simple example, adjust based on your filter behavior)
     EXPECT_TRUE(arma::all(ch1 != ch2)); // Check if channels differ after filtering
     //EXPECT_TRUE(arma::all(ch1 == ch1_fil)); // Check if channels differ after filtering
+    //EXPECT_NEAR(ch1, ch1_fil, 0.001); // Check if channels differ after filtering
 }

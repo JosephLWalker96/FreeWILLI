@@ -24,8 +24,8 @@ cc_library(
 )
 
 cc_test(
-  name = "filter_test",
-  srcs = ["Unit_tests/filter_test.cpp", "filters.cpp"],
+  name = "filters_test",
+  srcs = ["Unit_tests/filters_test.cpp", "filters.cpp"],
   deps = [
     "@com_google_googletest//:gtest_main",
     ":filters",  # Replace with your Armadillo dependency name
