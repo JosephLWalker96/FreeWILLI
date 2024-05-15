@@ -38,9 +38,38 @@ void PrintTimes(const vector<TimePoint>& timestamps){
 }
 
 
+void ConvertData(std::vector<double>& dataSegment,std::vector<uint8_t>& dataBytes,unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE){
+    /*for (int kk = 0; kk < 20; kk++){
+        //cout << dataBytes[HEAD_SIZE+kk] << " ";
+        cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(dataBytes[HEAD_SIZE+kk]) << endl;
+    }
+    cout << endl;
+    */
+
+    for (size_t i = 0; i < DATA_SIZE; i += 2) {
+        double value = static_cast<double>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
+                       static_cast<double>(dataBytes[i + HEAD_SIZE + 1]);
+        value -= 32768.0;
+        if (std::isnan(value)){
+            throw std::runtime_error("Data contains NaN value");
+        }
+        else if (std::isinf(value)){
+            throw std::runtime_error("Data contains inf value");
+        }
+        else [[likely]]{
+            dataSegment.push_back(value);
+        }
+    }
+    /*for (int kkk = 0; kkk < 10; kkk++){
+        cout << dataSegment[kkk] << " ";
+    }
+    cout << endl;
+    */
+}
 
 DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& times, double threshold){
     DetectionResult result{};
+
 
     int peakIndex = arma::index_max(data);
     double peakAmplitude = arma::max(data);
@@ -188,12 +217,13 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
 void ProcessSegmentInterleaved(vector<double>& data, vector<TimePoint>& times, const string& outputFile, arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4) {
     
 
-    // Iterate through the data vector and save every 4th element into the arma::Col
+        
+    // Iterate through the data vector and save every NUM_CHANth element into the arma::Col
     for (size_t i = 0, j = 0; i < data.size(); i += NUM_CHAN, ++j) {
-        ch1(j) = data[i];  // Saving every 4th element into ch1
-        ch2(j) = data[i+1]; // Saving every 4th element into ch1
-        ch3(j) = data[i+2]; // Saving every 4th element into ch1
-        ch4(j) = data[i+3]; // Saving every 4th element into ch1
+        ch1(j) = data[i];
+        ch2(j) = data[i+1];
+        ch3(j) = data[i+2];
+        ch4(j) = data[i+3];
     }
     #ifdef PRINT_PROCESS_SEGMENT_1550
         cout << "Inside ProcessSegment1550() " << endl;
@@ -209,9 +239,6 @@ void ProcessSegmentInterleaved(vector<double>& data, vector<TimePoint>& times, c
         }
         cout << endl;
     #endif
-        
-    //ProcessSegment(ch1, times, outputFile);
-
 }
 
 void WritePulseAmplitudes(const vector<double>& clickPeakAmps,

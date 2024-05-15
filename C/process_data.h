@@ -17,6 +17,7 @@ struct DetectionResult {
     int maxPeakIndex = -1;
 };
 
+void ConvertData(std::vector<double>& dataSegment,std::vector<uint8_t>& dataBytes,unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE);
 void PrintTimes(const std::vector<std::chrono::system_clock::time_point>& timestamps);
 void ProcessSegment(arma::Col<double>& data, std::vector<TimePoint>& times, const std::string& OUTPUT_FILE);
 void ProcessSegmentStacked(std::vector<double>& data, std::vector<TimePoint>& times, const std::string& OUTPUT_FILE);

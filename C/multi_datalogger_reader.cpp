@@ -281,13 +281,16 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
                 
                 // Convert byte data to doubles
                 sess.dataSegmentLock.lock();
-                for (size_t i = 0; i < DATA_SIZE; i += 2) {
-                    double value = static_cast<double>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
-                                   static_cast<double>(dataBytes[i + HEAD_SIZE + 1]);
-                   sess.dataSegment.push_back(value - 32768.0);
-                }
+                ConvertData(sess.dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE);
                 sess.dataSegmentLock.unlock();
-
+                return;
+                //cout << "size: " << sess.dataSegment.size() << endl;
+                /*cout << "chan 1 examples:  ";
+                for (int yy = 0; yy < 10; yy++){
+                    cout << ch1(yy) << " "; 
+                }
+                cout << endl;
+                */
                 sess.dataTimesLock.lock();
                 sess.dataTimes.push_back(specificTime);
                 sess.dataTimesLock.unlock();
@@ -297,9 +300,13 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
                 
                 /*
                 if (withProbability(0.001)){
-                    throw std::runtime_error("An error occurred");
+                    //throw std::runtime_error("An error occurred");
+                    sess.dataSegmentLock.lock();
+                    sess.dataSegment[2] =  std::numeric_limits<double>::quiet_NaN();
+                    sess.dataSegmentLock.unlock();
                 }
                 */
+                
                 
 
             }
@@ -316,12 +323,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
             }
             WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, outputFile);
             
-            /*cout << "chan 1 examples:  ";
-            for (int yy = 0; yy < 10; yy++){
-                cout << ch1(yy) << " "; 
-            }
-            cout << endl;
-            */
+            
             auto beforeFilter = std::chrono::steady_clock::now();
             FilterWithFIR(ch1,ch2,ch3,ch4, fir_filt);
             //filterWithLiquidFIR(ch1,ch2,ch3,ch4, fir_filt);
