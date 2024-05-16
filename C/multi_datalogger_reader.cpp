@@ -416,16 +416,14 @@ int main(int argc, char *argv[]){
     
     // Open the file in write mode and clear its contents if it exists, create a new file otherwise
     std::ofstream file(outputFile, std::ofstream::out | std::ofstream::trunc);
-
     if (file.is_open()) {
-        // Write header row (optional)
         file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << endl;
         file.close();
         cout << "File created and cleared: " << outputFile << endl;
     } 
     else {
         cerr << "Error: Unable to open file for writing: " << outputFile << endl;
-        return 1; // Indicate error
+        return 1;
     }
 
     
