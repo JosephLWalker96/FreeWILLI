@@ -1,4 +1,5 @@
 import numpy as np
+import math
 from scipy.signal import firwin, ellip, freqz
 
 
@@ -19,21 +20,24 @@ def GenerateFIR_Filter(cutoff_freq_hz, num_taps, sampling_freq_hz):
 
 
 
-def GCC_PHAT(channel_matrix, fs, max_tau=None, interp=16):
+def GCC_PHAT(channel_matrix, fs, NUM_CHAN, max_tau=None, interp=16):
     '''
     This function computes the offset between the signal sig and the reference signal refsig
     using the Generalized Cross Correlation - Phase Transform (GCC-PHAT)method.
     https://github.com/xiongyihui/tdoa/blob/master/gcc_phat.py
     '''
     
-    tau_matrix = np.zeros((4,4))
+    numUniquePairings = math.comb(NUM_CHAN, 2)
+    tau_array = np.zeros(numUniquePairings)
+    tau_matrix = np.zeros((NUM_CHAN,NUM_CHAN))
     n = channel_matrix[0].shape[0]# + refsig.shape[0]
     #cc_matrix = np.zeros((4,4))
     
+    pairing = 0
     for sig_ind in range(len(channel_matrix)-1):
         for ref_ind in range(sig_ind+1,len(channel_matrix)):
-            sig = np.abs(channel_matrix[sig_ind])
-            refsig = np.abs(channel_matrix[ref_ind])
+            sig = channel_matrix[sig_ind]
+            refsig = channel_matrix[ref_ind]
             #print("sig len: ", len(sig))
             
             #return
@@ -58,9 +62,11 @@ def GCC_PHAT(channel_matrix, fs, max_tau=None, interp=16):
             tau = shift / float(interp * fs)
             
             tau_matrix[ref_ind,sig_ind] = tau
+            tau_array[pairing] = tau
+            pairing += 1
             #cc_matrix[ref_ind,sig_ind] = cc
     
-    return tau_matrix#, cc_matrix
+    return tau_array #, cc_matrix
 
 def CrossCorr(channel_matrix, fs, max_tau=None, interp=16):
     '''
@@ -96,3 +102,30 @@ def CrossCorr(channel_matrix, fs, max_tau=None, interp=16):
             tau_matrix[ref_ind,sig_ind] = tdoa
             
     return tau_matrix
+
+def DOA_EstimateVerticalArray(TDOAs,soundSpeed,chanSpacing):
+    """
+    Estimates the vertical direction of arrival (DOA) using time difference of arrivals (TDOAs) 
+    between microphone channels in an array.
+
+    Parameters:
+    - TDOAs (numpy.ndarray): Array of time difference of arrivals (TDOAs) between microphone pairs.
+    - soundSpeed (double): Speed of sound in the medium, in meters per second.
+    - chanSpacing (numpy.ndarray): Array of vertical separation between pairwise microphone channels, in meters.
+
+    Returns:
+    - numpy.ndarray: Array containing the estimated vertical DOA angles in degrees.
+    
+    """
+
+    dd = TDOAs * soundSpeed                  # calculate the distance differences 
+    vals = dd / chanSpacing                  # normalize the distnace differences by the vertical separation 
+    
+    if ((np.abs(vals) > 1).any()):
+        print("Out of bounds values: ")
+        print(vals)
+    
+    vals = np.clip(vals, -1, 1)              # ensure that values are between -1 and 1 for arcsin
+
+    return np.arcsin(vals) * 180 / np.pi     # convert angle to degrees 
+

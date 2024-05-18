@@ -17,7 +17,7 @@ cc_library(
 
 cc_library(
     name = "utils",
-    srcs = ["filters.cpp", "my_globals.h", "filters.h", "utils.h", "utils.cpp", "multi_datalogger_reader.cpp", "process_data.h", "process_data.cpp", "TDOA_estimation.cpp",  "TDOA_estimation.h"],
+    srcs = ["src/filters.cpp", "src/my_globals.h", "src/filters.h", "src/utils.h", "src/utils.cpp", "src/multi_datalogger_reader.cpp", "src/process_data.h", "src/process_data.cpp", "src/TDOA_estimation.cpp",  "src/TDOA_estimation.h"],
     # Add the linker flags here
     linkopts = ["-lopenblas", "-llapack","-lfftw3", "-flto"],
     copts = ["-I/usr/include/sigpack-1.2.7/sigpack"],
@@ -60,4 +60,15 @@ cc_test(
     ":utils",
   ],
   linkopts = ["-larmadillo"],
+)
+
+cc_test(
+  name = "TDOA_estimation_test",
+  srcs = ["Unit_tests/TDOA_estimation_test.cpp", "src/TDOA_estimation.cpp"],
+  deps = [
+    "@com_google_googletest//:gtest_main",
+    ":utils",
+  ],
+  linkopts = ["-larmadillo"],
+  copts = ["-I/usr/include/sigpack-1.2.7/sigpack"],
 )

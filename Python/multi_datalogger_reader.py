@@ -28,7 +28,7 @@ import os
 import traceback
 from scipy.signal import filtfilt, ellip, freqz, lfilter
 from process_data import  ThresholdDetect, SegmentPulses, PreprocessSegmentInterleaved, PreprocessSegmentStacked, SaveDataSegment, WritePulseAmplitudes
-from TDOA_estimation import EllipticFilter, GCC_PHAT, CrossCorr, GenerateFIR_Filter
+from TDOA_estimation import EllipticFilter, GCC_PHAT, CrossCorr, GenerateFIR_Filter, DOA_EstimateVerticalArray
 from utils import SetHighPriority
 
 print('This code has been tested for python version 3.11.6, your version is:', sys.version)
@@ -269,10 +269,14 @@ def DataProcessor():
             dataMatrixFiltered = np.vstack(np.array([ch1, ch2, ch3, ch4]))
             
             gccStart = time.time()
-            tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, max_tau=None, interp=1)
+            tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, NUM_CHAN, max_tau=None, interp=1)
             print("P GCC: ", time.time() - gccStart)
             #print('here')
             #print(tdoaEstimates)
+            
+            chanSpacing  = np.array([1, 2, 3, 1, 2, 1])
+            doaEstimates = DOA_EstimateVerticalArray(tdoaEstimates, 1500, chanSpacing)
+            print(doaEstimates)
             
     except Exception as e:
         print(f"Error occurred in Data Processor thread: {e}")
