@@ -21,6 +21,16 @@ using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
 void PrintTimes(const vector<TimePoint>& timestamps){
+    /**
+    * @brief Prints the timestamps provided in the input vector.
+    *
+    * This function prints the timestamps provided in the input vector
+    * in the format "YYYY-MM-DD HH:MM:SS:Microseconds".
+    *
+    * @param timestamps A vector of TimePoint objects representing the timestamps to be printed.
+    *                   TimePoint is a type alias for a time point based on std::chrono::system_clock.
+    */
+    
     for (auto& timestamp : timestamps){
         std::time_t timeRepresentation = std::chrono::system_clock::to_time_t(timestamp);
         std::tm timeData = *std::localtime(&timeRepresentation); 
@@ -39,14 +49,21 @@ void PrintTimes(const vector<TimePoint>& timestamps){
 
 
 void ConvertData(std::vector<double>& dataSegment,std::vector<uint8_t>& dataBytes,unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE){
-    /*for (int kk = 0; kk < 20; kk++){
-        //cout << dataBytes[HEAD_SIZE+kk] << " ";
-        cout << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(dataBytes[HEAD_SIZE+kk]) << endl;
-    }
-    cout << endl;
-    */
-
-    for (size_t i = 0; i < DATA_SIZE; i += 2) {
+    /**
+     * @brief Converts raw data bytes to double values and stores them in the provided data segment.
+     * 
+     * This function converts raw data bytes to double values using a specific format and stores them 
+     * in the provided data segment vector. The conversion involves combining two bytes into a single 
+     * double value and then adjusting it to account for an offset. If the converted value contains NaN (Not a Number), 
+     * an exception is thrown.
+     * 
+     * @param dataSegment A reference to a vector of doubles where the converted data values will be stored.
+     * @param dataBytes A reference to a vector of unsigned 8-bit integers representing the raw data bytes to be converted.
+     * @param DATA_SIZE The size of the data segment to be converted.
+     * @param HEAD_SIZE The size of the header portion (timestamps) to skip at the beginning).
+     */
+    
+     for (size_t i = 0; i < DATA_SIZE; i += 2) {
         double value = static_cast<double>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
                        static_cast<double>(dataBytes[i + HEAD_SIZE + 1]);
         value -= 32768.0;
@@ -60,16 +77,23 @@ void ConvertData(std::vector<double>& dataSegment,std::vector<uint8_t>& dataByte
             dataSegment.push_back(value);
         }
     }
-    /*for (int kkk = 0; kkk < 10; kkk++){
-        cout << dataSegment[kkk] << " ";
-    }
-    cout << endl;
-    */
 }
 
 DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& times, double threshold){
+    /**
+    * @brief Detects peaks in the input data above a specified threshold.
+    *
+    * This function analyzes the input data to detect peaks that exceed the specified threshold.
+    * If a peak is found, its index, amplitude, and corresponding time are recorded in a DetectionResult structure.
+    *
+    * @param data A reference to an Armadillo column vector containing the input data.
+    * @param times A vector of TimePoint objects representing the timestamps corresponding to the input data.
+    * @param threshold The threshold value above which peaks are detected.
+    *
+    * @return A DetectionResult structure containing information about the detected peaks.
+    */
+    
     DetectionResult result{};
-
 
     int peakIndex = arma::index_max(data);
     double peakAmplitude = arma::max(data);
@@ -82,51 +106,18 @@ DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& time
         std::chrono::time_point<std::chrono::system_clock> maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
         result.peakTimes.push_back(maxPeakTime);
     }
-
     return result;
 }
 
 void ProcessSegment(arma::Col<double>& data, vector<TimePoint>& times, const string& outputFile) {
-    arma::Col<double> dataAbsolute = arma::abs(arma::conv_to<arma::Col<double>>::from(data));
+    arma::Col<double> dataAbsolute = arma::abs(data);
     
-    #ifdef PRINT_PROCESS_SEGMENT
-        cout << "Inside ProcessSegment() " << endl;
-        cout << "dataAbsolute.size() " << dataAbsolute.size() << endl;
-        cout << "first few elements in dataAbsolute " << endl;
-        for (size_t j = 0; j < 12; j++){
-            cout << dataAbsolute[j] << " ";
-        }
-        cout << endl;
-    #endif
-   
     // define the filter for click regions
     arma::Col<double> smoothFilter(1.0, 256, arma::fill::ones); // Filter of size 256 with all ones
     smoothFilter /= 256.0;
     
-    #ifdef PRINT_PROCESS_SEGMENT
-        cout << "first few elements in smoothFilter " << endl;
-        for (size_t j = 0; j < 12; j++){
-            cout << smoothFilter[j] << " ";
-        }
-        cout << endl;
-    #endif
-
     // Convolve abs_data with the filter
     arma::Col<double> dataSmoothed = arma::conv(dataAbsolute, smoothFilter, "same");
-
-    #ifdef PRINT_PROCESS_SEGMENT
-        cout << "first few elements in dataSmoothed: " << endl;
-        cout << "dataSmoothed.size() " << dataSmoothed.size() << endl;
-        for (size_t j = 0; j < 12; j++){
-            cout << dataSmoothed[j] << " ";
-        }
-        cout << endl;
-        cout << "last few elements in dataSmoothed: "<< endl;
-        for (size_t j = dataSmoothed.size() - 12; j < dataSmoothed.size(); j++){
-            cout << dataSmoothed[j] << " ";
-        }
-        cout << endl;
-    #endif
     
     // Thresholding low amplitude values
     dataSmoothed.elem(arma::find(dataSmoothed < 80.0)).fill(0.0);
@@ -167,7 +158,6 @@ void ProcessSegment(arma::Col<double>& data, vector<TimePoint>& times, const str
                 timestamps.push_back(peakAmplitudeTime);
             }
         }
-        //WriteClicks(clickPeakAmps,timestamps, "Ccode_clicks.txt");
     }
 }
 
@@ -214,10 +204,14 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
 }
 
 
-void ProcessSegmentInterleaved(vector<double>& data, vector<TimePoint>& times, const string& outputFile, arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4) {
+void ProcessSegmentInterleaved(vector<double>& data, arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4) {
+    /**
+    * @brief Processes interleaved data into separate channel. Each channel's data is saved into a corresponding Armadillo column vector.
+    * 
+    * @param data A reference to a vector of doubles containing interleaved data from multiple channels.
+    * @param ch1 - ch4 A reference to an Armadillo column vector to store channels 1-4 data.
+    */        
     
-
-        
     // Iterate through the data vector and save every NUM_CHANth element into the arma::Col
     for (size_t i = 0, j = 0; i < data.size(); i += NUM_CHAN, ++j) {
         ch1(j) = data[i];
@@ -225,42 +219,35 @@ void ProcessSegmentInterleaved(vector<double>& data, vector<TimePoint>& times, c
         ch3(j) = data[i+2];
         ch4(j) = data[i+3];
     }
-    #ifdef PRINT_PROCESS_SEGMENT_1550
-        cout << "Inside ProcessSegment1550() " << endl;
-        cout << "Ch1 size " << ch1.size() << endl;
-        cout << "First few elements in ch1 " << ch1.size() << endl;
-        for (size_t j = 0; j < 12; j++){
-            cout << ch1[j] << " ";
-        }
-        cout << endl;
-        cout << "Last few elements in ch1 " << ch1.size() << endl;
-        for (size_t j = ch1.size() - 12; j < ch1.size(); j++){
-            cout << ch1[j] << " ";
-        }
-        cout << endl;
-    #endif
 }
 
-void WritePulseAmplitudes(const vector<double>& clickPeakAmps,
-                 const vector<TimePoint>& timestamps,
-                 const string& filename) {
-  std::ofstream outfile(filename, std::ios::app);
-  if (outfile.is_open()) {
-    // Check if vectors have the same size
-    if (clickPeakAmps.size() != timestamps.size()) {
-      cerr << "Error: Click amplitude and timestamp vectors have different sizes." << endl;
-      return;
-    }
+void WritePulseAmplitudes(const vector<double>& clickPeakAmps, const vector<TimePoint>& timestamps, const string& filename) {
+    /**
+    * @brief Writes pulse amplitudes and corresponding timestamps to a file.
+    *
+    * @param clickPeakAmps A reference to a vector of doubles containing pulse amplitudes.
+    * @param timestamps A reference to a vector of TimePoint objects representing the timestamps corresponding to the pulse amplitudes.
+    * @param filename A string specifying the output file path or name.
+    */
+    
+    std::ofstream outfile(filename, std::ios::app);
+    if (outfile.is_open()) {
+        // Check if vectors have the same size
+        if (clickPeakAmps.size() != timestamps.size()) {
+            cerr << "Error: Click amplitude and timestamp vectors have different sizes." << endl;
+            return;
+        }
 
-    // Write data rows
-    for (size_t i = 0; i < clickPeakAmps.size(); ++i) {
-      auto time_point = timestamps[i];
-      auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
-      outfile << time_since_epoch.count() << std::setw(20) << clickPeakAmps[i] << endl;
-    }
+        // Write data rows
+        for (size_t i = 0; i < clickPeakAmps.size(); ++i) {
+            auto time_point = timestamps[i];
+            auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
+            outfile << time_since_epoch.count() << std::setw(20) << clickPeakAmps[i] << endl;
+        }
 
-    outfile.close();
-  } else {
-    cerr << "Error: Could not open file " << filename << endl;
-  }
+        outfile.close();
+    } 
+    else {
+        cerr << "Error: Could not open file " << filename << endl;
+    }
 }

@@ -27,6 +27,16 @@ using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
 arma::Col<double> GCC_PHAT(arma::Mat<double>& data, int interp, sp::FFTW& fftw, int fftLength){
+    /**
+    * @brief Computes the Generalized Cross-Correlation with Phase Transform (GCC-PHAT) between pairs of signals.
+    *
+    * @param data A reference to an Armadillo matrix containing the input signals. Each column represents a signal.
+    * @param interp An integer specifying the interpolation factor used in the computation.
+    * @param fftw An instance of the FFTW object from SigPack library used for Fast Fourier Transform (FFT) computations.
+    * @param fftLength An integer specifying the length of the FFT.
+    *
+    * @return A column vector of doubles containing the computed TDOA estimates for all unique pairs of signals.
+    */
     
     arma::Mat<double> tau_matrix(NUM_CHAN, NUM_CHAN, arma::fill::zeros);
     int n = fftLength;    
@@ -41,6 +51,7 @@ arma::Col<double> GCC_PHAT(arma::Mat<double>& data, int interp, sp::FFTW& fftw, 
             arma::vec sig1 = data.col(sig1_ind);
             arma::vec sig2 = data.col(sig2_ind);
             //sig2(20) = arma::datum::nan;
+            
             // Perform the FFT using SigPack's FFTW object
             arma::cx_vec SIG1 = fftw.fft(sig1);
             arma::cx_vec SIG2 = fftw.fft(sig2);
@@ -90,65 +101,62 @@ Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp) {
     for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++) {
         for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
 
-        // Extract signal columns
-        sig1 = data.col(sig1_ind);
-        sig2 = data.col(sig2_ind);
+            // Extract signal columns
+            sig1 = data.col(sig1_ind);
+            sig2 = data.col(sig2_ind);
 
-        // Combine for FFT (zero-padding)
-        SIG1.setZero();
-        SIG1.head(data.rows()) = sig1;
-        SIG2.setZero();
-        SIG2.head(data.rows()) = sig2;
-        // Perform FFTs
-        fft.fwd(SIG1_freq, SIG1);
-        fft.fwd(SIG2_freq, SIG2);
-       
-        // Calculate cross-correlation
-        R = SIG1_freq.array() * SIG2_freq.conjugate().array();
+            // Combine for FFT (zero-padding)
+            SIG1.setZero();
+            SIG1.head(data.rows()) = sig1;
+            SIG2.setZero();
+            SIG2.head(data.rows()) = sig2;
+            // Perform FFTs
+            fft.fwd(SIG1_freq, SIG1);
+            fft.fwd(SIG2_freq, SIG2);
+           
+            // Calculate cross-correlation
+            R = SIG1_freq.array() * SIG2_freq.conjugate().array();
 
-        R_normed = R.array() / R.cwiseAbs().array();
+            R_normed = R.array() / R.cwiseAbs().array();
 
-        // Perform IFFT with zero-padding
-        fft.inv(CC_blah, R_normed);
-        CC = CC_blah.real().cwiseAbs();
-        
-        int max_shift = interp * data.rows() / 2;
+            // Perform IFFT with zero-padding
+            fft.inv(CC_blah, R_normed);
+            CC = CC_blah.real().cwiseAbs();
+            
+            int max_shift = interp * data.rows() / 2;
 
-        // Extract relevant parts for peak finding
-        Eigen::VectorXd sub1 = CC.tail(max_shift);
-        Eigen::VectorXd sub2 = CC.head(max_shift);
+            // Extract relevant parts for peak finding
+            Eigen::VectorXd sub1 = CC.tail(max_shift);
+            Eigen::VectorXd sub2 = CC.head(max_shift);
 
-        // Combine and find peak index
-        Eigen::VectorXd CCnew(sub1.size() + sub2.size());
-        CCnew << sub1, sub2;
+            // Combine and find peak index
+            Eigen::VectorXd CCnew(sub1.size() + sub2.size());
+            CCnew << sub1, sub2;
 
-        Eigen::Index maxIndex;
-        double throwAway = CCnew.maxCoeff(&maxIndex);
-        
-        double shift = static_cast<double>(maxIndex) - max_shift;
-        double tau = shift / (interp * SAMPLE_RATE);
+            Eigen::Index maxIndex;
+            CCnew.maxCoeff(&maxIndex);
+            
+            double shift = static_cast<double>(maxIndex) - max_shift;
+            double tau = shift / (interp * SAMPLE_RATE);
 
-        tau_matrix(sig2_ind, sig1_ind) = tau;
+            tau_matrix(sig2_ind, sig1_ind) = tau;
         }
     }
     return tau_matrix;
 }
 
 arma::Col<double> DOA_EstimateVerticalArray(arma::Col<double>& TDOAs, double soundSpeed, arma::Col<int> chanSpacing){
-    /*
-    Estimates the vertical direction of arrival (DOA) using time difference of arrivals (TDOAs) 
-    between microphone channels in an array.
-
-    Parameters:
-    - TDOAs (arma::Col<double>): Array of time difference of arrivals (TDOAs) between microphone pairs.
-    - soundSpeed (double): Speed of sound in the medium, in meters per second.
-    - chanSpacing (arma::Col<double>): Array of vertical separation between pairwise microphone channels, in meters.
-
-    Returns:
-    - arma::Col<double>: Array containing the estimated vertical DOA angles in degrees.
-    
+    /**
+    * @brief Estimates the vertical direction of arrival (DOA) using time difference of arrivals (TDOAs) 
+    * between microphone channels in an array.
+    * 
+    * @param TDOAs (arma::Col<double>): Array of time difference of arrivals (TDOAs) between microphone pairs.
+    * @param soundSpeed (double): Speed of sound in the medium, in meters per second.
+    * @param chanSpacing (arma::Col<double>): Array of vertical separation between pairwise microphone channels, in meters.
+    * 
+    * @return arma::Col<double> Array containing the estimated vertical DOA angles in degrees.
     */
-
+    
     arma::Col<double> vals = (TDOAs * soundSpeed)  / chanSpacing;             //calculate the distance differences and normalize
     
     double max = arma::max(arma::abs(vals));
@@ -156,11 +164,9 @@ arma::Col<double> DOA_EstimateVerticalArray(arma::Col<double>& TDOAs, double sou
         cerr << "Out of bounds values: " << endl;
         cerr << vals.t() << endl; 
         cerr << "TDOAs: " << TDOAs.t() << endl;
-        //throw std::exception("Bad TDOA values encountered");
-        throw std::runtime_error("Bad TDOA values encountered!");
+        //throw std::runtime_error("Bad TDOA values encountered!");
     }
     
     vals.clamp( -1, 1);                                                       // ensure that values are between -1 and 1 for arcsin
- 
     return arma::asin(vals) * 180.0 / 3.141592653;                            // convert angle to degrees 
 }

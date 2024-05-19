@@ -114,7 +114,7 @@ while(True):
             dateTime = dateTime + timedelta(microseconds=int(103))
     elif args.data_glitch > 0:
         if args.data_glitch == flag:
-            packet = packet + packet[:3]
+            packet = packet + packet[:30]
     
     if len(packet) != PACKET_SIZE and args.data_glitch == 0:
         print('ERROR: packet length error')

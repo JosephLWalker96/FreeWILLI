@@ -17,6 +17,15 @@ Execute (datalogger):
 ./listen.exe 192.168.100.220 50000 1240
 
 TO DO:
+    0) How to deal with out of bounds DOA vals
+    1) Exception handling.. cerr + throw
+    2) Zero pad before circular convolution
+
+OPTIMIZATIONS: 
+    1) filter in frequency domain. Do not return to time domain
+    2) Watch and Implement "How to align data for efficient FIR filter"
+
+
 
 RESOURCES:
     debugging (core dump): https://www.youtube.com/watch?v=3T3ZDquDDVg&t=190s
@@ -88,6 +97,7 @@ const string OUTPUT_FILE = "clicks_data.txt";
 std::string outputFile = "Ccode_clicks.txt"; // Change to your desired file name
 
 int packetCounter = 0;
+bool test = true;
 
 void UdpListener(Session& sess) {
     /*
@@ -114,6 +124,7 @@ void UdpListener(Session& sess) {
         auto endPacketTime = startPacketTime;
         int qSize;
         double define;
+
         while (!sess.errorOccurred) {
             
             sess.udpSocketLock.lock();
@@ -121,9 +132,9 @@ void UdpListener(Session& sess) {
             sess.udpSocketLock.unlock();
             
             if (bytesReceived == -1) {
-                cerr << "Error in recvfrom" << endl;
-                continue;
+                throw std::runtime_error( "Error in recvfrom: bytesReceived is -1");
             }
+            
             dataBytes.resize(bytesReceived); // Adjust size based on actual bytes received
             packetCounter += 1;
             if (packetCounter % printInterval == 0) {
@@ -148,8 +159,7 @@ void UdpListener(Session& sess) {
     }
 }
 
-void DataProcessor(void (*ProcessingFunction)(vector<double>&, vector<TimePoint>&, const string&, 
-arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&), Session& sess) {
+void DataProcessor(void (*ProcessingFunction)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&), Session& sess) {
     /*
     Functionality:
     This function serves as a data processor that continuously processes data segments retrieved from a shared buffer (dataBuffer).
@@ -163,7 +173,6 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
     */
 
     try {
-        
         int channelSize = DATA_SEGMENT_LENGTH / NUM_CHAN; // the number of samples per channel within a dataSegment
         
         // declare FFT object
@@ -188,7 +197,8 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
         // Define FIR filter using SigPack library
         sp::FIR_filt<double, double, double> fir_filt;
         fir_filt.set_coeffs(h);
-
+        
+        // Declare time checking variables
         bool previousTimeSet = false;
         std::chrono::time_point<std::chrono::system_clock> previousTime = std::chrono::time_point<std::chrono::system_clock>::min(); // CHECK VALUE
 
@@ -198,8 +208,10 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
         arma::Col<double> ch3(channelSize);
         arma::Col<double> ch4(channelSize);
         arma::Mat<double> dataMatrix(ch1.n_elem, 4);
-        
+       
+        // Container for pulling bytes from buffer (dataBuffer)
         vector<uint8_t> dataBytes;
+
         while (!sess.errorOccurred) {
             
             sess.dataTimesLock.lock();
@@ -217,7 +229,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
                 sess.dataBufferLock.lock();
                 int qSize = sess.dataBuffer.size();
                 sess.dataBufferLock.unlock();
-                //cout << "qSize before: " << qSize << endl;
+                
                 if (qSize < 1){
                     cout << "Sleeping: " << endl;
                     std::this_thread::sleep_for(200ms);
@@ -230,10 +242,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
                 sess.dataBufferLock.unlock();
 
                 if (dataBytes.size() != PACKET_SIZE){
-                    cerr << "Error: recieved incorrect number of packets" << endl;
-                    previousTimeSet = false; 
-                    RestartListener(sess);
-                    continue;
+                    throw std::runtime_error("Error: recieved incorrect number of packets");
                 }
                 
                 std::tm timeStruct{};
@@ -255,22 +264,18 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
                 std::time_t timeResult = std::mktime(&timeStruct);
 
                 if (timeResult == std::time_t(-1)) {
-                    cerr << "failure in mktime!! " << endl;
+                    throw std::runtime_error("Error: failure in mktime");
                 }
-
 
                 std::chrono::time_point<std::chrono::system_clock> specificTime = std::chrono::system_clock::from_time_t(timeResult);
                 specificTime += std::chrono::microseconds(microSec);
-                
                 
                 auto duration = specificTime - previousTime;
                 auto elapsed_time_ms = std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count();
 
                 if (previousTimeSet && (elapsed_time_ms != MICRO_INCR)){
-                    cerr << "Error: Time not incremented by " <<  MICRO_INCR << " " << elapsed_time_ms <<  endl; 
-                    previousTimeSet = false;
-                    RestartListener(sess);
-                    continue;
+                    cerr << "Error: Time not incremented by " <<  MICRO_INCR << " " << elapsed_time_ms << endl;
+                    throw std::runtime_error("Error: Time not incremented by MICRO_INCR");
                 }
                 
                 // Convert byte data to doubles
@@ -291,44 +296,34 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
                 
                 previousTime = specificTime;
                 previousTimeSet = true;
-                
-                /*
-                if (withProbability(0.001)){
-                    //throw std::runtime_error("An error occurred");
-                    sess.dataSegmentLock.lock();
-                    sess.dataSegment[2] =  std::numeric_limits<double>::quiet_NaN();
-                    sess.dataSegmentLock.unlock();
-                }
-                */
-                
-                
-
             }
 
-
             /*
-             *   Exited inner loop. 
-             *   dataSegment has been filled to 'DATA_SEGMENT_LENGTH' length
-             *   now begin energy detector, filtering, TDOA & DOA estimation
-             *
+             *   Exited inner loop - dataSegment has been filled to 'DATA_SEGMENT_LENGTH' length
+             *   now apply energy detector. 
              */
             sess.dataSegmentLock.lock();
-            ProcessingFunction(sess.dataSegment, sess.dataTimes, OUTPUT_FILE, ch1, ch2, ch3, ch4);
+            ProcessingFunction(sess.dataSegment, ch1, ch2, ch3, ch4);
             sess.dataSegmentLock.unlock();
             
             double threshold = 80.0;
             
             DetectionResult values = ThresholdDetect(ch1, sess.dataTimes, threshold);
-            if (values.maxPeakIndex < 0){
+            
+            if (values.maxPeakIndex < 0){ // if no pulse was detected (maxPeakIndex remains -1) stop processing
                 continue;
             }
+           
             WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, outputFile);
             
-            
+            /*
+             *  Pulse detected. Now process the channels filtering, TDOA & DOA estimation.
+             */
+
             auto beforeFilter = std::chrono::steady_clock::now();
             FilterWithFIR(ch1,ch2,ch3,ch4, fir_filt);
-            //filterWithLiquidFIR(ch1,ch2,ch3,ch4, fir_filt);
-            //filterWithIIR(ch1,ch2,ch3,ch4, iir_filt);
+            //FilterWithLiquidFIR(ch1,ch2,ch3,ch4, fir_filt);
+            //FilterWithIIR(ch1,ch2,ch3,ch4, iir_filt);
             auto afterFilter = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
             //cout << "C FIR Filter: " << durationFilter.count() << endl;
@@ -359,7 +354,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
             arma::Col<int> chanSpacing = {1,2,3,1,2,1};
             arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, 1500.0, chanSpacing);
 
-            cout << "DOAs: " << DOAs.t() << endl;
+            //cout << "DOAs: " << DOAs.t() << endl;
 
             /*
             for (int ii = 0; ii < 4; ++ii) {
@@ -373,7 +368,7 @@ arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&),
         }
     } catch (const std::exception& e ){
         // Handle the exception
-        cerr << "Error occured in data processor thread" << endl;
+        cerr << "Error occured in data processor thread: " << endl;
         cerr << e.what() << endl;
         sess.errorOccurred = true;
       }
@@ -395,7 +390,7 @@ int main(int argc, char *argv[]){
 
     //import variables according to firmware version specified
     cout << "Assuming firmware version: " << firmwareVersion << endl;
-    void(*ProcessFncPtr)(vector<double>&, vector<TimePoint>&, const string&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&) = nullptr;
+    void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&) = nullptr;
     if (firmwareVersion == 1550){
         ProcessFile("ConfigFiles/1550_config.txt");
         ProcessFncPtr = ProcessSegmentInterleaved;
@@ -434,10 +429,11 @@ int main(int argc, char *argv[]){
         return 1;
     }
 
-    
+    // Declare a listening 'Session'
     Session sess;
     sess.UDP_PORT = UDP_PORT;
     sess.UDP_IP = UDP_IP;
+
     while (true){
         
         RestartListener(sess);
