@@ -26,7 +26,7 @@ using std::vector;
 using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
-arma::Col<double> GCC_PHAT(arma::Mat<double>& data, int interp, sp::FFTW& fftw, int fftLength){
+arma::Col<double> GCC_PHAT(arma::Mat<double>& data, int& interp, sp::FFTW& fftw, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE){
     /**
     * @brief Computes the Generalized Cross-Correlation with Phase Transform (GCC-PHAT) between pairs of signals.
     *
@@ -80,7 +80,7 @@ arma::Col<double> GCC_PHAT(arma::Mat<double>& data, int interp, sp::FFTW& fftw, 
     return tauVector;
 }
 
-Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp) {
+Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     // This is the same algorithm as GCC_PHAT above but implemented using the Eigen library
     Eigen::VectorXd sig1(data.rows());
     Eigen::VectorXd sig2(data.rows());
@@ -145,7 +145,7 @@ Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp) {
     return tau_matrix;
 }
 
-arma::Col<double> DOA_EstimateVerticalArray(arma::Col<double>& TDOAs, double soundSpeed, arma::Col<int> chanSpacing){
+arma::Col<double> DOA_EstimateVerticalArray(arma::Col<double>& TDOAs, const double& soundSpeed, arma::Col<int>& chanSpacing){
     /**
     * @brief Estimates the vertical direction of arrival (DOA) using time difference of arrivals (TDOAs) 
     * between microphone channels in an array.

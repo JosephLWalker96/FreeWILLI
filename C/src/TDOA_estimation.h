@@ -12,8 +12,8 @@ This file contains all function prototypes for TDOA_estimation.cpp
 #include <sigpack.h>
 #include <fftw/fftw.h>
 
-arma::Col<double> GCC_PHAT(arma::Mat<double>& data, int interp, sp::FFTW& fftw, int fftLength);
-Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp);
-arma::Col<double> DOA_EstimateVerticalArray(arma::Col<double>& TDOAs, double soundSpeed, arma::Col<int> chanSpacing);
+arma::Col<double> GCC_PHAT(arma::Mat<double>& data, int& interp, sp::FFTW& fftw, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE);
+Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int& interp);
+arma::Col<double> DOA_EstimateVerticalArray(arma::Col<double>& TDOAs, const double& soundSpeed, arma::Col<int>& chanSpacing);
 
 #endif

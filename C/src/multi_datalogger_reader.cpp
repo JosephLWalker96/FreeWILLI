@@ -79,45 +79,30 @@ using std::vector;
 using std::ifstream;
 using namespace std::chrono_literals;
 
-// Global Constants
-unsigned int HEAD_SIZE;                                 //packet head size (bytes)
-unsigned int NUM_CHAN;                                  //number of channels per packet
-unsigned int SAMPS_PER_CHANNEL;                         //samples per packet per channel, for 2 channels, this value is 5*62  = 310
-unsigned int BYTES_PER_SAMP;                            //bytes per sample
-unsigned int DATA_SIZE;                                 //packet data size (bytes)
-unsigned int PACKET_SIZE;                               //packet size (bytes)
-unsigned int REQUIRED_BYTES;
-unsigned int DATA_BYTES_PER_CHANNEL;                    //number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
-unsigned int NUM_PACKS_DETECT;
-unsigned int DATA_SEGMENT_LENGTH;
-unsigned int MICRO_INCR;                                // time between packets
-const unsigned int SAMPLE_RATE = 1e5;
-const double TIME_WINDOW = 0.01;                 // fraction of a second to consider  
-const string OUTPUT_FILE = "clicks_data.txt";
-std::string outputFile = "Ccode_clicks.txt"; // Change to your desired file name
-
+// Global variables
 int packetCounter = 0;
 bool test = true;
 
-void UdpListener(Session& sess) {
-    /*
-    Functionality:
-    This function serves as a UDP listener that continuously listens for incoming UDP packets.
-    It receives UDP packets of a specified size, checks their length, and if they meet the expected size, 
-    increments a packet counter. The received data is then placed into a shared buffer for further processing.
-
-    Global Variables:
-    - dataBuffer: shared buffer to store received data packets.
-    - packetCounter: counter to keep track of the number of received packets.
-    - udpSocket: the UDP socket used for listening to incoming packets.    
-    */
+void UdpListener(Experiment& exp, Session& sess) {
+    /**
+     * @brief Listens for UDP packets and processes them, storing data in a buffer.
+     * 
+     * This function continuously listens for incoming UDP packets on a specified socket.
+     * It receives data and stores the received data into a buffer (sess.dataBuffer). 
+     * Statistics about the received packets are printed to the console.
+     * 
+     * @param exp Reference to an Experiment object, which contains configuration details like PACKET_SIZE.
+     * @param sess Reference to a Session object, which contains session-specific details and state, such as the datagram socket and buffers.
+     * 
+     * @throws std::runtime_error if there is an error in receiving data from the socket.
+     */
 
     try {
         struct sockaddr_in addr;
         socklen_t addrLength = sizeof(addr);
         int bytesReceived;
         int printInterval = 500;
-        int receiveSize = PACKET_SIZE + 1;      // + 1 to detect if an erroneous amount of data is being sent
+        int receiveSize = exp.PACKET_SIZE + 1;      // + 1 to detect if an erroneous amount of data is being sent
         vector<uint8_t> dataBytes(receiveSize);
         std::chrono::duration<double> durationPacketTime;
         auto startPacketTime = std::chrono::steady_clock::now();
@@ -159,27 +144,32 @@ void UdpListener(Session& sess) {
     }
 }
 
-void DataProcessor(void (*ProcessingFunction)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&), Session& sess) {
-    /*
-    Functionality:
-    This function serves as a data processor that continuously processes data segments retrieved from a shared buffer (dataBuffer).
-    It extracts the necessary information from the received data, such as timestamps and sample values, performs adjustments,
-    and stores the processed data into a segment (dataSegment). This segment is then processed.
-
-    Global Variables:
-    - dataBuffer: Shared buffer containing received data packets.
-    - dataSegment: Segment of data to be processed.
-    - dataTimes: Array containing timestamps associated with data segments. 
-    */
+void DataProcessor(Experiment& exp, Session& sess) {
+    /**
+     * @brief Processes data segments from a shared buffer, performs filtering and analysis.
+     *
+     * This function continuously processes data segments retrieved from a shared buffer (`dataBuffer`).
+     * It extracts timestamps and sample values, applies necessary adjustments and filters, and stores
+     * the processed data into a segment (`dataSegment`). The processed data is then further analyzed
+     * to detect pulses, apply filters, and estimate time differences and directions of arrival.
+     *
+     * @param exp Reference to an Experiment object containing configuration details like data segment length,
+     *            number of channels, filter weights, and other processing parameters.
+     * @param sess Reference to a Session object containing session-specific details and state, such as the 
+     *             data buffer, segment buffer, and various locks for synchronization.
+     * 
+     * @throws std::runtime_error if there is an error in processing data, such as incorrect packet sizes
+     *                            or unexpected time increments.
+     */
 
     try {
-        int channelSize = DATA_SEGMENT_LENGTH / NUM_CHAN; // the number of samples per channel within a dataSegment
+        int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; // the number of samples per channel within a dataSegment
         
         // declare FFT object
         sp::FFTW fftw(channelSize, FFTW_ESTIMATE); // no 0 padding is currently being used
         
         // Read filter weights from file 
-        arma::Col<double> h = ReadFIRFilterFile("filters/My_filter.txt");
+        arma::Col<double> h = ReadFIRFilterFile(exp.filterWeights);
         
 
         // Define FIR filter using the liquid library 
@@ -207,7 +197,7 @@ void DataProcessor(void (*ProcessingFunction)(vector<double>&, arma::Col<double>
         arma::Col<double> ch2(channelSize);
         arma::Col<double> ch3(channelSize);
         arma::Col<double> ch4(channelSize);
-        arma::Mat<double> dataMatrix(ch1.n_elem, 4);
+        arma::Mat<double> dataMatrix(ch1.n_elem, exp.NUM_CHAN);
        
         // Container for pulling bytes from buffer (dataBuffer)
         vector<uint8_t> dataBytes;
@@ -224,7 +214,7 @@ void DataProcessor(void (*ProcessingFunction)(vector<double>&, arma::Col<double>
 
             //arma::Col<double> pad(15, arma::fill::zeros);
 
-            while (sess.dataSegment.size() < DATA_SEGMENT_LENGTH) {
+            while (sess.dataSegment.size() < exp.DATA_SEGMENT_LENGTH) {
                 
                 sess.dataBufferLock.lock();
                 int qSize = sess.dataBuffer.size();
@@ -241,7 +231,7 @@ void DataProcessor(void (*ProcessingFunction)(vector<double>&, arma::Col<double>
                 sess.dataBuffer.pop();
                 sess.dataBufferLock.unlock();
 
-                if (dataBytes.size() != PACKET_SIZE){
+                if (dataBytes.size() != exp.PACKET_SIZE){
                     throw std::runtime_error("Error: recieved incorrect number of packets");
                 }
                 
@@ -273,14 +263,14 @@ void DataProcessor(void (*ProcessingFunction)(vector<double>&, arma::Col<double>
                 auto duration = specificTime - previousTime;
                 auto elapsed_time_ms = std::chrono::duration_cast<std::chrono::microseconds>(specificTime - previousTime).count();
 
-                if (previousTimeSet && (elapsed_time_ms != MICRO_INCR)){
-                    cerr << "Error: Time not incremented by " <<  MICRO_INCR << " " << elapsed_time_ms << endl;
+                if (previousTimeSet && (elapsed_time_ms != exp.MICRO_INCR)){
+                    cerr << "Error: Time not incremented by " <<  exp.MICRO_INCR << " " << elapsed_time_ms << endl;
                     throw std::runtime_error("Error: Time not incremented by MICRO_INCR");
                 }
                 
                 // Convert byte data to doubles
                 sess.dataSegmentLock.lock();
-                ConvertData(sess.dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE);
+                ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE);
                 sess.dataSegmentLock.unlock();
                 
                 //cout << "size: " << sess.dataSegment.size() << endl;
@@ -303,18 +293,17 @@ void DataProcessor(void (*ProcessingFunction)(vector<double>&, arma::Col<double>
              *   now apply energy detector. 
              */
             sess.dataSegmentLock.lock();
-            ProcessingFunction(sess.dataSegment, ch1, ch2, ch3, ch4);
+            exp.ProcessFncPtr(sess.dataSegment, ch1, ch2, ch3, ch4, exp.NUM_CHAN);
             sess.dataSegmentLock.unlock();
             
-            double threshold = 80.0;
             
-            DetectionResult values = ThresholdDetect(ch1, sess.dataTimes, threshold);
+            DetectionResult values = ThresholdDetect(ch1, sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
             
             if (values.maxPeakIndex < 0){ // if no pulse was detected (maxPeakIndex remains -1) stop processing
                 continue;
             }
            
-            WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, outputFile);
+            WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, exp.outputFile);
             
             /*
              *  Pulse detected. Now process the channels filtering, TDOA & DOA estimation.
@@ -344,15 +333,14 @@ void DataProcessor(void (*ProcessingFunction)(vector<double>&, arma::Col<double>
             
             int interp = 1;
             auto beforeGCC = std::chrono::steady_clock::now();
-            arma::Col<double> resultMatrix = GCC_PHAT(dataMatrix, interp, fftw, channelSize);
+            arma::Col<double> resultMatrix = GCC_PHAT(dataMatrix, interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, interp); // need to create dataE matrix 
             auto afterGCC = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
             //cout << "C GCC: " << durationGCC.count() << endl;
             
 
-            arma::Col<int> chanSpacing = {1,2,3,1,2,1};
-            arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, 1500.0, chanSpacing);
+            arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
 
             //cout << "DOAs: " << DOAs.t() << endl;
 
@@ -378,7 +366,9 @@ void DataProcessor(void (*ProcessingFunction)(vector<double>&, arma::Col<double>
 int main(int argc, char *argv[]){
     arma::arma_version ver;
     cout << "ARMA version: "<< ver.as_string() << endl;
-
+    
+    Experiment exp;
+    
     string UDP_IP = argv[1];                                         // IP address of data logger or simulator
     if (UDP_IP == "self"){
         UDP_IP = "127.0.0.1";
@@ -390,42 +380,41 @@ int main(int argc, char *argv[]){
 
     //import variables according to firmware version specified
     cout << "Assuming firmware version: " << firmwareVersion << endl;
-    void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&) = nullptr;
     if (firmwareVersion == 1550){
-        ProcessFile("ConfigFiles/1550_config.txt");
-        ProcessFncPtr = ProcessSegmentInterleaved;
+        ProcessFile(exp, "ConfigFiles/1550_config.txt");
+        exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else if (firmwareVersion == 1240){
-        ProcessFile("ConfigFiles/1240_config.txt");
-        ProcessFncPtr = ProcessSegmentInterleaved;
+        ProcessFile(exp, "ConfigFiles/1240_config.txt");
+        exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else{
         cerr << "ERROR: Unknown firmware version" << endl;
         return 1;
     }
     
-    NUM_PACKS_DETECT = (int)(TIME_WINDOW * 100000 / SAMPS_PER_CHANNEL);  // NEED TO ROUND THIS  the number of data packets that are needed to perform energy detection 
-    DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN; 
+    exp.NUM_PACKS_DETECT = (int)(exp.TIME_WINDOW * 100000 / exp.SAMPS_PER_CHANNEL);  // NEED TO ROUND THIS  the number of data packets that are needed to perform energy detection 
+    exp.DATA_SEGMENT_LENGTH = exp.NUM_PACKS_DETECT * exp.SAMPS_PER_CHANNEL * exp.NUM_CHAN; 
 
-    cout << "HEAD_SIZE: "              << HEAD_SIZE               << endl; 
-    cout << "SAMPS_PER_CHAN: "         << SAMPS_PER_CHANNEL       << endl;
-    cout << "BYTES_PER_SAMP: "         << BYTES_PER_SAMP          << endl;
-    cout << "Bytes per packet:       " << REQUIRED_BYTES         << endl;
-    cout << "Time between packets:   " << MICRO_INCR             << endl;
-    cout << "Number of channels:     " << NUM_CHAN               << endl;
-    cout << "Data bytes per channel: " << DATA_BYTES_PER_CHANNEL << endl;
-    cout << "Detecting over a time window of " << TIME_WINDOW << " seconds, using " << NUM_PACKS_DETECT <<  " packets" << endl;
+    cout << "HEAD_SIZE: "              << exp.HEAD_SIZE               << endl; 
+    cout << "SAMPS_PER_CHAN: "         << exp.SAMPS_PER_CHANNEL       << endl;
+    cout << "BYTES_PER_SAMP: "         << exp.BYTES_PER_SAMP          << endl;
+    cout << "Bytes per packet:       " << exp.REQUIRED_BYTES         << endl;
+    cout << "Time between packets:   " << exp.MICRO_INCR             << endl;
+    cout << "Number of channels:     " << exp.NUM_CHAN               << endl;
+    cout << "Data bytes per channel: " << exp.DATA_BYTES_PER_CHANNEL << endl;
+    cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
 
     
     // Open the file in write mode and clear its contents if it exists, create a new file otherwise
-    std::ofstream file(outputFile, std::ofstream::out | std::ofstream::trunc);
+    std::ofstream file(exp.outputFile, std::ofstream::out | std::ofstream::trunc);
     if (file.is_open()) {
         file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << endl;
         file.close();
-        cout << "File created and cleared: " << outputFile << endl;
+        cout << "File created and cleared: " << exp.outputFile << endl;
     } 
     else {
-        cerr << "Error: Unable to open file for writing: " << outputFile << endl;
+        cerr << "Error: Unable to open file for writing: " << exp.outputFile << endl;
         return 1;
     }
 
@@ -438,8 +427,8 @@ int main(int argc, char *argv[]){
         
         RestartListener(sess);
         
-        std::thread udpThread(UdpListener, std::ref(sess));
-        std::thread processorThread(DataProcessor, ProcessFncPtr, std::ref(sess));
+        std::thread udpThread(UdpListener, std::ref(exp), std::ref(sess));
+        std::thread processorThread(DataProcessor, std::ref(exp), std::ref(sess));
 
         udpThread.join();
         processorThread.join();

@@ -63,7 +63,7 @@ void RestartListener(Session& sess){
     sess.dataTimesLock.unlock();
 }
 
-void ProcessFile(const string& fileName) {
+void ProcessFile(Experiment& exp, const string& fileName) {
     /**
     * @brief Processes a configuration file and initializes global variables accordingly.
     *
@@ -75,12 +75,12 @@ void ProcessFile(const string& fileName) {
         cerr << "Error: Unable to open config file: " << fileName  << endl;
         return;
     }
-    inputFile >> HEAD_SIZE >> MICRO_INCR >> NUM_CHAN >> SAMPS_PER_CHANNEL >> BYTES_PER_SAMP;
-    DATA_SIZE = SAMPS_PER_CHANNEL * NUM_CHAN * BYTES_PER_SAMP; 
+    inputFile >> exp.HEAD_SIZE >> exp.MICRO_INCR >> exp.NUM_CHAN >> exp.SAMPS_PER_CHANNEL >> exp.BYTES_PER_SAMP;
+    exp.DATA_SIZE = exp.SAMPS_PER_CHANNEL * exp.NUM_CHAN * exp.BYTES_PER_SAMP; 
     
-    PACKET_SIZE = HEAD_SIZE + DATA_SIZE;
-    REQUIRED_BYTES = DATA_SIZE + HEAD_SIZE;
-    DATA_BYTES_PER_CHANNEL = SAMPS_PER_CHANNEL * BYTES_PER_SAMP;
+    exp.PACKET_SIZE = exp.HEAD_SIZE + exp.DATA_SIZE;
+    exp.REQUIRED_BYTES = exp.DATA_SIZE + exp.HEAD_SIZE;
+    exp.DATA_BYTES_PER_CHANNEL = exp.SAMPS_PER_CHANNEL * exp.BYTES_PER_SAMP;
 }
 
 arma::Col<double> ReadFIRFilterFile(const string& fileName) {
@@ -135,7 +135,7 @@ void ClearQueue(std::queue<std::vector<uint8_t>>& q){
     std::swap(q, empty);
 }
 
-bool withProbability(double probability){
+bool WithProbability(double& probability){
     /**
     * @brief Generates a boolean value based on the given probability.
     * This fucntion is used for testing.

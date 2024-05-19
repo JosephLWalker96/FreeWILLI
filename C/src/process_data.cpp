@@ -79,7 +79,7 @@ void ConvertData(std::vector<double>& dataSegment,std::vector<uint8_t>& dataByte
     }
 }
 
-DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& times, double threshold){
+DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& times, const double& threshold, const unsigned int& SAMPLE_RATE){
     /**
     * @brief Detects peaks in the input data above a specified threshold.
     *
@@ -161,7 +161,7 @@ void ProcessSegment(arma::Col<double>& data, vector<TimePoint>& times, const str
     }
 }
 
-void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const string& outputFile) {
+void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const string& outputFile, unsigned int& NUM_CHAN, unsigned int& SAMPS_PER_CHANNEL, unsigned int& NUM_PACKS_DETECT) {
     //
     // THIS FUNCTION IS DEPRICATED
     //
@@ -204,7 +204,7 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
 }
 
 
-void ProcessSegmentInterleaved(vector<double>& data, arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4) {
+void ProcessSegmentInterleaved(vector<double>& data, arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, unsigned int& NUM_CHAN) {
     /**
     * @brief Processes interleaved data into separate channel. Each channel's data is saved into a corresponding Armadillo column vector.
     * 
