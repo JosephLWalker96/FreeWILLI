@@ -68,7 +68,7 @@ print('Microseconds between packets:   ', MICRO_INCR)
 print('Number of channels:     ',         NUM_CHAN)
 print('Data bytes per channel: ',         DATA_BYTES_PER_CHANNEL)
 print("Detecting over a time window of ", TIME_WINDOW," seconds, using ",NUM_PACKS_DETECT, " packets") 
-
+detectionCounter = 0
 def restartListener():
     """
     Functionality:
@@ -134,7 +134,7 @@ def UdpListener():
             if packetCounter % printInterval == 0:
                 with dataBufferLock:
                     qSize = dataBuffer.qsize()
-                print("Num packets received is ", packetCounter, (time.time() - startPacketTime)/printInterval,qSize,packetCounter - qSize)
+                print("Num packets received is ", packetCounter, (time.time() - startPacketTime)/printInterval,qSize,packetCounter - qSize, detectionCounter)
                 startPacketTime = time.time()
             with dataBufferLock:
                 dataBuffer.put(dataBytes)  # Put received data into the buffer
@@ -156,7 +156,7 @@ def DataProcessor():
     - dataTimes: Array containing timestamps associated with data segments. 
     """
     try:
-        global dataBuffer, dataSegment, dataTimes
+        global dataBuffer, dataSegment, dataTimes, detectionCounter
         
         ### define IIR filter - should be passed as function arguement
         '''
@@ -185,7 +185,6 @@ def DataProcessor():
                 dataTimes = np.array([])
             
             while len(dataSegment) < (NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN):
-                
                 with dataBufferLock:
                     qSize = dataBuffer.qsize()
                 if qSize < 1:
@@ -224,7 +223,6 @@ def DataProcessor():
                     previousTime = False
                     restartListener()
                     continue
-
                 with dataTimesLock:
                     dataTimes = np.append(dataTimes, dateTime) 
                 with dataSegmentLock:
@@ -242,6 +240,7 @@ def DataProcessor():
                 values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 80)
             if values == None: # if no pulses were detected to segment, then get next segment
                 continue
+            detectionCounter += 1
            
             clickTimes, clickAmplitudes, clickStartPoints, clickEndPoints = values
             #SaveDataSegment(clickTimes[0], dataSegment, ch1, ch2, ch3, ch4) 
@@ -270,13 +269,14 @@ def DataProcessor():
             
             gccStart = time.time()
             tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, NUM_CHAN, max_tau=None, interp=1)
-            print("P GCC: ", time.time() - gccStart)
+            #print("P GCC: ", time.time() - gccStart)
             #print('here')
             #print(tdoaEstimates)
             
             chanSpacing  = np.array([1, 2, 3, 1, 2, 1])
             doaEstimates = DOA_EstimateVerticalArray(tdoaEstimates, 1500, chanSpacing)
-            print(doaEstimates)
+            #print(doaEstimates)
+            #print('End all: ', time.time() - gccStart)
             
     except Exception as e:
         print(f"Error occurred in Data Processor thread: {e}")

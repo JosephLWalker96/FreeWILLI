@@ -99,6 +99,13 @@ def SyntheticClickGenerator(signalLength, clickDuration):
     s[startPosition:startPosition + clickDuration] = (s[startPosition:startPosition + clickDuration] * 1.7) * (np.hamming(clickDuration) + 1)
     return s
 
+def LoadChannelOne(DATA_PATH, DATA_SCALE):
+    print("Loading data from file: ",filePath)
+    dataMatrix = loadmat(filePath)['DATA'].T
+    print("Shape of loaded data: ", dataMatrix.shape)
+    return dataMatrix[0,:]
+
+
 def LoadTest4chDataInterleaved(filePath, scale, NUM_CHAN, SAMPS_PER_CHANNEL, simulateTDOA):
     """
     Function to read in real 4 channel data and format the data according to firmware version 1550
@@ -115,7 +122,7 @@ def LoadTest4chDataInterleaved(filePath, scale, NUM_CHAN, SAMPS_PER_CHANNEL, sim
     dataMatrix = loadmat(filePath)['DATA'].T
     print("Shape of loaded data: ", dataMatrix.shape)
 
-    if simulateTDOA:
+    if simulateTDOA == "const":
         print("Simulating TDOA")
         for chan in range(1,NUM_CHAN):
             shift = 10*chan
@@ -126,7 +133,10 @@ def LoadTest4chDataInterleaved(filePath, scale, NUM_CHAN, SAMPS_PER_CHANNEL, sim
     dataMatrixReshaped = dataMatrix.reshape(-1, order='F')                   # Interleave the values of the rows uniformly
     print("REAL dataMatrix: ",dataMatrixReshaped[:30])
     dataMatrixReshaped = dataMatrixReshaped + scale                         
-    return dataMatrixReshaped
+    
+    # return the flatened data matrix and index of first high amplitude value in first channel. 
+    # This high amplitude index is used for sending packets with pulses 
+    return dataMatrixReshaped, np.where(dataMatrix[0,:]>500)[0][0]            
 
 def LoadTest4chDataStacked(filePath, scale,  NUM_CHAN, SAMPS_PER_CHANNEL, simulateTDOA):
     """
@@ -146,7 +156,7 @@ def LoadTest4chDataStacked(filePath, scale,  NUM_CHAN, SAMPS_PER_CHANNEL, simula
 
     divisor = dataMatrix.shape[1] // SAMPS_PER_CHANNEL
     dataMatrix = dataMatrix[:,:int(SAMPS_PER_CHANNEL*divisor)]                      # truncate data that doesn't evenly fit into the packets
-    if simulateTDOA:
+    if simulateTDOA == "const":
         print("Simulating TDOA")
         for chan in range(1,NUM_CHAN):
             shift = 10*chan

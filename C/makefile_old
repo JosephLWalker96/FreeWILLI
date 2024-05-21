@@ -1,13 +1,21 @@
 # Compiler and flags
 CXX = g++
-CXXFLAGS = -std=c++20 -march=native -Wall -Ofast -flto -g # remove -g for production build
+CXXFLAGS = -std=c++20 -march=native -Ofast -flto=auto -g -Wall   # remove -g -Wall for production build
 LIBS = -lopenblas -llapack -lliquid -lfftw3
 INCLUDES = -I/usr/include/sigpack-1.2.7/sigpack
 
+# Directories 
+SRC_DIR := src
+OBJ_DIR := src
+
 # Source files
-SRCS = multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp filters.cpp
-OBJS = $(SRCS:.cpp=.o)
-TARGET = listen
+SRCS := $(wildcard $(SRC_DIR)/*.cpp)
+
+# Object files
+OBJS := $(SRCS:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+
+# Target executable
+TARGET := listen
 
 # Make all targets by default
 all: $(TARGET)

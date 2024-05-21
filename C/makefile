@@ -1,6 +1,6 @@
 # Compiler and flags
 CXX = g++
-CXXFLAGS = -std=c++20 -march=native -Ofast -flto=auto -g -Wall   # remove -g -Wall for production build
+CXXFLAGS = -std=c++20 -march=native -Ofast -flto=auto   # remove -g -Wall for production build
 LIBS = -lopenblas -llapack -lliquid -lfftw3
 INCLUDES = -I/usr/include/sigpack-1.2.7/sigpack
 

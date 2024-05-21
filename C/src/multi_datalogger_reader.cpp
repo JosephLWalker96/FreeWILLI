@@ -24,6 +24,10 @@ TO DO:
 OPTIMIZATIONS: 
     1) filter in frequency domain. Do not return to time domain
     2) Watch and Implement "How to align data for efficient FIR filter"
+    3) Don't write to file after every detection
+    4) preset the sizes of std::vectors
+    5) Implement SPSC lock-free queue: boost:lockfree:spsc_queue
+    6) Rremove mutexes 
 
 
 
@@ -81,6 +85,7 @@ using namespace std::chrono_literals;
 
 // Global variables
 int packetCounter = 0;
+int detectionCounter = 0;
 bool test = true;
 
 void UdpListener(Experiment& exp, Session& sess) {
@@ -129,7 +134,7 @@ void UdpListener(Experiment& exp, Session& sess) {
                 qSize = sess.dataBuffer.size();
                 sess.dataBufferLock.unlock();
                 define = durationPacketTime.count() / printInterval; 
-                cout << "Num packets received is " <<  packetCounter << " " << define  << " " << qSize << " " << packetCounter - qSize << endl;
+                cout << "Num packets received is " <<  packetCounter << " " << define  << " " << qSize << " " << packetCounter - qSize << " " << detectionCounter << endl;
                 startPacketTime = std::chrono::steady_clock::now();
             }
             sess.dataBufferLock.lock();
@@ -216,6 +221,7 @@ void DataProcessor(Experiment& exp, Session& sess) {
 
             while (sess.dataSegment.size() < exp.DATA_SEGMENT_LENGTH) {
                 
+                
                 sess.dataBufferLock.lock();
                 int qSize = sess.dataBuffer.size();
                 sess.dataBufferLock.unlock();
@@ -267,10 +273,17 @@ void DataProcessor(Experiment& exp, Session& sess) {
                     cerr << "Error: Time not incremented by " <<  exp.MICRO_INCR << " " << elapsed_time_ms << endl;
                     throw std::runtime_error("Error: Time not incremented by MICRO_INCR");
                 }
-                
+                //auto endTimes = std::chrono::steady_clock::now();
+                //std::chrono::duration<double> durationTimes = endTimes - startLoop;
+                //cout << "Duration Times: " << durationTimes.count() << endl;
+
                 // Convert byte data to doubles
                 sess.dataSegmentLock.lock();
+                auto startCDTime = std::chrono::steady_clock::now();
                 ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE);
+                auto endCDTime = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationCD = endCDTime - startCDTime;
+                //cout << "CD time: " << durationCD.count() << endl;
                 sess.dataSegmentLock.unlock();
                 
                 //cout << "size: " << sess.dataSegment.size() << endl;
@@ -295,13 +308,14 @@ void DataProcessor(Experiment& exp, Session& sess) {
             sess.dataSegmentLock.lock();
             exp.ProcessFncPtr(sess.dataSegment, ch1, ch2, ch3, ch4, exp.NUM_CHAN);
             sess.dataSegmentLock.unlock();
-            
+            //cout << ch1.t() << endl;
             
             DetectionResult values = ThresholdDetect(ch1, sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
             
             if (values.maxPeakIndex < 0){ // if no pulse was detected (maxPeakIndex remains -1) stop processing
                 continue;
             }
+            detectionCounter++;
            
             WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, exp.outputFile);
             
@@ -309,12 +323,12 @@ void DataProcessor(Experiment& exp, Session& sess) {
              *  Pulse detected. Now process the channels filtering, TDOA & DOA estimation.
              */
 
-            auto beforeFilter = std::chrono::steady_clock::now();
+            //auto beforeFilter = std::chrono::steady_clock::now();
             FilterWithFIR(ch1,ch2,ch3,ch4, fir_filt);
             //FilterWithLiquidFIR(ch1,ch2,ch3,ch4, fir_filt);
             //FilterWithIIR(ch1,ch2,ch3,ch4, iir_filt);
-            auto afterFilter = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
+            //auto afterFilter = std::chrono::steady_clock::now();
+            //std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
             //cout << "C FIR Filter: " << durationFilter.count() << endl;
             
 
@@ -326,21 +340,24 @@ void DataProcessor(Experiment& exp, Session& sess) {
             cout << endl;
             */
             
-            dataMatrix.insert_cols(0,ch1);
-            dataMatrix.insert_cols(1,ch2);
-            dataMatrix.insert_cols(2,ch3);
-            dataMatrix.insert_cols(3,ch4);
+            dataMatrix.col(0) = ch1;
+            dataMatrix.col(1) = ch2;
+            dataMatrix.col(2) = ch3;
+            dataMatrix.col(3) = ch4;
             
             int interp = 1;
             auto beforeGCC = std::chrono::steady_clock::now();
             arma::Col<double> resultMatrix = GCC_PHAT(dataMatrix, interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, interp); // need to create dataE matrix 
-            auto afterGCC = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
+            //auto afterGCC = std::chrono::steady_clock::now();
+            //std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
             //cout << "C GCC: " << durationGCC.count() << endl;
             
 
             arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
+            //auto endAll = std::chrono::steady_clock::now();
+            //std::chrono::duration<double> durationFilter = endAll - beforeGCC;
+            //cout << "Duration Filter: " << durationFilter.count() << endl;
 
             //cout << "DOAs: " << DOAs.t() << endl;
 
