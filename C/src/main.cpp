@@ -14,25 +14,22 @@ Execute (datalogger simulator):
 ./listen 192.168.7.2 1045 1240
 
 Execute (datalogger):
-./listen.exe 192.168.100.220 50000 1240
+./listen 192.168.100.220 50000 1240
 
 TO DO:
     0) How to deal with out of bounds DOA vals
-    1) Exception handling.. cerr + throw
+    1) write data to file in case of GCC_Value_Error
     2) Zero pad before circular convolution
 
 OPTIMIZATIONS: 
-    1) filter in frequency domain. Do not return to time domain
-    2) Watch and Implement "How to align data for efficient FIR filter"
-    3) Don't write to file after every detection
-    4) preset the sizes of std::vectors
-    5) Implement SPSC lock-free queue: boost:lockfree:spsc_queue
-    6) Rremove mutexes 
+    2) Don't write to file after every detection
+    3) Implement SPSC lock-free queue: boost:lockfree:spsc_queue
 
 
 
 RESOURCES:
     debugging (core dump): https://www.youtube.com/watch?v=3T3ZDquDDVg&t=190s
+    download armadillo manually: https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 */
 
 #include <iostream>
@@ -56,7 +53,7 @@ RESOURCES:
 #include <iomanip> //put_time
 #include <ctime>
 #include <cstdint>
-#include <armadillo>
+//#include <armadillo> not needed if <sigpack.h> is used
 
 #include <sigpack.h>
 #include <fftw/fftw.h>
@@ -71,7 +68,7 @@ RESOURCES:
 #include "process_data.h"
 #include "TDOA_estimation.h"
 #include "utils.h"
-#include "my_globals.h"
+#include "custom_types.h"
 #include "filters.h"
 
 using std::cout;
@@ -83,12 +80,13 @@ using std::vector;
 using std::ifstream;
 using namespace std::chrono_literals;
 
-// Global variables
+
+// Global variables (used for testing and logging to console)
 int packetCounter = 0;
 int detectionCounter = 0;
 bool test = true;
 
-void UdpListener(Experiment& exp, Session& sess) {
+void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
     /**
      * @brief Listens for UDP packets and processes them, storing data in a buffer.
      * 
@@ -107,7 +105,7 @@ void UdpListener(Experiment& exp, Session& sess) {
         socklen_t addrLength = sizeof(addr);
         int bytesReceived;
         int printInterval = 500;
-        int receiveSize = exp.PACKET_SIZE + 1;      // + 1 to detect if an erroneous amount of data is being sent
+        int receiveSize = PACKET_SIZE + 1;      // + 1 to detect if an erroneous amount of data is being sent
         vector<uint8_t> dataBytes(receiveSize);
         std::chrono::duration<double> durationPacketTime;
         auto startPacketTime = std::chrono::steady_clock::now();
@@ -117,29 +115,27 @@ void UdpListener(Experiment& exp, Session& sess) {
 
         while (!sess.errorOccurred) {
             
-            sess.udpSocketLock.lock();
             bytesReceived = recvfrom(sess.datagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr*)&addr, &addrLength);
-            sess.udpSocketLock.unlock();
             
             if (bytesReceived == -1) {
                 throw std::runtime_error( "Error in recvfrom: bytesReceived is -1");
             }
             
             dataBytes.resize(bytesReceived); // Adjust size based on actual bytes received
+            
+            sess.dataBufferLock.lock(); // give this thread exclusive rights to modify the shared dataBytes variable
+            sess.dataBuffer.push(dataBytes);
+            qSize = sess.dataBuffer.size();
+            sess.dataBufferLock.unlock();
+            
             packetCounter += 1;
             if (packetCounter % printInterval == 0) {
                 endPacketTime = std::chrono::steady_clock::now();
                 durationPacketTime = endPacketTime - startPacketTime;
-                sess.dataBufferLock.lock();
-                qSize = sess.dataBuffer.size();
-                sess.dataBufferLock.unlock();
                 define = durationPacketTime.count() / printInterval; 
                 cout << "Num packets received is " <<  packetCounter << " " << define  << " " << qSize << " " << packetCounter - qSize << " " << detectionCounter << endl;
                 startPacketTime = std::chrono::steady_clock::now();
             }
-            sess.dataBufferLock.lock();
-            sess.dataBuffer.push(dataBytes);
-            sess.dataBufferLock.unlock();
         }
     } catch (const std::exception& e ){
         // Handle the exception
@@ -149,7 +145,7 @@ void UdpListener(Experiment& exp, Session& sess) {
     }
 }
 
-void DataProcessor(Experiment& exp, Session& sess) {
+void DataProcessor(Session& sess, Experiment& exp) {
     /**
      * @brief Processes data segments from a shared buffer, performs filtering and analysis.
      *
@@ -196,49 +192,47 @@ void DataProcessor(Experiment& exp, Session& sess) {
         // Declare time checking variables
         bool previousTimeSet = false;
         std::chrono::time_point<std::chrono::system_clock> previousTime = std::chrono::time_point<std::chrono::system_clock>::min(); // CHECK VALUE
-
+        
+        // pre-allocate memory for vectors
+        sess.dataSegment.reserve(exp.DATA_SEGMENT_LENGTH);
+        sess.dataTimes.reserve(exp.NUM_PACKS_DETECT);
+        
         // Initialize armadillo containers to be used for number crunching
         arma::Col<double> ch1(channelSize);
         arma::Col<double> ch2(channelSize);
         arma::Col<double> ch3(channelSize);
         arma::Col<double> ch4(channelSize);
-        arma::Mat<double> dataMatrix(ch1.n_elem, exp.NUM_CHAN);
+        arma::Mat<arma::cx_double> savedFFTs(channelSize, exp.NUM_CHAN); // save the FFT transformed channels
        
         // Container for pulling bytes from buffer (dataBuffer)
         vector<uint8_t> dataBytes;
 
         while (!sess.errorOccurred) {
             
-            sess.dataTimesLock.lock();
             sess.dataTimes.clear();
-            sess.dataTimesLock.unlock();
-            
-            sess.dataSegmentLock.lock();
             sess.dataSegment.clear();
-            sess.dataSegmentLock.unlock();
-
-            //arma::Col<double> pad(15, arma::fill::zeros);
 
             while (sess.dataSegment.size() < exp.DATA_SEGMENT_LENGTH) {
                 
+                auto startLoop = std::chrono::steady_clock::now();
                 
-                sess.dataBufferLock.lock();
+                sess.dataBufferLock.lock();   // give this thread exclusive rights to modify the shared dataBytes variable
                 int qSize = sess.dataBuffer.size();
-                sess.dataBufferLock.unlock();
-                
                 if (qSize < 1){
+                    sess.dataBufferLock.unlock();
                     cout << "Sleeping: " << endl;
                     std::this_thread::sleep_for(200ms);
                     continue;
                 }
-                
-                sess.dataBufferLock.lock();
-                dataBytes = sess.dataBuffer.front();
-                sess.dataBuffer.pop();
-                sess.dataBufferLock.unlock();
+                else{
+                    dataBytes = sess.dataBuffer.front();
+                    sess.dataBuffer.pop();
+                    sess.dataBufferLock.unlock();
+                }
 
                 if (dataBytes.size() != exp.PACKET_SIZE){
-                    throw std::runtime_error("Error: recieved incorrect number of packets");
+                    cout << "PACKET_SIZE: " << exp.PACKET_SIZE << " dataBytes size: " << dataBytes.size() << endl;
+                    throw std::runtime_error("Error: incorrect number of bytes in packet");
                 }
                 
                 std::tm timeStruct{};
@@ -273,42 +267,28 @@ void DataProcessor(Experiment& exp, Session& sess) {
                     cerr << "Error: Time not incremented by " <<  exp.MICRO_INCR << " " << elapsed_time_ms << endl;
                     throw std::runtime_error("Error: Time not incremented by MICRO_INCR");
                 }
-                //auto endTimes = std::chrono::steady_clock::now();
-                //std::chrono::duration<double> durationTimes = endTimes - startLoop;
-                //cout << "Duration Times: " << durationTimes.count() << endl;
 
                 // Convert byte data to doubles
-                sess.dataSegmentLock.lock();
                 auto startCDTime = std::chrono::steady_clock::now();
                 ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE);
                 auto endCDTime = std::chrono::steady_clock::now();
                 std::chrono::duration<double> durationCD = endCDTime - startCDTime;
-                //cout << "CD time: " << durationCD.count() << endl;
-                sess.dataSegmentLock.unlock();
                 
-                //cout << "size: " << sess.dataSegment.size() << endl;
-                /*cout << "chan 1 examples:  ";
-                for (int yy = 0; yy < 10; yy++){
-                    cout << ch1(yy) << " "; 
-                }
-                cout << endl;
-                */
-                sess.dataTimesLock.lock();
                 sess.dataTimes.push_back(specificTime);
-                sess.dataTimesLock.unlock();
                 
                 previousTime = specificTime;
                 previousTimeSet = true;
+                auto endLoop = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationLoop = endLoop - startLoop;
+                //cout << "Loop duration: " << durationLoop.count() << endl;
             }
 
             /*
              *   Exited inner loop - dataSegment has been filled to 'DATA_SEGMENT_LENGTH' length
              *   now apply energy detector. 
              */
-            sess.dataSegmentLock.lock();
+            
             exp.ProcessFncPtr(sess.dataSegment, ch1, ch2, ch3, ch4, exp.NUM_CHAN);
-            sess.dataSegmentLock.unlock();
-            //cout << ch1.t() << endl;
             
             DetectionResult values = ThresholdDetect(ch1, sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
             
@@ -331,47 +311,36 @@ void DataProcessor(Experiment& exp, Session& sess) {
             //std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
             //cout << "C FIR Filter: " << durationFilter.count() << endl;
             
-
-
-            /*cout << "chan 1 filt  examples:  ";
-            for (int y = 0; y < 10; y++){
-                cout << ch1(y) << " "; 
-            }
-            cout << endl;
-            */
-            
-            dataMatrix.col(0) = ch1;
-            dataMatrix.col(1) = ch2;
-            dataMatrix.col(2) = ch3;
-            dataMatrix.col(3) = ch4;
-            
-            int interp = 1;
             auto beforeGCC = std::chrono::steady_clock::now();
-            arma::Col<double> resultMatrix = GCC_PHAT(dataMatrix, interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
-            //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, interp); // need to create dataE matrix 
-            //auto afterGCC = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
-            //cout << "C GCC: " << durationGCC.count() << endl;
             
+            // Perform FFT using SigPack's FFTW object
+            savedFFTs.col(0) = fftw.fft(ch1);
+            savedFFTs.col(1) = fftw.fft(ch2);
+            savedFFTs.col(2) = fftw.fft(ch3);
+            savedFFTs.col(3) = fftw.fft(ch4);
+            
+            arma::Col<double> resultMatrix = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, exp.interp); // need to create dataE matrix 
+            auto afterGCC = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
+            //cout << "C GCC: " << durationGCC.count() << endl;
+            //cout << resultMatrix.t() << endl;
 
-            arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
+            //arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
             //auto endAll = std::chrono::steady_clock::now();
             //std::chrono::duration<double> durationFilter = endAll - beforeGCC;
             //cout << "Duration Filter: " << durationFilter.count() << endl;
 
-            //cout << "DOAs: " << DOAs.t() << endl;
-
-            /*
-            for (int ii = 0; ii < 4; ++ii) {
-                for (int jj = 0; jj < 4; ++jj) {
-                    cout << resultMatrix(ii, jj) << " ";
-                }
-                cout << endl;
-            }
-            */
-
         }
-    } catch (const std::exception& e ){
+    } 
+    catch (const GCC_Value_Error& e){
+        // Handle the exception
+        // WRITE DATA TO FILE
+        cerr << e.what() << endl;
+        sess.errorOccurred = true;
+    }
+
+    catch (const std::exception& e ){
         // Handle the exception
         cerr << "Error occured in data processor thread: " << endl;
         cerr << e.what() << endl;
@@ -398,16 +367,20 @@ int main(int argc, char *argv[]){
     //import variables according to firmware version specified
     cout << "Assuming firmware version: " << firmwareVersion << endl;
     if (firmwareVersion == 1550){
-        ProcessFile(exp, "ConfigFiles/1550_config.txt");
+        if (ProcessFile(exp, "../ConfigFiles/1550_config.txt")){
+            return EXIT_FAILURE;
+        }
         exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else if (firmwareVersion == 1240){
-        ProcessFile(exp, "ConfigFiles/1240_config.txt");
+        if (ProcessFile(exp, "../ConfigFiles/1240_config.txt")){
+            return EXIT_FAILURE;
+        }
         exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else{
         cerr << "ERROR: Unknown firmware version" << endl;
-        return 1;
+        return EXIT_FAILURE;
     }
     
     exp.NUM_PACKS_DETECT = (int)(exp.TIME_WINDOW * 100000 / exp.SAMPS_PER_CHANNEL);  // NEED TO ROUND THIS  the number of data packets that are needed to perform energy detection 
@@ -444,8 +417,8 @@ int main(int argc, char *argv[]){
         
         RestartListener(sess);
         
-        std::thread udpThread(UdpListener, std::ref(exp), std::ref(sess));
-        std::thread processorThread(DataProcessor, std::ref(exp), std::ref(sess));
+        std::thread udpThread(UdpListener, std::ref(sess), exp.PACKET_SIZE);
+        std::thread processorThread(DataProcessor, std::ref(sess), std::ref(exp));
 
         udpThread.join();
         processorThread.join();

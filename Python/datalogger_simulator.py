@@ -32,7 +32,7 @@ parser.add_argument('--loop', action = 'store_true')
 parser.add_argument('--high_act', action = 'store_true')
 parser.add_argument('--time_glitch', default = 0, type=int)
 parser.add_argument('--data_glitch', default = 0, type=int)
-parser.add_argument('--tdoa_sim', choices=["sin", "const"], default=False)
+parser.add_argument('--tdoa_sim', choices=["sin", "const"])
 args = parser.parse_args() # Parsing the arguments
 
 UDP_IP = args.ip                   # IP address of the destination

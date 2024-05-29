@@ -10,7 +10,7 @@
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 #include <iomanip> // for output formatting
 
-#include "my_globals.h"
+#include "custom_types.h"
 #include "process_data.h"
 
 using std::cout;
@@ -67,15 +67,7 @@ void ConvertData(std::vector<double>& dataSegment,std::vector<uint8_t>& dataByte
         double value = static_cast<double>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
                        static_cast<double>(dataBytes[i + HEAD_SIZE + 1]);
         value -= 32768.0;
-        if (std::isnan(value)){
-            throw std::runtime_error("Data contains NaN value");
-        }
-        else if (std::isinf(value)){
-            throw std::runtime_error("Data contains inf value");
-        }
-        else [[likely]]{
-            dataSegment.push_back(value);
-        }
+        dataSegment.push_back(value);
     }
 }
 

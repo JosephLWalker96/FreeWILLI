@@ -3,16 +3,37 @@
 #include <iostream>
 #include <chrono>
 #include <string>
-//#include <sigpack.h>
+#include <sigpack.h>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
 #include "../src/TDOA_estimation.h"
 //#include "utils.h" // Assuming utils.h includes the definition of restartListener
-//#include "my_globals.h"
+#include "../src/custom_types.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-TEST(ConvertDataTest, ValidDataMidRegion) {
+TEST(GCCPHAT, InvalidValues) {
+    // Call the function under test
+
+    unsigned int NUM_CHAN = 4;
+    const unsigned int SAMPLE_RATE = 100000;
+    int fftLength = 100;
+    arma::Mat<double> dataMatrixZeros(NUM_CHAN,fftLength, arma::fill::zeros);
+    arma::Mat<double> dataMatrixNan(NUM_CHAN,fftLength, arma::fill::randu);
+    dataMatrixNan(2,2) = arma::datum::nan;
+    arma::Mat<double> dataMatrixInf(NUM_CHAN,fftLength, arma::fill::randu);
+    dataMatrixInf(2,2) = arma::datum::inf;
+    int interp =1;
+    sp::FFTW fftw(fftLength);
+    
+
+    EXPECT_THROW(GCC_PHAT(dataMatrixZeros, interp, fftw, fftLength, NUM_CHAN, SAMPLE_RATE), GCC_Value_Error);
+    EXPECT_THROW(GCC_PHAT(dataMatrixNan, interp, fftw, fftLength, NUM_CHAN, SAMPLE_RATE), GCC_Value_Error);
+    EXPECT_THROW(GCC_PHAT(dataMatrixInf, interp, fftw, fftLength, NUM_CHAN, SAMPLE_RATE), GCC_Value_Error);
+  
+}
+
+TEST(DOA_EstimateVerticalArray, ValidDataMidRegion) {
     // Call the function under test
     arma::Col<int> chanSpacing = {1,2,3,1,2,1};
     arma::Col<double> TDOAs(chanSpacing.n_elem);
@@ -34,7 +55,7 @@ TEST(ConvertDataTest, ValidDataMidRegion) {
     }
 }
 /*
-TEST(ConvertDataTest, ValidDataBoundaries) {
+TEST(DOA_EstimateVerticalArray, ValidDataBoundaries) {
     // Call the function under test
     arma::Col<int> chanSpacing = {1,2,3,1,2,1};
     arma::Col<double> TDOAs(chanSpacing.n_elem);
@@ -57,7 +78,7 @@ TEST(ConvertDataTest, ValidDataBoundaries) {
 }
 */
 /*
-TEST(ConvertDataTest, Invalid) {
+TEST(DOA_EstimateVerticalArray, Invalid) {
     // Call the function under test
     arma::Col<int> chanSpacing = {1,2,3,1,2,1};
     arma::Col<double> TDOAs(chanSpacing.n_elem);

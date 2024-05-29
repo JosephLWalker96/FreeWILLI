@@ -11,14 +11,14 @@ This file contains all function prototypes for utils.cpp
 #include <string>
 #include <random>
 #include <armadillo>
-#include "my_globals.h"
+#include "custom_types.h"
 
 using std::string;
 using std::vector;
 
 
 arma::Col<double> ReadFIRFilterFile(const string& fileName);
-void ProcessFile(Experiment& exp, const std::string& fileName); 
+int ProcessFile(Experiment& exp, const std::string& fileName); 
 void RestartListener(Session& sess);
 void ClearQueue(std::queue<std::vector<uint8_t>>& q);
 bool WithProbability(double& probability);

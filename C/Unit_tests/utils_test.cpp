@@ -5,8 +5,8 @@
 //#include <sigpack.h>
 //#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
-#include "utils.h" // Assuming utils.h includes the definition of restartListener
-#include "my_globals.h"
+#include "../src/utils.h" // Assuming utils.h includes the definition of restartListener
+#include "../src/custom_types.h"
 
 
 TEST(ClearQueueTest, EmptyQueue) {
@@ -30,7 +30,6 @@ TEST(ClearQueueTest, NonEmptyQueue) {
 
   // Clear the queue
   ClearQueue(q);
-  std::cout << "DATA_BYTES_PER_CHANNEL: " << DATA_BYTES_PER_CHANNEL << std::endl;
 
   // Verify the queue is empty
   EXPECT_TRUE(q.empty());

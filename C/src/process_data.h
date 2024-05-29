@@ -8,7 +8,7 @@ This file contains all function prototypes for process_data.cpp
 #define PROCESS_DATA
 
 #include <armadillo>
-#include "my_globals.h"
+#include "custom_types.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 

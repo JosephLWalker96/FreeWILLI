@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from scipy.signal import firwin, ellip, freqz
-import time
+
 
 def EllipticFilter(order, ripple_db, cutoff_freq, sample_rate):
     normalized_cutoff_freq = cutoff_freq * 2 / sample_rate
@@ -47,10 +47,9 @@ def GCC_PHAT(channel_matrix, fs, NUM_CHAN, max_tau=None, interp=16):
             SIG = np.fft.rfft(sig, n=n)
             REFSIG = np.fft.rfft(refsig, n=n)
             R = SIG * np.conj(REFSIG)
-            
-            #beforeIFFT = time.time()
+
             cc = np.fft.irfft(R / np.abs(R), n=(interp * n))
-            #print("P IFFT time: ", time.time() - beforeIFFT)
+
             max_shift = int(interp * n / 2)
             if max_tau:
                 max_shift = np.minimum(int(interp * fs * max_tau), max_shift)

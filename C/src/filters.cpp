@@ -14,7 +14,7 @@
 #include <eigen3/Eigen/Core>
 #include <sigpack.h>
 
-#include "my_globals.h"
+#include "custom_types.h"
 #include "filters.h"
 //#include "TDOA_estimation.h"
 

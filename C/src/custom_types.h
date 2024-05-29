@@ -20,6 +20,12 @@
 using std::vector;
 using std::string;
 
+class GCC_Value_Error : public std::runtime_error {
+public:
+  // Constructor with a string argument for the error message
+  GCC_Value_Error(const std::string& message) : std::runtime_error(message) {}
+};
+
 struct Experiment {
     unsigned int HEAD_SIZE;                                 //packet head size (bytes)
     unsigned int NUM_CHAN;                                  //number of channels per packet
@@ -33,11 +39,12 @@ struct Experiment {
     unsigned int DATA_SEGMENT_LENGTH;
     unsigned int MICRO_INCR;                                // time between packets
     const unsigned int SAMPLE_RATE = 1e5;
+    int interp = 1;
     const double TIME_WINDOW = 0.01;                 // fraction of a second to consider  
     const string OUTPUT_FILE = "clicks_data.txt";
     const string outputFile = "Ccode_clicks.txt"; // Change to your desired file name
     void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;
-    const string filterWeights = "filters/My_filter.txt";
+    const string filterWeights = "../filters/My_filter.txt";
     
     arma::Col<int> chanSpacing = {1,2,3,1,2,1};
     const double speedOfSound = 1500.0;
@@ -45,24 +52,24 @@ struct Experiment {
 };
 
 struct Session {
+    int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0); // udp socket
+    int UDP_PORT;              // Listening port
+    std::atomic<bool> errorOccurred = false;
+    
     std::queue<vector<uint8_t>> dataBuffer;
     vector<double> dataSegment;
     vector<std::chrono::system_clock::time_point> dataTimes;
     std::mutex dataBufferLock;                       // For thread-safe buffer access
-    std::mutex dataSegmentLock;                       // For thread-safe buffer access
-    std::mutex dataTimesLock;                       // For thread-safe buffer access
-    std::mutex udpSocketLock;                       // For thread-safe buffer access
-    int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0); // udp socket
-    int UDP_PORT;              // Listening port
+    
     string UDP_IP;             // IP address of data logger or simulator
-    std::atomic<bool> errorOccurred = false;
 };
 
+
 struct DetectionResult {
-    std::vector<std::chrono::system_clock::time_point> peakTimes;
-    std::vector<double> peakAmplitude;
     int minPeakIndex = -1;
     int maxPeakIndex = -1;
+    std::vector<std::chrono::system_clock::time_point> peakTimes;
+    std::vector<double> peakAmplitude;
 };
 
 #endif

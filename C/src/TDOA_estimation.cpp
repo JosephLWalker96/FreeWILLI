@@ -6,6 +6,7 @@
 #include <fstream>
 #include <chrono>
 #include <iostream>
+#include <limits>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 #include <iomanip> // for output formatting
 #include <exception>
@@ -13,7 +14,7 @@
 #include <eigen3/unsupported/Eigen/FFT>
 #include <eigen3/Eigen/Core>
 
-#include "my_globals.h"
+#include "custom_types.h"
 #include "TDOA_estimation.h"
 
 #include <sigpack.h>
@@ -26,7 +27,7 @@ using std::vector;
 using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
-arma::Col<double> GCC_PHAT(arma::Mat<double>& data, int& interp, sp::FFTW& fftw, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE){
+arma::Col<double> GCC_PHAT(arma::Mat<arma::cx_double>& savedFFTs, int& interp, sp::FFTW& fftw, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE){
     /**
     * @brief Computes the Generalized Cross-Correlation with Phase Transform (GCC-PHAT) between pairs of signals.
     *
@@ -38,29 +39,49 @@ arma::Col<double> GCC_PHAT(arma::Mat<double>& data, int& interp, sp::FFTW& fftw,
     * @return A column vector of doubles containing the computed TDOA estimates for all unique pairs of signals.
     */
     
-    arma::Mat<double> tau_matrix(NUM_CHAN, NUM_CHAN, arma::fill::zeros);
+    //arma::Mat<double> tau_matrix(NUM_CHAN, NUM_CHAN, arma::fill::zeros);
     int n = fftLength;    
+    
 
     //int n = data.col(0).n_elem + data.col(1).n_elem;
     arma::Col<double> tauVector(6);
+    arma::Col<arma::cx_double> SIG1(n);
+    arma::Col<arma::cx_double> SIG2(n);
 
     int pairCounter = 0;
     for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++ ){
         for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
             
-            arma::vec sig1 = data.col(sig1_ind);
-            arma::vec sig2 = data.col(sig2_ind);
-            //sig2(20) = arma::datum::nan;
             
-            // Perform the FFT using SigPack's FFTW object
-            arma::cx_vec SIG1 = fftw.fft(sig1);
-            arma::cx_vec SIG2 = fftw.fft(sig2);
+            // Uncomment lines bellow for testing
+            //sig2(2) =0;
+            //sig2(2) = arma::datum::nan; 
+            //sig2(2) = arma::datum::inf;
+            
+            
+            SIG1 = savedFFTs.col(sig1_ind);
+            SIG2 = savedFFTs.col(sig2_ind);
 
             arma::cx_vec R = SIG1 % arma::conj(SIG2);
-            arma::cx_vec R_normed = R / arma::abs(R);
+            arma::vec R_abs = arma::abs(R);
 
-            arma::cx_vec CC_blah = fftw.ifft_cx(R_normed);
-            arma::vec CC = arma::abs(CC_blah);
+            // Uncomment lines bellow for testing
+            //R_abs(2) =0;
+            //R_abs(2) = arma::datum::nan; 
+            //R_abs(2) = arma::datum::inf;
+
+            if  (R_abs.has_inf()) [[unlikely]]{
+                throw GCC_Value_Error("R_abs contains inf value");
+            }
+            else if (R_abs.has_nan()) [[unlikely]] {
+                throw GCC_Value_Error("R_abs contains nan value");
+            }
+            else if (arma::any(R_abs == 0)) [[unlikely]] {
+                throw GCC_Value_Error("R_abs contains 0 value");
+            }
+            arma::cx_vec R_normed = R / R_abs;
+
+            arma::vec CC = fftw.ifft(R_normed);
             
             int max_shift = interp * n / 2;
 
@@ -80,7 +101,7 @@ arma::Col<double> GCC_PHAT(arma::Mat<double>& data, int& interp, sp::FFTW& fftw,
     return tauVector;
 }
 
-Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int interp, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
+Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int& interp, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     // This is the same algorithm as GCC_PHAT above but implemented using the Eigen library
     Eigen::VectorXd sig1(data.rows());
     Eigen::VectorXd sig2(data.rows());

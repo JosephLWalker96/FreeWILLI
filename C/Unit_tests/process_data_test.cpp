@@ -6,9 +6,9 @@
 //#include <sigpack.h>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
-#include "utils.h" // Assuming utils.h includes the definition of restartListener
-#include "my_globals.h"
-#include "process_data.h"
+#include "../src/utils.h" // Assuming utils.h includes the definition of restartListener
+#include "../src/custom_types.h"
+#include "../src/process_data.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -101,7 +101,7 @@ TEST(ThresholdDetectTest, NoPeak) {
   std::vector<TimePoint>& times = testData.second;
 
   // Call ThresholdDetect
-  DetectionResult result = ThresholdDetect(data, times, threshold);
+  DetectionResult result = ThresholdDetect(data, times, threshold, 100000);
 
   // Verify no peak detected
   EXPECT_EQ(result.minPeakIndex, -1);
@@ -122,7 +122,7 @@ TEST(ThresholdDetectTest, SinglePeak) {
   std::vector<TimePoint>& times = testData.second;
 
   // Call ThresholdDetect
-  DetectionResult result = ThresholdDetect(data, times, threshold);
+  DetectionResult result = ThresholdDetect(data, times, threshold, 100000);
 
   // Verify peak information is correct
   EXPECT_EQ(result.minPeakIndex, peakIndex);
@@ -147,7 +147,7 @@ TEST(ThresholdDetectTest, Infinity) {
   data(peakIndex) = arma::datum::inf;
 
   // Call ThresholdDetect
-  DetectionResult result = ThresholdDetect(data, times, threshold);
+  DetectionResult result = ThresholdDetect(data, times, threshold, 100000);
 
   // Verify peak information is correct
   EXPECT_EQ(result.minPeakIndex, peakIndex);

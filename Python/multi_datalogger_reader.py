@@ -267,7 +267,7 @@ def DataProcessor():
 
             dataMatrixFiltered = np.vstack(np.array([ch1, ch2, ch3, ch4]))
             
-            gccStart = time.time()
+            #gccStart = time.time()
             tdoaEstimates = GCC_PHAT(dataMatrixFiltered, SAMPLE_RATE, NUM_CHAN, max_tau=None, interp=1)
             #print("P GCC: ", time.time() - gccStart)
             #print('here')

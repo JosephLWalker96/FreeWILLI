@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 #include <sigpack.h>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
-#include "filters.h"
+#include "../src/filters.h"
 TEST(FilterTest, BasicFiltering) {
 
     arma::Col<double> h = { 8.5304705e-18, -1.2040846e-03, -2.7904883e-03, -4.2366693e-03,

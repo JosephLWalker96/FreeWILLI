@@ -6,7 +6,7 @@
 #include <vector>
 #include <random>
 
-#include "my_globals.h"
+#include "custom_types.h"
 #include "utils.h"
 #include <filesystem>
 using std::cerr;
@@ -26,7 +26,7 @@ void RestartListener(Session& sess){
     
     cout << "restarting listener: " << endl;
 
-    sess.udpSocketLock.lock();
+    //sess.udpSocketLock.lock();
     if (close(sess.datagramSocket) == -1) {
         std::cerr << "Failed to close socket" << std::endl;
         throw std::runtime_error("Failed to close socket");
@@ -48,22 +48,22 @@ void RestartListener(Session& sess){
         cerr << "Error binding socket" << endl;
         throw std::runtime_error("Error binding socket");
     }
-    sess.udpSocketLock.unlock();
+    //sess.udpSocketLock.unlock();
 
-    sess.dataBufferLock.lock();
+    //sess.dataBufferLock.lock();
     ClearQueue(sess.dataBuffer);
-    sess.dataBufferLock.unlock();
+    //sess.dataBufferLock.unlock();
 
-    sess.dataSegmentLock.lock();
+    //sess.dataSegmentLock.lock();
     sess.dataSegment.clear();
-    sess.dataSegmentLock.unlock();
+    //sess.dataSegmentLock.unlock();
 
-    sess.dataTimesLock.lock();
+    //sess.dataTimesLock.lock();
     sess.dataTimes.clear();
-    sess.dataTimesLock.unlock();
+    //sess.dataTimesLock.unlock();
 }
 
-void ProcessFile(Experiment& exp, const string& fileName) {
+int ProcessFile(Experiment& exp, const string& fileName) {
     /**
     * @brief Processes a configuration file and initializes global variables accordingly.
     *
@@ -73,7 +73,7 @@ void ProcessFile(Experiment& exp, const string& fileName) {
     std::ifstream inputFile(fileName);
     if (!inputFile.is_open()) {
         cerr << "Error: Unable to open config file: " << fileName  << endl;
-        return;
+        return 1;
     }
     inputFile >> exp.HEAD_SIZE >> exp.MICRO_INCR >> exp.NUM_CHAN >> exp.SAMPS_PER_CHANNEL >> exp.BYTES_PER_SAMP;
     exp.DATA_SIZE = exp.SAMPS_PER_CHANNEL * exp.NUM_CHAN * exp.BYTES_PER_SAMP; 
@@ -81,6 +81,7 @@ void ProcessFile(Experiment& exp, const string& fileName) {
     exp.PACKET_SIZE = exp.HEAD_SIZE + exp.DATA_SIZE;
     exp.REQUIRED_BYTES = exp.DATA_SIZE + exp.HEAD_SIZE;
     exp.DATA_BYTES_PER_CHANNEL = exp.SAMPS_PER_CHANNEL * exp.BYTES_PER_SAMP;
+    return 0;
 }
 
 arma::Col<double> ReadFIRFilterFile(const string& fileName) {
