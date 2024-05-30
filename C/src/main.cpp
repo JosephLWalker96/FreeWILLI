@@ -1,30 +1,12 @@
 /*
 This is a C++ version of Python/multi_datalogger_reader.py
 
-Compile code manually:
-g++ multi_datalogger_reader.cpp process_data.cpp utils.cpp -o listen -larmadillo
-g++ -std=c++20 multi_datalogger_reader.cpp process_data.cpp utils.cpp -o listen -larmadillo -I/usr/include/sigpack-1.2.7/sigpack
-g++ -std=c++20 multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -larmadillo -I/usr/include/sigpack-1.2.7/sigpack -lliquid
-g++ -Ofast -std=c++20 -march=native -flto multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -DARMA_DONT_USE_WRAPPER -DNDEBUG -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid
-g++ -Ofast -std=c++20 -march=native -DEIGEN_FFT_BACKEND=FFTW -flto -msse2 multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -DARMA_DONT_USE_WRAPPER -DNDEBUG -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid -lfftw3
-g++ -Ofast -std=c++20 -march=native -DEIGEN_FFT_BACKEND=FFTW -flto -msse2 multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid -lfftw3
-g++ -Ofast -std=c++20 -march=native -flto multi_datalogger_reader.cpp process_data.cpp utils.cpp TDOA_estimation.cpp -o listen -lopenblas -llapack -I/usr/include/sigpack-1.2.7/sigpack -lliquid -lfftw3
 
 Execute (datalogger simulator):
-./listen 192.168.7.2 1045 1240
+./listen_* 192.168.7.2 1045 1240
 
 Execute (datalogger):
-./listen 192.168.100.220 50000 1240
-
-TO DO:
-    0) How to deal with out of bounds DOA vals
-    1) write data to file in case of GCC_Value_Error
-    2) Zero pad before circular convolution
-
-OPTIMIZATIONS: 
-    2) Don't write to file after every detection
-    3) Implement SPSC lock-free queue: boost:lockfree:spsc_queue
-
+./listen_* 192.168.100.220 50000 1240
 
 
 RESOURCES:
