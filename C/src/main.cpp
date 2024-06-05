@@ -1,6 +1,34 @@
 /*
-This is a C++ version of Python/multi_datalogger_reader.py
 
+DESCRIPTION:
+@file main.cpp
+ @brief A program for receiving and processing UDP packets in real-time.
+ 
+ This program sets up a UDP listener to receive packets from a specified IP address and port.
+ The received packets are stored in a shared buffer and then processed to extract and analyze data.
+ The program uses two threads to handle the data receiving and processing tasks concurrently.
+ 
+ Key components:
+ - **UDP Listener**: Listens for incoming UDP packets, stores the received data in a buffer, 
+   and prints statistics about the received packets.
+ - **Data Processor**: Retrieves data from the buffer, processes the data by applying filters 
+   and performing analysis to detect and estimate specific signal characteristics.
+ - **Session and Experiment Classes**: Manage session-specific and experiment-specific details,
+   including configuration settings, data buffers, and synchronization mechanisms.
+ - **Multi-threading**: Uses separate threads for listening to UDP packets and processing data,
+   ensuring efficient and real-time handling of incoming data.
+ 
+ The program is designed to handle configuration settings dynamically based on specified 
+ firmware versions, adjust processing parameters accordingly, and log processed data to an output file.
+ In case of errors, the program attempts to restart the listener and processing threads to maintain 
+ continuous operation.
+ 
+ @note This program requires the Armadillo and SigPack libraries for matrix operations and signal processing.
+       It also uses FFTW for fast Fourier transforms and includes error handling to manage runtime exceptions.
+
+
+
+EXAMPLE RUN:
 
 Execute (datalogger simulator):
 ./listen_* 192.168.7.2 1045 1240
