@@ -1,15 +1,9 @@
 #include <vector>
-#include <algorithm>
-#include <numeric>
 #include <cmath>
 #include <cstdlib>
-#include <fstream>
 #include <chrono>
 #include <iostream>
-#include <limits>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
-#include <iomanip> // for output formatting
-#include <exception>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/unsupported/Eigen/FFT>
 #include <eigen3/Eigen/Core>
@@ -24,12 +18,10 @@ using std::cout;
 using std::endl;
 using std::cerr;
 using std::vector;
-using std::string;
-using TimePoint = std::chrono::system_clock::time_point;
 
-arma::Col<double> GCC_PHAT(arma::Mat<arma::cx_double>& savedFFTs, int& interp, sp::FFTW& fftw, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE){
+arma::Col<double> GCC_PHAT(arma::Mat<arma::cx_double>& savedFFTs, const int& interp, sp::FFTW& fftw, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     /**
-    * @brief Computes the Generalized Cross-Correlation with Phase Transform (GCC-PHAT) between pairs of signals.
+    * @brief Computes the Generalized Cross-Correlation with Phase Transform (GcrossCorr-PHAT) between pairs of signals.
     *
     * @param data A reference to an Armadillo matrix containing the input signals. Each column represents a signal.
     * @param interp An integer specifying the interpolation factor used in the computation.
@@ -40,20 +32,19 @@ arma::Col<double> GCC_PHAT(arma::Mat<arma::cx_double>& savedFFTs, int& interp, s
     */
     
     //arma::Mat<double> tau_matrix(NUM_CHAN, NUM_CHAN, arma::fill::zeros);
-    int n = fftLength;    
-    
 
     //int n = data.col(0).n_elem + data.col(1).n_elem;
-    arma::Col<double> tauVector(6);
-    arma::Col<arma::cx_double> SIG1(n);
-    arma::Col<arma::cx_double> SIG2(n);
+  //
+    arma::Col<double> tauVector(6); // 4 channels produces 6 unique pairings
+    arma::Col<arma::cx_double> SIG1(fftLength);
+    arma::Col<arma::cx_double> SIG2(fftLength);
 
     int pairCounter = 0;
     for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++ ){
         for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
             
             
-            // Uncomment lines bellow for testing
+            // Uncomment lines bellow for manual testing
             //sig2(2) =0;
             //sig2(2) = arma::datum::nan; 
             //sig2(2) = arma::datum::inf;
@@ -62,47 +53,48 @@ arma::Col<double> GCC_PHAT(arma::Mat<arma::cx_double>& savedFFTs, int& interp, s
             SIG1 = savedFFTs.col(sig1_ind);
             SIG2 = savedFFTs.col(sig2_ind);
 
-            arma::cx_vec R = SIG1 % arma::conj(SIG2);
-            arma::vec R_abs = arma::abs(R);
+            arma::cx_vec crossSpectra = SIG1 % arma::conj(SIG2);
+            arma::vec crossSpectraMagnitude = arma::abs(crossSpectra);
 
             // Uncomment lines bellow for testing
             //R_abs(2) =0;
             //R_abs(2) = arma::datum::nan; 
             //R_abs(2) = arma::datum::inf;
 
-            if  (R_abs.has_inf()) [[unlikely]]{
+            if  (crossSpectraMagnitude.has_inf()) [[unlikely]]{
                 throw GCC_Value_Error("R_abs contains inf value");
             }
-            else if (R_abs.has_nan()) [[unlikely]] {
+            else if (crossSpectraMagnitude.has_nan()) [[unlikely]] {
                 throw GCC_Value_Error("R_abs contains nan value");
             }
-            else if (arma::any(R_abs == 0)) [[unlikely]] {
+            else if (arma::any(crossSpectraMagnitude == 0)) [[unlikely]] {
                 throw GCC_Value_Error("R_abs contains 0 value");
             }
-            arma::cx_vec R_normed = R / R_abs;
 
-            arma::vec CC = fftw.ifft(R_normed);
+            arma::cx_vec crossSpectraMagnitudeNorm = crossSpectra / crossSpectraMagnitude;
+
+            arma::vec crossCorr = fftw.ifft(crossSpectraMagnitudeNorm);
             
-            int max_shift = interp * n / 2;
+            int maxShift = interp * fftLength / 2;
 
-            arma::vec sub1 = CC.subvec(CC.n_elem - max_shift, CC.n_elem- 1);
-            arma::vec sub2 = CC.subvec(0, max_shift);
+            arma::vec back = crossCorr.subvec(crossCorr.n_elem - maxShift, crossCorr.n_elem- 1);
+            arma::vec front = crossCorr.subvec(0, maxShift);
             
-            arma::vec CCnew = arma::join_cols(sub1,sub2); // join_rows
+            arma::vec crossCorrInverted = arma::join_cols(back,front);
 
-            double shift = (double)arma::index_max(CCnew) - max_shift;
-            double tau = shift / (interp * SAMPLE_RATE );
+            double shift = (double)arma::index_max(crossCorrInverted) - maxShift;
+            double timeDelta = shift / (interp * SAMPLE_RATE );
 
             //tau_matrix(sig2_ind, sig1_ind) = tau;
-            tauVector(pairCounter) = tau;
+            tauVector(pairCounter) = timeDelta;
             pairCounter++;
         }
     }
     return tauVector;
 }
 
-Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int& interp, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
-    // This is the same algorithm as GCC_PHAT above but implemented using the Eigen library
+Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, const int& interp, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
+    // This is the same algorithm as GcrossCorr_PHAT above but implemented using the Eigen library
     Eigen::VectorXd sig1(data.rows());
     Eigen::VectorXd sig2(data.rows());
     Eigen::VectorXcd SIG1(data.rows() + interp * data.rows());  // Combined vector for FFT
@@ -111,8 +103,8 @@ Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int& interp, unsigned int&
     Eigen::VectorXcd SIG2_freq(data.rows() + interp * data.rows());
     Eigen::VectorXcd R(data.rows() + interp * data.rows());
     Eigen::VectorXcd R_normed(data.rows() + interp * data.rows());
-    Eigen::VectorXcd CC_blah(data.rows() + interp * data.rows());
-    Eigen::VectorXd CC(data.rows() + interp * data.rows());
+    Eigen::VectorXcd crossCorr_blah(data.rows() + interp * data.rows());
+    Eigen::VectorXd crossCorr(data.rows() + interp * data.rows());
 
     Eigen::FFT<double> fft;  // Create FFT object
 
@@ -141,23 +133,23 @@ Eigen::MatrixXd GCC_PHAT_Eigen(Eigen::MatrixXd& data, int& interp, unsigned int&
             R_normed = R.array() / R.cwiseAbs().array();
 
             // Perform IFFT with zero-padding
-            fft.inv(CC_blah, R_normed);
-            CC = CC_blah.real().cwiseAbs();
+            fft.inv(crossCorr_blah, R_normed);
+            crossCorr = crossCorr_blah.real().cwiseAbs();
             
-            int max_shift = interp * data.rows() / 2;
+            int maxShift = interp * data.rows() / 2;
 
             // Extract relevant parts for peak finding
-            Eigen::VectorXd sub1 = CC.tail(max_shift);
-            Eigen::VectorXd sub2 = CC.head(max_shift);
+            Eigen::VectorXd sub1 = crossCorr.tail(maxShift);
+            Eigen::VectorXd sub2 = crossCorr.head(maxShift);
 
             // Combine and find peak index
-            Eigen::VectorXd CCnew(sub1.size() + sub2.size());
-            CCnew << sub1, sub2;
+            Eigen::VectorXd crossCorrInverted(sub1.size() + sub2.size());
+            crossCorrInverted << sub1, sub2;
 
             Eigen::Index maxIndex;
-            CCnew.maxCoeff(&maxIndex);
+            crossCorrInverted.maxCoeff(&maxIndex);
             
-            double shift = static_cast<double>(maxIndex) - max_shift;
+            double shift = static_cast<double>(maxIndex) - maxShift;
             double tau = shift / (interp * SAMPLE_RATE);
 
             tau_matrix(sig2_ind, sig1_ind) = tau;
@@ -189,7 +181,7 @@ arma::Col<double> DOA_EstimateVerticalArray(arma::Col<double>& TDOAs, const doub
     }
     
     vals.clamp( -1, 1);                                                       // ensure that values are between -1 and 1 for arcsin
-    return arma::asin(vals) * 180.0 / 3.141592653;                            // convert angle to degrees 
+    return arma::acos(vals) * 180.0 / 3.141592653;                            // convert angle to degrees 
 }
 
 

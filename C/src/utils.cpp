@@ -8,7 +8,7 @@
 
 #include "custom_types.h"
 #include "utils.h"
-#include <filesystem>
+
 using std::cerr;
 using std::endl;
 using std::cout;
@@ -26,7 +26,6 @@ void RestartListener(Session& sess){
     
     cout << "restarting listener: " << endl;
 
-    //sess.udpSocketLock.lock();
     if (close(sess.datagramSocket) == -1) {
         std::cerr << "Failed to close socket" << std::endl;
         throw std::runtime_error("Failed to close socket");
@@ -48,19 +47,9 @@ void RestartListener(Session& sess){
         cerr << "Error binding socket" << endl;
         throw std::runtime_error("Error binding socket");
     }
-    //sess.udpSocketLock.unlock();
-
-    //sess.dataBufferLock.lock();
     ClearQueue(sess.dataBuffer);
-    //sess.dataBufferLock.unlock();
-
-    //sess.dataSegmentLock.lock();
     sess.dataSegment.clear();
-    //sess.dataSegmentLock.unlock();
-
-    //sess.dataTimesLock.lock();
     sess.dataTimes.clear();
-    //sess.dataTimesLock.unlock();
 }
 
 int ProcessFile(Experiment& exp, const string& fileName) {
@@ -108,7 +97,6 @@ arma::Col<double> ReadFIRFilterFile(const string& fileName) {
         std::stringstream stringStream(line);
         string token;
         
-        //cout << "Filter values: ";
         while(std::getline(stringStream,token, ',')){
             try {
                 double value = std::stod(token);
@@ -118,13 +106,12 @@ arma::Col<double> ReadFIRFilterFile(const string& fileName) {
                 cerr << "Invalid numeric value: " << token << endl;
             }
         }
-        //cout << endl;
     }
     arma::Col<double> filter(filterValues);
     return filter;
 }
 
-void ClearQueue(std::queue<std::vector<uint8_t>>& q){
+void ClearQueue(std::queue<std::vector<uint8_t>>& fullQueue) {
     /**
     * @brief This function effectively clears the given queue by swapping it with an
     * empty queue, thus removing all its elements.
@@ -133,7 +120,7 @@ void ClearQueue(std::queue<std::vector<uint8_t>>& q){
     */
     
     std::queue<std::vector<uint8_t>> empty;
-    std::swap(q, empty);
+    std::swap(fullQueue, empty);
 }
 
 bool WithProbability(double& probability){

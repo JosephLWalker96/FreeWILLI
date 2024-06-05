@@ -1,6 +1,4 @@
 #include <vector>
-#include <algorithm>
-#include <numeric>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -20,7 +18,7 @@ using std::vector;
 using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
-void PrintTimes(const vector<TimePoint>& timestamps){
+void PrintTimes(const vector<TimePoint>& timestamps) {
     /**
     * @brief Prints the timestamps provided in the input vector.
     *
@@ -31,10 +29,10 @@ void PrintTimes(const vector<TimePoint>& timestamps){
     *                   TimePoint is a type alias for a time point based on std::chrono::system_clock.
     */
     
-    for (auto& timestamp : timestamps){
+    for (auto& timestamp : timestamps) {
         std::time_t timeRepresentation = std::chrono::system_clock::to_time_t(timestamp);
         std::tm timeData = *std::localtime(&timeRepresentation); 
-        auto microsecs = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000; 
+        auto microSeconds = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000; 
         
         cout << "Timestamp: ";
         cout << timeData.tm_year + 1900 << '-'
@@ -43,12 +41,12 @@ void PrintTimes(const vector<TimePoint>& timestamps){
             << timeData.tm_hour << ':'
             << timeData.tm_min << ':'
             << timeData.tm_sec << ':'
-            << microsecs << endl;
+            << microSeconds << endl;
     }
 }
 
 
-void ConvertData(std::vector<double>& dataSegment,std::vector<uint8_t>& dataBytes,unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE){
+void ConvertData(vector<double>& dataSegment, vector<uint8_t>& dataBytes, unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE) {
     /**
      * @brief Converts raw data bytes to double values and stores them in the provided data segment.
      * 
@@ -90,12 +88,12 @@ DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& time
     int peakIndex = arma::index_max(data);
     double peakAmplitude = arma::max(data);
 
-    if (peakAmplitude > threshold){
+    if (peakAmplitude > threshold) {
         result.minPeakIndex = peakIndex;
         result.maxPeakIndex = peakIndex;
         result.peakAmplitude.push_back(peakAmplitude);
-        long microseconds = ((long)peakIndex * 1e6) / SAMPLE_RATE;
-        std::chrono::time_point<std::chrono::system_clock> maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
+        unsigned int microseconds = peakIndex * (1e6 / SAMPLE_RATE);
+        auto maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
         result.peakTimes.push_back(maxPeakTime);
     }
     return result;
@@ -158,12 +156,6 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
     // THIS FUNCTION IS DEPRICATED
     //
 
-
-    #ifdef PRINT_PROCESS_SEGMENT_1240
-        cout << "Inside ProcessSegment1240() " << endl;
-        cout << "data.size(): " << data.size() << endl;
-    #endif
-    
     arma::Col<int16_t> ch1;
     int channelSize = data.size() / NUM_CHAN;
     ch1.set_size(channelSize);                    // Reserve space in the arma::Col (optional but can improve performance) 
