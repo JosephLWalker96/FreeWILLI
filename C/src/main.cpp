@@ -329,7 +329,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
             //cout << "C GCC: " << durationGCC.count() << endl;
             //cout << resultMatrix.t() << endl;
 
-            //arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
+            arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
+            cout << DOAs.t() << endl;
             //auto endAll = std::chrono::steady_clock::now();
             //std::chrono::duration<double> durationFilter = endAll - beforeGCC;
             //cout << "Duration Filter: " << durationFilter.count() << endl;

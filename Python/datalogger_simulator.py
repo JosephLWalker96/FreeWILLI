@@ -59,7 +59,6 @@ COMMAND-LINE ARGUMENTS:
 
 """
 
-
 import struct                      # For converting data to binary
 import socket                      # For establishing UDP communication 
 import numpy as np                 # For numerical operations
@@ -70,8 +69,7 @@ import argparse                    # For parsing command-line arguments
 import psutil                      # For system and process utilities
 import os                          # For operating system interfaces
 import sys                         # For system-specific parameters and functions
-from utils import SetHighPriority, LoadTest4chDataInterleaved, Sleep
-
+from utils import SetHighPriority, LoadTest4chDataInterleaved, Sleep, Normalize
 
 SetHighPriority() # set this process to run the program at high priority (nice value = -15)
 
@@ -82,10 +80,11 @@ parser.add_argument('--ip', default="192.168.7.2", type=str, help='IP address to
 parser.add_argument('--data_path', default="../Data/joesdata.mat", type=str, help='prerecorded data to use')
 parser.add_argument('--fw', default=1240, type=int, help='Firmware version to simulate')
 parser.add_argument('--loop', action='store_true', help='Enable looping over the data')
+parser.add_argument('--stretch', action='store_true', help='normalize data values min and max range of unsigned 16 bit int')
 parser.add_argument('--high_act', action='store_true', help='Enable high activity mode')
 parser.add_argument('--time_glitch', default=0, type=int, help='Simulate time glitch at specific flag')
 parser.add_argument('--data_glitch', default=0, type=int, help='Simulate data glitch at specific flag')
-parser.add_argument('--tdoa_sim', choices=["sin", "const"], help='TDOA simulation method') # IN DEVELOPMENT
+parser.add_argument('--tdoa_sim', default = 0, type=int, help='channel offset amount') # IN DEVELOPMENT
 args = parser.parse_args() # Parsing the arguments
 
 DATA_SCALE = 2**15
@@ -105,46 +104,51 @@ else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
 
-### process data according to data logger simulation method
-if args.tdoa_sim == "sin": # DEPRICATED!!!!!!!!!!
-    Ch1 = LoadChannelOne(args.data_path, DATA_SCALE)
-    dataMatrix = np.array(dataMatrix,dtype=np.uint16)      # convert data to unsigned 16 bit integers
-else:
-    dataMatrix, highAmplitudeIndex = LoadTest4chDataInterleaved(args.data_path, DATA_SCALE,
-    NUM_CHAN, SAMPS_PER_CHANNEL, args.tdoa_sim)
+def FetchFormatEncodeData(data_path, DATA_SCALE,
+    NUM_CHAN, SAMPS_PER_CHANNEL, offset):
+    dataMatrix, highAmplitudeIndex = LoadTest4chDataInterleaved(data_path, DATA_SCALE,
+    NUM_CHAN, SAMPS_PER_CHANNEL, offset)
     
-    dataMatrix = np.array(dataMatrix,dtype=np.float64)      # convert data to unsigned 16 bit integers
-    dataMatrix = dataMatrix - np.min(dataMatrix)
-    dataMatrix = dataMatrix / np.max(dataMatrix)
-    #dataMatrix = dataMatrix * 65535
-    dataMatrix = (dataMatrix * 0 + 1) * 65535
-    dataMatrix = np.array(dataMatrix,dtype=np.uint16)      # convert data to unsigned 16 bit integers
+    if args.stretch:
+        dataMatrix = Normalize(dataMatrix)
+    print("DataMatrix min and max values: ", np.min(dataMatrix), np.max(dataMatrix))
 
-    print("DataMatrix: ", np.min(dataMatrix), np.max(dataMatrix))
     formatString = '>{}H'.format(len(dataMatrix))          # encode data as big-endian
     dataMatrixBytes= struct.pack(formatString, *dataMatrix)
-    print('HERE: ', len(dataMatrixBytes) // DATA_SIZE)
+    return dataMatrixBytes, highAmplitudeIndex
+
+dataMatrixBytes, highAmplitudeIndex = FetchFormatEncodeData(args.data_path, DATA_SCALE,
+    NUM_CHAN, SAMPS_PER_CHANNEL, args.tdoa_sim)
 
 print('Bytes per packet:       ', REQUIRED_BYTES)
 print('Time between packets:   ', MICRO_INCR)
 print('Number of channels:     ', NUM_CHAN)
 print('Data bytes per channel: ', DATA_BYTES_PER_CHANNEL)
 
-### Create a UDP socket
+print("###################################################################")
+sys.exit() if input("Are the above values correct? [Y/n]") != 'Y' else print("Running simulator...")
+
+###Create a UDP socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
    
 ### Make a fake initial time for the data
 dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
 absStartTime = time.time() 
 
-
 flag = 0
+loopCounter = 0
 while(True):
-    startTime = time.time()
 
-    if args.loop:
-        if len(dataMatrixBytes) // DATA_SIZE == flag:
-            flag = 0
+
+    startTime = time.time()
+    if args.loop and (len(dataMatrixBytes) // DATA_SIZE == flag): # if we are looping over data and if flag is currently at the end
+        flag = 0
+    if args.tdoa_sim == "sin" and (len(dataMatrixBytes) // DATA_SIZE == flag): # if flag is currently at the end and we want to shift the data
+        print("Loading new data: ")
+        dataMatrix, highAmplitudeIndex = LoadTest4chDataInterleaved(args.data_path, DATA_SCALE, NUM_CHAN, SAMPS_PER_CHANNEL, args.tdoa_sim)
+        flag = 0
+        startTime = time.time()
+    
     
     ### Create the time header
     year = int(dateTime.year - 2000)
@@ -159,25 +163,16 @@ while(True):
     
     timePack = struct.pack("BBBBBB", *np.array([year,month,day,hour,minute,second]))
     microPack  = microseconds.to_bytes(4, byteorder='big')
-    zeroPack = struct.pack("BB", 0,0)
+    zeroPack = struct.pack("BB", 0, 0)
     timeHeader = timePack + microPack + zeroPack
     
     if args.high_act:
-        # MOVE THIS FUNCTIONALITY TO UTILS.PY.. APPLY THE FOLLOWING TRANSFORMATIONS AND SAVE THEM BEFORE 
-        # use counter variable inside np.sin() to calculate the amount of padding for the channels
-        # specify the desired number of periods that occur (rate of change of padding)
-        # receive padded data
-        # interleave and convert to bytes
-        #pass
-        byteIndex = highAmplitudeIndex * NUM_CHAN * 2
-        offset = 10 * NUM_CHAN * 2
+        byteIndex = highAmplitudeIndex * NUM_CHAN * BYTES_PER_SAMP
+        offset = 10 * NUM_CHAN * BYTES_PER_SAMP
         dataPacket = dataMatrixBytes[(byteIndex-offset):(byteIndex-offset) + DATA_SIZE]
-        #print(dataMatrix[int((byteIndex-offset)/2):int((byteIndex-offset)/2) + DATA_SIZE] - DATA_SCALE)
     else:
         dataPacket = dataMatrixBytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
     
-    if flag == 1:
-        print("dataPacket", dataPacket)
     packet  = timeHeader + dataPacket
     
     ###simulate datalogger glitches
@@ -188,10 +183,11 @@ while(True):
         if args.data_glitch == flag:
             packet = packet + packet[:30]
     
+    ### check packet size ###
     if len(packet) != PACKET_SIZE and args.data_glitch == 0:
         print('ERROR: packet length error')
         print('FLAG: ',flag)
-        break    
+        sys.exit()
 
     sock.sendto(packet, (args.ip, args.port)) # send the packet
     

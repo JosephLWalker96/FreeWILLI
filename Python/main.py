@@ -36,7 +36,7 @@ print('This code has been tested for python version 3.11.6, your version is:', s
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default=50000, type=int)                           # port to listen to for UDP packets
 parser.add_argument('--ip', default="192.168.100.220",type=str)                  # IP address of data logger (simulator)
-parser.add_argument('--fw', default = 1550, type=int)                            # firmware version
+parser.add_argument('--fw', default = 1240, type=int)                            # firmware version
 parser.add_argument('--output_file', default = "clicks_data.txt", type=str)      # output file for logging time and peak amp. of pulses
 args = parser.parse_args()
 output_file = open(args.output_file, 'w')                 # clear contents in output file
@@ -196,7 +196,7 @@ def DataProcessor():
                 
                 ### check packet length
                 if len(dataBytes) != PACKET_SIZE:
-                    print('Error: recieved incorrect number of packets')
+                    print('Error: recieved incorrect number of packets. PACKET_SIZE: ', PACKET_SIZE)
                     previousTime = False
                     restartListener()
                     continue
@@ -275,7 +275,7 @@ def DataProcessor():
             
             chanSpacing  = np.array([1, 2, 3, 1, 2, 1])
             doaEstimates = DOA_EstimateVerticalArray(tdoaEstimates, 1500, chanSpacing)
-            #print(doaEstimates)
+            print(doaEstimates)
             #print('End all: ', time.time() - gccStart)
             
     except Exception as e:

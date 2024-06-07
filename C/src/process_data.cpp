@@ -88,7 +88,7 @@ DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& time
     int peakIndex = arma::index_max(data);
     double peakAmplitude = arma::max(data);
 
-    if (peakAmplitude > threshold) {
+    if (peakAmplitude >= threshold) {
         result.minPeakIndex = peakIndex;
         result.maxPeakIndex = peakIndex;
         result.peakAmplitude.push_back(peakAmplitude);

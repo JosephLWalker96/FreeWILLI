@@ -47,6 +47,21 @@ def SetHighPriority():
         print("You are not using a UNIX- or Windows-based system.")
 
 
+def Normalize(dataMat):
+    '''
+    Normalize data to be between 0 and 65535 (range of unsigned 16 bit int)
+
+    '''
+
+    dataMat = np.array(dataMat,dtype=np.float64)      # convert data to unsigned 16 bit integers
+    dataMat = dataMat - np.min(dataMat)
+    dataMat = dataMat / np.max(dataMat)
+    dataMat = dataMat * 65535
+    dataMat = np.array(dataMat,dtype=np.uint16)      # convert data to unsigned 16 bit integers
+    assert (dataMat.min() == 0) and (dataMat.max() == 65535)
+    return dataMat
+
+
 def IntegrityCheck(data, times, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL, MICRO_INCR):
     """
     Check the integrity of data size and time stamps to ensure they are evenly spaced by a specified microsecond increment.
@@ -106,7 +121,7 @@ def LoadChannelOne(DATA_PATH, DATA_SCALE):
     return dataMatrix[0,:]
 
 
-def LoadTest4chDataInterleaved(filePath, scale, NUM_CHAN, SAMPS_PER_CHANNEL, simulateTDOA):
+def LoadTest4chDataInterleaved(filePath, scale, NUM_CHAN, SAMPS_PER_CHANNEL, offset):
     """
     Function to read in real 4 channel data and format the data according to firmware version 1550
 
@@ -115,23 +130,28 @@ def LoadTest4chDataInterleaved(filePath, scale, NUM_CHAN, SAMPS_PER_CHANNEL, sim
         scale (integer): A scaling parameter to shift the data by
 
     Returns:
-        array of integers: The result of the division.
+        array of integers The result of the division.
     """
     
     print("Loading data from file: ",filePath)
     dataMatrix = loadmat(filePath)['DATA'].T
     print("Shape of loaded data: ", dataMatrix.shape)
 
-    if simulateTDOA == "const":
-        print("Simulating TDOA")
+    if offset:
+        print("Simulating TDOA with offset: ", offset)
         for chan in range(1,NUM_CHAN):
-            shift = 10*chan
+            shift = offset * chan
             print(chan, shift, dataMatrix[0,0])
             dataMatrix[chan, :] = np.roll(dataMatrix[0, :], shift)                 # set all channels to be the same as the first channel
             dataMatrix[chan, :shift] = dataMatrix[0, 0]
 
+    print("first 10 values of channel 1 before scaling: ", dataMatrix[0, :10])
+    print("first 10 values of channel 2 before scaling: ", dataMatrix[1, :10])
+    print("first 10 values of channel 3 before scaling: ", dataMatrix[2, :10])
+    print("first 10 values of channel 4 before scaling: ", dataMatrix[3, :10])
+    
     dataMatrixReshaped = dataMatrix.reshape(-1, order='F')                   # Interleave the values of the rows uniformly
-    print("REAL dataMatrix: ",dataMatrixReshaped[:30])
+    print("first 30 values of dataMatrixInterleaved before scaling: ",dataMatrixReshaped[:30])
     dataMatrixReshaped = dataMatrixReshaped + scale                         
     
     # return the flatened data matrix and index of first high amplitude value in first channel. 
