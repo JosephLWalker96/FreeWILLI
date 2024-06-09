@@ -73,7 +73,7 @@ from utils import SetHighPriority, Sleep, Normalize, Load4ChannelDataset, Duplic
 
 SetHighPriority(15) # set this process to run the program at high priority (nice value = -15)
 
-# Command-line argument parsing
+### Command-line argument parsing
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default=1045, type=int, help='UDP port to send data to')
 parser.add_argument('--ip', default="192.168.7.2", type=str, help='IP address to send data to')
