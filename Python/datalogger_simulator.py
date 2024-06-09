@@ -69,9 +69,9 @@ import argparse                    # For parsing command-line arguments
 import psutil                      # For system and process utilities
 import os                          # For operating system interfaces
 import sys                         # For system-specific parameters and functions
-from utils import SetHighPriority, LoadTest4chDataInterleaved, Sleep, Normalize
+from utils import SetHighPriority, Sleep, Normalize, Load4ChannelDataset, DuplicateAndShiftChannels, InterleaveData, ScaleData, ConvertToBytes
 
-SetHighPriority() # set this process to run the program at high priority (nice value = -15)
+SetHighPriority(15) # set this process to run the program at high priority (nice value = -15)
 
 # Command-line argument parsing
 parser = argparse.ArgumentParser(description='Program command line arguments')
@@ -82,6 +82,7 @@ parser.add_argument('--fw', default=1240, type=int, help='Firmware version to si
 parser.add_argument('--loop', action='store_true', help='Enable looping over the data')
 parser.add_argument('--stretch', action='store_true', help='normalize data values min and max range of unsigned 16 bit int')
 parser.add_argument('--high_act', action='store_true', help='Enable high activity mode')
+parser.add_argument('--cos_shift', action='store_true', help='pad data variably according to a cosine wave')
 parser.add_argument('--time_glitch', default=0, type=int, help='Simulate time glitch at specific flag')
 parser.add_argument('--data_glitch', default=0, type=int, help='Simulate data glitch at specific flag')
 parser.add_argument('--tdoa_sim', default = 0, type=int, help='channel offset amount') # IN DEVELOPMENT
@@ -104,21 +105,28 @@ else:
     print('ERROR: Unknown firmware version')
     sys.exit()  # Exiting the program
 
-def FetchFormatEncodeData(data_path, DATA_SCALE,
-    NUM_CHAN, SAMPS_PER_CHANNEL, offset):
-    dataMatrix, highAmplitudeIndex = LoadTest4chDataInterleaved(data_path, DATA_SCALE,
-    NUM_CHAN, SAMPS_PER_CHANNEL, offset)
-    
-    if args.stretch:
-        dataMatrix = Normalize(dataMatrix)
-    print("DataMatrix min and max values: ", np.min(dataMatrix), np.max(dataMatrix))
+dataMatrix = Load4ChannelDataset(args.data_path)
 
-    formatString = '>{}H'.format(len(dataMatrix))          # encode data as big-endian
-    dataMatrixBytes= struct.pack(formatString, *dataMatrix)
-    return dataMatrixBytes, highAmplitudeIndex
+if args.tdoa_sim:
+    dataMatrixShifted = DuplicateAndShiftChannels(np.copy(dataMatrix), args.tdoa_sim, NUM_CHAN)
+elif args.cos_shift:
+    shift = int(66*np.cos((0) / 5))
+    dataMatrixShifted = DuplicateAndShiftChannels(np.copy(dataMatrix), shift, NUM_CHAN)
+else:
+    dataMatrixShifted = np.copy(dataMatrix)
 
-dataMatrixBytes, highAmplitudeIndex = FetchFormatEncodeData(args.data_path, DATA_SCALE,
-    NUM_CHAN, SAMPS_PER_CHANNEL, args.tdoa_sim)
+if args.fw == 1240:
+    dataFlattened, highAmplitudeIndex = InterleaveData(dataMatrixShifted)
+else:
+    print("Error: only interleaving method for firmware version 1240 is implemented")
+    sys.exit()
+
+del dataMatrixShifted
+dataFlattenedScaled= ScaleData(dataFlattened, DATA_SCALE, args.stretch)
+del dataFlattened
+dataBytes = ConvertToBytes(dataFlattenedScaled)
+del dataFlattenedScaled
+
 
 print('Bytes per packet:       ', REQUIRED_BYTES)
 print('Time between packets:   ', MICRO_INCR)
@@ -139,15 +147,32 @@ flag = 0
 loopCounter = 0
 while(True):
 
-
     startTime = time.time()
-    if args.loop and (len(dataMatrixBytes) // DATA_SIZE == flag): # if we are looping over data and if flag is currently at the end
+    
+    atEnd = len(dataBytes) // DATA_SIZE == flag # boolean value, if flag is at end of data
+    if args.loop and atEnd:
         flag = 0
-    if args.tdoa_sim == "sin" and (len(dataMatrixBytes) // DATA_SIZE == flag): # if flag is currently at the end and we want to shift the data
-        print("Loading new data: ")
-        dataMatrix, highAmplitudeIndex = LoadTest4chDataInterleaved(args.data_path, DATA_SCALE, NUM_CHAN, SAMPS_PER_CHANNEL, args.tdoa_sim)
+    elif args.cos_shift and atEnd: # get new sine shifted data
+        cosLoadStart = time.time()
+        loopCounter +=1
+        shift = int(66*np.cos((loopCounter+1) / 5))
+        print("Loading new data: ", shift)
+        dataMatrixShifted = DuplicateAndShiftChannels(np.copy(dataMatrix), shift, NUM_CHAN)
+        if args.fw == 1240:
+            dataFlattened, _ = InterleaveData(dataMatrixShifted)
+        else:
+            print("Error: only interleaving method for firmware version 1240 is implemented")
+            sys.exit()
+
+        del dataMatrixShifted
+        dataFlattenedScaled= ScaleData(dataFlattened, DATA_SCALE, args.stretch)
+        del dataFlattened
+        dataBytes = ConvertToBytes(dataFlattenedScaled)
+        del dataFlattenedScaled
+
         flag = 0
         startTime = time.time()
+        print("Applying new shift time: ", startTime - cosLoadStart)
     
     
     ### Create the time header
@@ -169,9 +194,9 @@ while(True):
     if args.high_act:
         byteIndex = highAmplitudeIndex * NUM_CHAN * BYTES_PER_SAMP
         offset = 10 * NUM_CHAN * BYTES_PER_SAMP
-        dataPacket = dataMatrixBytes[(byteIndex-offset):(byteIndex-offset) + DATA_SIZE]
+        dataPacket = dataBytes[(byteIndex-offset):(byteIndex-offset) + DATA_SIZE]
     else:
-        dataPacket = dataMatrixBytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
+        dataPacket = dataBytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
     
     packet  = timeHeader + dataPacket
     
@@ -199,7 +224,7 @@ while(True):
     #sleep(2*MICRO_INCR)
     #time.sleep(1)
     
-    if flag == 8000 and not args.loop:
+    if flag == 8000 and not args.loop and not args.cos_shift:
         print('Reached flag ',flag,time.time() - absStartTime)
         break
     flag += 1

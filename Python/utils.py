@@ -4,6 +4,7 @@ import psutil
 import os
 from scipy.io import loadmat
 import sys
+import struct
 
 def CheckSystem():
     """
@@ -21,12 +22,11 @@ def CheckSystem():
     elif sys.platform.startswith('win'):
         return "Win"
 
-def SetHighPriority():
+def SetHighPriority(NICE_VAL):
     thisSystem = CheckSystem()
     if thisSystem == "Unix":
         print("You are using a UNIX-based system.")
         try:
-            NICE_VAL = 15                    # set the "nice" value (OS priority) of the program. [-20, 19], lower gives more priority 
             pid = os.getpid()
             process = psutil.Process(pid)     # Get the process object for the current process
             process.nice(NICE_VAL)            # Set the process priority to high
@@ -58,7 +58,6 @@ def Normalize(dataMat):
     dataMat = dataMat / np.max(dataMat)
     dataMat = dataMat * 65535
     dataMat = np.array(dataMat,dtype=np.uint16)      # convert data to unsigned 16 bit integers
-    assert (dataMat.min() == 0) and (dataMat.max() == 65535)
     return dataMat
 
 
@@ -120,76 +119,59 @@ def LoadChannelOne(DATA_PATH, DATA_SCALE):
     print("Shape of loaded data: ", dataMatrix.shape)
     return dataMatrix[0,:]
 
-
-def LoadTest4chDataInterleaved(filePath, scale, NUM_CHAN, SAMPS_PER_CHANNEL, offset):
-    """
-    Function to read in real 4 channel data and format the data according to firmware version 1550
-
-    Args:
-        path (string):   The path to the data to read in
-        scale (integer): A scaling parameter to shift the data by
-
-    Returns:
-        array of integers The result of the division.
-    """
-    
+def Load4ChannelDataset(filePath):
     print("Loading data from file: ",filePath)
     dataMatrix = loadmat(filePath)['DATA'].T
     print("Shape of loaded data: ", dataMatrix.shape)
+    assert dataMatrix.shape[0] == 4
+    return dataMatrix
 
-    if offset:
-        print("Simulating TDOA with offset: ", offset)
-        for chan in range(1,NUM_CHAN):
-            shift = offset * chan
-            print(chan, shift, dataMatrix[0,0])
-            dataMatrix[chan, :] = np.roll(dataMatrix[0, :], shift)                 # set all channels to be the same as the first channel
-            dataMatrix[chan, :shift] = dataMatrix[0, 0]
+def DuplicateAndShiftChannels(dataMatrix, offset, NUM_CHAN):
+    chanList = [2,3,4]
+    if offset < 0:
+        dataMatrix = dataMatrix[::-1]   # flip the rows in the matrix so that the largest offset is applied to channel 1
+        chanList = [3,2,1]
 
+
+    print("Shifting channels with offset: ", offset)
+    for chan in range(1,NUM_CHAN):
+        shift = int(abs(offset * chan)) # increase offset between channels linearly (assuming plane wave)
+        print("Channel ", chanList[chan-1], " is shifted by: ",shift)
+        dataMatrix[chan, :] = np.roll(dataMatrix[0, :], shift)                 # set all channels to be the same as the first channel
+        dataMatrix[chan, :shift] = dataMatrix[0, 0]
+    if offset < 0:
+        dataMatrix = dataMatrix[::-1] # reorient the matrix
+    
     print("first 10 values of channel 1 before scaling: ", dataMatrix[0, :10])
     print("first 10 values of channel 2 before scaling: ", dataMatrix[1, :10])
     print("first 10 values of channel 3 before scaling: ", dataMatrix[2, :10])
     print("first 10 values of channel 4 before scaling: ", dataMatrix[3, :10])
-    
-    dataMatrixReshaped = dataMatrix.reshape(-1, order='F')                   # Interleave the values of the rows uniformly
-    print("first 30 values of dataMatrixInterleaved before scaling: ",dataMatrixReshaped[:30])
-    dataMatrixReshaped = dataMatrixReshaped + scale                         
-    
-    # return the flatened data matrix and index of first high amplitude value in first channel. 
-    # This high amplitude index is used for sending packets with pulses 
-    return dataMatrixReshaped, np.where(dataMatrix[0,:]>500)[0][0]            
-
-def LoadTest4chDataStacked(filePath, scale,  NUM_CHAN, SAMPS_PER_CHANNEL, simulateTDOA):
-    """
-    Function to read in real 4 channel data and format the data according to firmware version 1240
-
-    Args:
-        filePath (string):   The path to the data to read in
-        scale (integer): A scaling parameter to shift the data by
-
-    Returns:
-        array of integers: The result of the division.
-    """
-    
-    print("Loading data from file: ",filePath)
-    dataMatrix = loadmat(filePath)['DATA'].T
-    print("Shape of loaded data: ", dataMatrix.shape)
-
-    divisor = dataMatrix.shape[1] // SAMPS_PER_CHANNEL
-    dataMatrix = dataMatrix[:,:int(SAMPS_PER_CHANNEL*divisor)]                      # truncate data that doesn't evenly fit into the packets
-    if simulateTDOA == "const":
-        print("Simulating TDOA")
-        for chan in range(1,NUM_CHAN):
-            shift = 10*chan
-            print(chan, shift, dataMatrix[0,0])
-            dataMatrix[chan, :] = np.roll(dataMatrix[0, :], shift)                 # set all channels to be the same as the first channel
-            dataMatrix[chan, :shift] = dataMatrix[0, 0]
-        #dataMatrix = np.hstack(dataMatrix)
-    #else:
-    dataMatrix = dataMatrix.reshape(NUM_CHAN,divisor,SAMPS_PER_CHANNEL)     # divide each each into 'divisor' segments of length SAMPS_PER_CHANNEL
-    dataMatrix = np.hstack(np.hstack(dataMatrix))
-    
-    print(dataMatrix[:SAMPS_PER_CHANNEL*3])
-    
-    dataMatrix = dataMatrix + scale                         
     return dataMatrix
 
+
+def InterleaveData(dataMatrix):
+    dataFlattened = dataMatrix.reshape(-1, order='F')   # Interleave the values of the rows uniformly
+    return dataFlattened, np.where(dataFlattened > 500)[0][0] # return the flattened matrix as well as index of first high amplitude value
+
+
+def StackData(dataMatrix, Num_CHAN, SAMPS_PER_CHANNEL):
+    dataMatrix = dataMatrix.reshape(NUM_CHAN,divisor,SAMPS_PER_CHANNEL)     # divide each each into 'divisor' segments of length SAMPS_PER_CHANNEL
+    return np.hstack(np.hstack(dataMatrix))
+
+
+def ScaleData(dataFlattened, scale, toStretch):
+    nSample = 30
+    print("first ",nSample ," values of dataMatrixInterleaved before scaling: ",dataFlattened[:nSample])
+    dataFlattened = dataFlattened + scale                         
+    
+    if toStretch:
+        dataFlattened = Normalize(dataFlattened)
+        assert (dataFlattened.min() == 0) and (dataFlattened.max() == 65535)
+    
+    print("dataFlattened min and max values: ", np.min(dataFlattened), np.max(dataFlattened))
+    return dataFlattened
+
+
+def ConvertToBytes(dataFlattenedScaled):
+    formatString = '>{}H'.format(len(dataFlattenedScaled))          # encode data as big-endian
+    return struct.pack(formatString, *dataFlattenedScaled)
