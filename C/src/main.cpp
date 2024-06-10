@@ -223,7 +223,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 size_t queueSize = sess.dataBuffer.size();
                 if (queueSize < 1) {
                     sess.dataBufferLock.unlock();
-                    cout << "Sleeping: " << endl;
+                    //cout << "Sleeping: " << endl;
                     std::this_thread::sleep_for(200ms);
                     continue;
                 }
@@ -340,7 +340,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             //cout << resultMatrix.t() << endl;
 
             arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
-            cout << DOAs.t() << endl;
+            //cout << DOAs.t() << endl;
             //auto endAll = std::chrono::steady_clock::now();
             //std::chrono::duration<double> durationFilter = endAll - beforeGCC;
             //cout << "Duration Filter: " << durationFilter.count() << endl;
@@ -383,15 +383,15 @@ int main(int argc, char *argv[]) {
     //import variables according to firmware version specified
     cout << "Firmware version: " << firmwareVersion << endl;
     if (firmwareVersion == 1550) {
-        if (ProcessFile(exp, "../ConfigFiles/1550_config.txt")) {
+        const string path = "../ConfigFiles/1550_config.txt";
+        if (ProcessFile(exp, path))
             return EXIT_FAILURE;
-        }
         exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else if (firmwareVersion == 1240) {
-        if (ProcessFile(exp, "../ConfigFiles/1240_config.txt")) {
+        const string path = "../ConfigFiles/1240_config.txt";
+        if (ProcessFile(exp, path))
             return EXIT_FAILURE;
-        }
         exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else {

@@ -64,7 +64,7 @@ void RestartListener(Session& sess){
     sess.dataTimes.clear();
 }
 
-int ProcessFile(Experiment& exp, const string& fileName) {
+int ProcessFile(Experiment& exp, const string fileName) {
     /**
     * @brief Processes a configuration file and initializes global variables accordingly.
     *
@@ -135,7 +135,7 @@ void ClearQueue(std::queue<std::vector<uint8_t>>& fullQueue) {
     std::swap(fullQueue, empty);
 }
 
-bool WithProbability(double& probability){
+bool WithProbability(double probability){
     /**
     * @brief Generates a boolean value based on the given probability.
     * This fucntion is used for testing.
