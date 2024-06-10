@@ -45,7 +45,7 @@ struct Experiment {
     const string filterWeights = "../filters/My_filter.txt";
     
     const double speedOfSound = 1500.0;
-    const double energyDetThresh = 80.0; // energy detector threshold 
+    const double energyDetThresh = 2500.0; // energy detector threshold 
     
     arma::Col<int> chanSpacing = {1, 2, 3, 1, 2, 1};
     void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;

@@ -46,7 +46,7 @@ UDP_PORT = args.port                                      # Port to listen for U
 
 print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
 
-SetHighPriority()            # set the program to run at a high priority on the system (nice value = -15)
+#SetHighPriority()            # set the program to run at a high priority on the system (nice value = -15)
 
 ### import variables according to firmware version specified ###
 print('Assuming firmware version: ', args.fw)
@@ -237,7 +237,7 @@ def DataProcessor():
                 ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
             with dataTimesLock:
                 #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
-                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 80)
+                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 2500)
             if values == None: # if no pulses were detected to segment, then get next segment
                 continue
             detectionCounter += 1

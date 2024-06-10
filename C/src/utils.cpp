@@ -43,7 +43,19 @@ void RestartListener(Session& sess){
     serverAddr.sin_addr.s_addr = inet_addr(sess.UDP_IP.c_str());
     serverAddr.sin_port = htons(sess.UDP_PORT);
 
-    if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+    if (sess.UDP_IP == "192.168.100.220"){
+        cout << "Sending wake up data to IP address to data logger " << endl;
+        const char* m1 = "Open";
+        unsigned char m2[96] = {0};
+        unsigned char message[100];
+        std::memcpy(message, m1,4);
+        std::memcpy(message + 4, m2, 96);
+        if (sendto(sess.datagramSocket, message, sizeof(message), 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0){
+            cerr << "Error sending data" << endl;
+            throw std::runtime_error("Error sending data");
+        }
+    }
+    else if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
         cerr << "Error binding socket" << endl;
         throw std::runtime_error("Error binding socket");
     }

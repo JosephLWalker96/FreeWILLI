@@ -292,6 +292,16 @@ void DataProcessor(Session& sess, Experiment& exp) {
              */
             
             exp.ProcessFncPtr(sess.dataSegment, ch1, ch2, ch3, ch4, exp.NUM_CHAN);
+            /*
+            for (int i = 0; i < 10; i++)
+                cout << "ch1 samps" << ch1(i) << endl;
+            for (int i = 0; i < 10; i++)
+                cout << "ch2 samps" << ch2(i) << endl;
+            for (int i = 0; i < 10; i++)
+                cout << "ch3 samps" << ch3(i) << endl;
+            for (int i = 0; i < 10; i++)
+                cout << "ch4 samps" << ch4(i) << endl;
+            */
             
             DetectionResult values = ThresholdDetect(ch1, sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
             
@@ -363,6 +373,7 @@ int main(int argc, char *argv[]) {
     if (sess.UDP_IP == "self") {
         sess.UDP_IP = "127.0.0.1";
     }
+    cout << "IP " << sess.UDP_IP << endl;
     sess.UDP_PORT = std::stoi(argv[2]);
 
     int firmwareVersion = std::stoi(argv[3]);
