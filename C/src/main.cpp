@@ -31,10 +31,10 @@ DESCRIPTION:
 EXAMPLE RUN:
 
 Execute (datalogger simulator):
-./listen_* 192.168.7.2 1045 1240
+./listen_* 192.168.7.2 1045 1240 2500
 
 Execute (datalogger):
-./listen_* 192.168.100.220 50000 1240
+./listen_* 192.168.100.220 50000 1240 2500
 
 
 RESOURCES:
@@ -110,11 +110,11 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
         socklen_t addrLength = sizeof(addr);
         int bytesReceived;
         const int printInterval = 500;
-        const int receiveSize = PACKET_SIZE + 1;      // + 1 to detect if more data than expected is being received
+        const int receiveSize = PACKET_SIZE + 1;              // + 1 to detect if more data than expected is being received
         size_t queueSize;
         auto startPacketTime = std::chrono::steady_clock::now();
         auto endPacketTime = startPacketTime;
-        std::chrono::duration<double> durationPacketTime;                    // stores the average amount of time (seconds) between successive UDP packets, averaged over 'printInterval' packets
+        std::chrono::duration<double> durationPacketTime;     // stores the average amount of time (seconds) between successive UDP packets, averaged over 'printInterval' packets
         //auto durationPacketTime = std::chrono::duration_cast<std::chrono::microseconds>(endPacketTime - startPacketTime);  
         vector<uint8_t> dataBytes(receiveSize);
         
@@ -131,7 +131,7 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
             sess.dataBufferLock.lock();              // give this thread exclusive rights to modify the shared dataBytes variable
             sess.dataBuffer.push(dataBytes);
             queueSize = sess.dataBuffer.size();
-            sess.dataBufferLock.unlock();
+            sess.dataBufferLock.unlock();            // relinquish exclusive rights  
             
             packetCounter += 1;
             if (packetCounter % printInterval == 0) {
@@ -280,6 +280,15 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 
                 previousTime = currentTime;
                 previousTimeSet = true;
+                
+                if ((exp.detectionOutputFile).empty()){
+                    string feature = "detection";
+                    InitiateOutputFile(exp.detectionOutputFile, timeStruct, microSec, feature);
+                    feature = "tdoa";
+                    InitiateOutputFile(exp.tdoaOutputFile, timeStruct, microSec, feature);
+                    feature = "doa";
+                    InitiateOutputFile(exp.doaOutputFile, timeStruct, microSec, feature);
+                }
 
                 auto endLoop = std::chrono::steady_clock::now();
                 auto durationLoop = endLoop - startLoop;
@@ -302,7 +311,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
             for (int i = 0; i < 10; i++)
                 cout << "ch4 samps" << ch4(i) << endl;
             */
-            
             DetectionResult values = ThresholdDetect(ch1, sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
             
             if (values.maxPeakIndex < 0){  // if no pulse was detected (maxPeakIndex remains -1) stop processing
@@ -314,7 +322,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
              */
             
             detectionCounter++;
-            WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, exp.outputFile);
+            WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, exp.detectionOutputFile);
 
             //auto beforeFilter = std::chrono::steady_clock::now();
             FilterWithFIR(ch1, ch2, ch3, ch4, firFilter);
@@ -340,6 +348,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
             //cout << resultMatrix.t() << endl;
 
             arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
+            
+            WriteArray(resultMatrix, values.peakTimes, exp.tdoaOutputFile);
+            WriteArray(DOAs, values.peakTimes, exp.doaOutputFile);
+            
             //cout << DOAs.t() << endl;
             //auto endAll = std::chrono::steady_clock::now();
             //std::chrono::duration<double> durationFilter = endAll - beforeGCC;
@@ -377,6 +389,8 @@ int main(int argc, char *argv[]) {
     sess.UDP_PORT = std::stoi(argv[2]);
 
     int firmwareVersion = std::stoi(argv[3]);
+    exp.energyDetThresh = std::stod(argv[4]);
+
 
     cout << "Listening to IP address " << sess.UDP_IP.c_str() << " and port " << sess.UDP_PORT << endl;
 
@@ -399,7 +413,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
     
-    exp.NUM_PACKS_DETECT = (int)(exp.TIME_WINDOW * 100000 / exp.SAMPS_PER_CHANNEL);  // NEED TO ROUND THIS  the number of data packets that are needed to perform energy detection 
+    exp.NUM_PACKS_DETECT = (int)(exp.TIME_WINDOW * 100000 / exp.SAMPS_PER_CHANNEL);
     exp.DATA_SEGMENT_LENGTH = exp.NUM_PACKS_DETECT * exp.SAMPS_PER_CHANNEL * exp.NUM_CHAN; 
 
     cout << "HEAD_SIZE: "              << exp.HEAD_SIZE               << endl; 
@@ -410,20 +424,6 @@ int main(int argc, char *argv[]) {
     cout << "Number of channels:     " << exp.NUM_CHAN               << endl;
     cout << "Data bytes per channel: " << exp.DATA_BYTES_PER_CHANNEL << endl;
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
-
-    
-    // Open the file in write mode and clear its contents if it exists, create a new file otherwise
-    std::ofstream file(exp.outputFile, std::ofstream::out | std::ofstream::trunc);
-    if (file.is_open()) {
-        file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << endl;
-        file.close();
-        cout << "File created and cleared: " << exp.outputFile << endl;
-    } 
-    else {
-        cerr << "Error: Unable to open file for writing: " << exp.outputFile << endl;
-        return EXIT_FAILURE;
-    }
-
 
     while (true) {
         

@@ -19,3 +19,4 @@ void ProcessSegmentStacked(std::vector<double>& data, std::vector<TimePoint>& ti
 void ProcessSegmentInterleaved(std::vector<double>& data,arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, unsigned int& NUM_CHAN);
 DetectionResult ThresholdDetect(arma::Col<double>& data, std::vector<TimePoint>& times, const double& threshold,const unsigned int& SAMPLE_RATE);
 void WritePulseAmplitudes(const std::vector<double>& click_amps, const std::vector<TimePoint>& timestamps, const std::string& filename);
+void WriteArray(const arma::Col<double>& array, const vector<TimePoint>& timestamps, const string& filename);

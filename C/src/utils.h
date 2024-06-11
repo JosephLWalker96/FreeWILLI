@@ -19,6 +19,7 @@ using std::vector;
 
 arma::Col<double> ReadFIRFilterFile(const string& fileName);
 int ProcessFile(Experiment& exp, const string fileName); 
+void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSec, string& feature);
 void RestartListener(Session& sess);
 void ClearQueue(std::queue<vector<uint8_t>>& q);
 bool WithProbability(double probability);

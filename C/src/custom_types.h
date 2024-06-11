@@ -40,12 +40,14 @@ struct Experiment {
     const unsigned int SAMPLE_RATE = 1e5;
     const int interp = 1;
     const double TIME_WINDOW = 0.01;                 // fraction of a second to consider  
-    const string OUTPUT_FILE = "clicks_data.txt";
-    const string outputFile = "Ccode_clicks.txt"; // Change to your desired file name
+    //const string OUTPUT_FILE = "clicks_data.txt";
+    string detectionOutputFile = ""; // Change to your desired file name
+    string tdoaOutputFile = ""; // Change to your desired file name
+    string doaOutputFile = ""; // Change to your desired file name
     const string filterWeights = "../filters/My_filter.txt";
     
     const double speedOfSound = 1500.0;
-    const double energyDetThresh = 2500.0; // energy detector threshold 
+    double energyDetThresh = 2500.0; // energy detector threshold - 2500.0 is default 
     
     arma::Col<int> chanSpacing = {1, 2, 3, 1, 2, 1};
     void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;

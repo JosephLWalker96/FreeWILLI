@@ -180,15 +180,13 @@ arma::Col<double> DOA_EstimateVerticalArray(arma::Col<double>& TDOAs, const doub
         cerr << "TDOAs: " << TDOAs.t() << endl;
         //throw std::runtime_error("Bad TDOA values encountered!");
     }
-    
-    /*  
+    /*    
     if (WithProbability(0.0005)){
         cout << "Crashing here!!" << endl;
         int* ptr = nullptr;
         *ptr = 42; // Dereference null pointer to cause a crash
     }
     */
-    
     vals.clamp( -1, 1);                                                       // ensure that values are between -1 and 1 for arcsin
     return arma::acos(vals) * 180.0 / 3.141592653;                            // convert angle to degrees 
 }

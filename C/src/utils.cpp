@@ -5,7 +5,7 @@
 #include <queue>
 #include <vector>
 #include <random>
-
+#include <iomanip> //std::setw
 #include "custom_types.h"
 #include "utils.h"
 
@@ -14,6 +14,7 @@ using std::endl;
 using std::cout;
 using std::string;
 using std::vector;
+using TimePoint = std::chrono::system_clock::time_point;
 
 void RestartListener(Session& sess){
      /**
@@ -83,6 +84,26 @@ int ProcessFile(Experiment& exp, const string fileName) {
     exp.REQUIRED_BYTES = exp.DATA_SIZE + exp.HEAD_SIZE;
     exp.DATA_BYTES_PER_CHANNEL = exp.SAMPS_PER_CHANNEL * exp.BYTES_PER_SAMP;
     return 0;
+}
+
+void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSec, string& feature){
+
+    outputFile = "../deployment_files/"  + std::to_string(timeStruct.tm_year + 1900) + '-' + std::to_string(timeStruct.tm_mon + 1) + '-' + 
+                     std::to_string(timeStruct.tm_mday) + '-' + std::to_string(timeStruct.tm_hour) + '-' + std::to_string(timeStruct.tm_min) + '-' +
+                     std::to_string(timeStruct.tm_sec) + '-' + std::to_string(microSec) + '_' + feature;
+    
+    cout << "created and writting to file: " << outputFile << endl;
+    
+    // Open the file in write mode and clear its contents if it exists, create a new file otherwise
+    std::ofstream file(outputFile, std::ofstream::out | std::ofstream::trunc);
+    if (file.is_open()) {
+        file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << endl;
+        file.close();
+    } 
+    else {
+        cerr << "Error: Unable to open file for writing: " << outputFile << endl;
+        throw std::runtime_error("Error: Unable to open file for writing: ");
+    }
 }
 
 arma::Col<double> ReadFIRFilterFile(const string& fileName) {
