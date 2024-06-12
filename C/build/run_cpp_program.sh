@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Example to run program ./run_cpp_program.sh 2 1 self 1045 
-
+# Example to run program ./run_cpp_program.sh 2 0 self 1045 2500
 if [ "$#" -ne 5 ]; then
   echo "Usage: $0 <run_time_in_minutes> <sleep_time_in_minutes> <UDP_IP> <UDP_PORT> <DETECTION_THRESHOLD>"
   exit 1
