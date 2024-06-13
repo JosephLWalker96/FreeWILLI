@@ -16,6 +16,33 @@ using std::string;
 using std::vector;
 using TimePoint = std::chrono::system_clock::time_point;
 
+void PrintTimes(const vector<TimePoint>& timestamps) {
+    /**
+    * @brief Prints the timestamps provided in the input vector.
+    *
+    * This function prints the timestamps provided in the input vector
+    * in the format "YYYY-MM-DD HH:MM:SS:Microseconds".
+    *
+    * @param timestamps A vector of TimePoint objects representing the timestamps to be printed.
+    *                   TimePoint is a type alias for a time point based on std::chrono::system_clock.
+    */
+    
+    for (auto& timestamp : timestamps) {
+        std::time_t timeRepresentation = std::chrono::system_clock::to_time_t(timestamp);
+        std::tm timeData = *std::localtime(&timeRepresentation); 
+        auto microSeconds = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000; 
+        
+        cout << "Timestamp: ";
+        cout << timeData.tm_year + 1900 << '-'
+            << timeData.tm_mon + 1 << '-'
+            << timeData.tm_mday << ' '
+            << timeData.tm_hour << ':'
+            << timeData.tm_min << ':'
+            << timeData.tm_sec << ':'
+            << microSeconds << endl;
+    }
+}
+
 void RestartListener(Session& sess){
      /**
      * @brief (Re)starts the udp listener. It closes the existing socket connection and creates a new one.
@@ -172,3 +199,73 @@ bool WithProbability(double probability){
     double randomValue = dis(gen);
     return randomValue < probability;
 }
+void WritePulseAmplitudes(const vector<double>& clickPeakAmps, const vector<TimePoint>& timestamps, const string& filename) {
+    /**
+    * @brief Writes pulse amplitudes and corresponding timestamps to a file.
+    *
+    * @param clickPeakAmps A reference to a vector of doubles containing pulse amplitudes.
+    * @param timestamps A reference to a vector of TimePoint objects representing the timestamps corresponding to the pulse amplitudes.
+    * @param filename A string specifying the output file path or name.
+    */
+    
+
+    //cout << "clickPeakAmps.size(): " << clickPeakAmps.size() << endl;
+    std::ofstream outfile(filename, std::ios::app);
+    if (outfile.is_open()) {
+        // Check if vectors have the same size
+        if (clickPeakAmps.size() != timestamps.size()) {
+            cerr << "Error: Click amplitude and timestamp vectors have different sizes." << endl;
+            return;
+        }
+
+        // Write data rows
+        for (size_t i = 0; i < clickPeakAmps.size(); ++i) {
+            auto time_point = timestamps[i];
+            auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
+            outfile << time_since_epoch.count() << std::setw(20) << clickPeakAmps[i] << endl;
+        }
+
+        outfile.close();
+    } 
+    else {
+        cerr << "Error: Could not open file " << filename << endl;
+    }
+}
+
+
+void WriteArray(const arma::Col<double>& array, const vector<TimePoint>& timestamps, const string& filename) {
+    /**
+    * @brief Writes pulse amplitudes and corresponding timestamps to a file.
+    *
+    * @param clickPeakAmps A reference to a vector of doubles containing pulse amplitudes.
+    * @param timestamps A reference to a vector of TimePoint objects representing the timestamps corresponding to the pulse amplitudes.
+    * @param filename A string specifying the output file path or name.
+    */
+    
+
+    //cout << "clickPeakAmps.size(): " << clickPeakAmps.size() << endl;
+    std::ofstream outfile(filename, std::ios::app);
+    if (outfile.is_open()) {
+        // Check if vectors have the same size
+        /*
+        if (clickPeakAmps.size() != timestamps.size()) {
+            cerr << "Error: Click amplitude and timestamp vectors have different sizes." << endl;
+            return;
+        }
+        */
+        // Write data rows
+        auto time_point = timestamps[0];
+        auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
+        outfile << time_since_epoch.count() << std::setw(20);
+        for (size_t i = 0; i < array.n_elem; ++i) {
+            outfile << array[i] << " ";
+        }
+        outfile << endl;
+
+        outfile.close();
+    } 
+    else {
+        cerr << "Error: Could not open file " << filename << endl;
+    }
+}
+

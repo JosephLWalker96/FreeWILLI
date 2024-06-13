@@ -122,9 +122,8 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
             
             bytesReceived = recvfrom(sess.datagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr*)&addr, &addrLength);
             
-            if (bytesReceived == -1) {
+            if (bytesReceived == -1)
                 throw std::runtime_error( "Error in recvfrom: bytesReceived is -1");
-            }
             
             dataBytes.resize(bytesReceived);         // Adjust size based on actual bytes received
             
@@ -140,6 +139,10 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
                 cout << "Num packets received is " <<  packetCounter << " " << durationPacketTime.count() / printInterval  << " " << queueSize << " " << packetCounter - queueSize << " " << detectionCounter << endl;
                 startPacketTime = std::chrono::steady_clock::now();
             }
+
+            if (queueSize > 1000)
+                throw std::runtime_error("Buffer overflowing");
+                
         }
     } catch (const std::exception& e ) {
         cerr << "Error occured in UDP Listener Thread: " << endl;
@@ -238,15 +241,15 @@ void DataProcessor(Session& sess, Experiment& exp) {
                     throw std::runtime_error("Error: incorrect number of bytes in packet");
                 }
                 
-                std::tm timeStruct{};
+                std::tm timeStruct{};                                     // Initialize a std::tm structure to hold the date and time components
                 timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
-                timeStruct.tm_mon = (int)dataBytes[1] - 1;                     // Months are 0-indexed
+                timeStruct.tm_mon = (int)dataBytes[1] - 1;                // Months are 0-indexed
                 timeStruct.tm_mday = (int)dataBytes[2];
                 timeStruct.tm_hour = (int)dataBytes[3];
                 timeStruct.tm_min = (int)dataBytes[4];
                 timeStruct.tm_sec = (int)dataBytes[5];
 
-
+                // Calculate microseconds from the given bytes by shifting and combining them
                 int64_t microSec = (static_cast<int64_t>(dataBytes[6]) << 24) +
                          (static_cast<int64_t>(dataBytes[7]) << 16) +
                          (static_cast<int64_t>(dataBytes[8]) << 8) +
@@ -256,15 +259,18 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 // Use std::mktime to convert std::tm to std::time_t
                 std::time_t timeResult = std::mktime(&timeStruct);
 
+                // Check if mktime failed
                 if (timeResult == std::time_t(-1)) {
                     throw std::runtime_error("Error: failure in mktime");
                 }
 
-                auto currentTime = std::chrono::system_clock::from_time_t(timeResult);
+                auto currentTime = std::chrono::system_clock::from_time_t(timeResult);  // duration since the Unix epoch (00:00:00 UTC on 1 January 1970
                 currentTime += std::chrono::microseconds(microSec);
-                
+
+                // Calculate the elapsed time in microseconds since the previous time point
                 auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime).count();
 
+                // Check if the previous time was set and if the elapsed time is not equal to the expected increment
                 if (previousTimeSet && (elapsedTime != exp.MICRO_INCR)){
                     cerr << "Error: Time not incremented by " <<  exp.MICRO_INCR << " " << elapsedTime << endl;
                     throw std::runtime_error("Error: Time not incremented by MICRO_INCR");
@@ -301,16 +307,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
              */
             
             exp.ProcessFncPtr(sess.dataSegment, ch1, ch2, ch3, ch4, exp.NUM_CHAN);
-            /*
-            for (int i = 0; i < 10; i++)
-                cout << "ch1 samps" << ch1(i) << endl;
-            for (int i = 0; i < 10; i++)
-                cout << "ch2 samps" << ch2(i) << endl;
-            for (int i = 0; i < 10; i++)
-                cout << "ch3 samps" << ch3(i) << endl;
-            for (int i = 0; i < 10; i++)
-                cout << "ch4 samps" << ch4(i) << endl;
-            */
+            
             DetectionResult values = ThresholdDetect(ch1, sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
             
             if (values.maxPeakIndex < 0){  // if no pulse was detected (maxPeakIndex remains -1) stop processing
