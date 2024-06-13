@@ -1,7 +1,5 @@
-#ifndef GLOBAL_VARS
-#define GLOBAL_VARS
+#pragma once
 
-// Macros for preprocessor directives
 #include <string>
 #include <vector>
 #include <queue>
@@ -12,9 +10,10 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <armadillo>
+
 //#define PRINT_DATA_PROCESSOR
-#define PRINT_PROCESS_SEGMENT
-#define PRINT_PROCESS_SEGMENT_1240
+//#define PRINT_PROCESS_SEGMENT
+//#define PRINT_PROCESS_SEGMENT_1240
 //#define PRINT_PROCESS_SEGMENT_1550
 
 using std::vector;
@@ -39,16 +38,19 @@ struct Experiment {
     unsigned int DATA_SEGMENT_LENGTH;
     unsigned int MICRO_INCR;                                // time between packets
     const unsigned int SAMPLE_RATE = 1e5;
-    int interp = 1;
+    const int interp = 1;
     const double TIME_WINDOW = 0.01;                 // fraction of a second to consider  
-    const string OUTPUT_FILE = "clicks_data.txt";
-    const string outputFile = "Ccode_clicks.txt"; // Change to your desired file name
-    void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;
+    //const string OUTPUT_FILE = "clicks_data.txt";
+    string detectionOutputFile = ""; // Change to your desired file name
+    string tdoaOutputFile = ""; // Change to your desired file name
+    string doaOutputFile = ""; // Change to your desired file name
     const string filterWeights = "../filters/My_filter.txt";
     
-    arma::Col<int> chanSpacing = {1,2,3,1,2,1};
     const double speedOfSound = 1500.0;
-    const double energyDetThresh = 80.0; // energy detector threshold 
+    double energyDetThresh = 2500.0; // energy detector threshold - 2500.0 is default 
+    
+    arma::Col<int> chanSpacing = {1, 2, 3, 1, 2, 1};
+    void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;
 };
 
 struct Session {
@@ -72,4 +74,3 @@ struct DetectionResult {
     std::vector<double> peakAmplitude;
 };
 
-#endif

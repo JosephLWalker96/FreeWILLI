@@ -4,12 +4,12 @@ This file contains all function prototypes for utils.cpp
 
 */
 
-#ifndef UTILS
-#define UTILS
+#pragma once
 
 #include <iostream>
 #include <string>
 #include <random>
+#include <vector>
 #include <armadillo>
 #include "custom_types.h"
 
@@ -18,8 +18,8 @@ using std::vector;
 
 
 arma::Col<double> ReadFIRFilterFile(const string& fileName);
-int ProcessFile(Experiment& exp, const std::string& fileName); 
+int ProcessFile(Experiment& exp, const string fileName); 
+void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSec, string& feature);
 void RestartListener(Session& sess);
-void ClearQueue(std::queue<std::vector<uint8_t>>& q);
-bool WithProbability(double& probability);
-#endif
+void ClearQueue(std::queue<vector<uint8_t>>& q);
+bool WithProbability(double probability);

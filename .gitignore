@@ -4,3 +4,4 @@ Data/
 __pycache__/
 Segmented_pulses/
 *.o
+nohup.out

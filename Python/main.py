@@ -36,7 +36,7 @@ print('This code has been tested for python version 3.11.6, your version is:', s
 parser = argparse.ArgumentParser(description='Program command line arguments')
 parser.add_argument('--port', default=50000, type=int)                           # port to listen to for UDP packets
 parser.add_argument('--ip', default="192.168.100.220",type=str)                  # IP address of data logger (simulator)
-parser.add_argument('--fw', default = 1550, type=int)                            # firmware version
+parser.add_argument('--fw', default = 1240, type=int)                            # firmware version
 parser.add_argument('--output_file', default = "clicks_data.txt", type=str)      # output file for logging time and peak amp. of pulses
 args = parser.parse_args()
 output_file = open(args.output_file, 'w')                 # clear contents in output file
@@ -46,7 +46,7 @@ UDP_PORT = args.port                                      # Port to listen for U
 
 print('Listening to IP address, ', UDP_IP,' and port ',UDP_PORT)
 
-SetHighPriority()            # set the program to run at a high priority on the system (nice value = -15)
+#SetHighPriority()            # set the program to run at a high priority on the system (nice value = -15)
 
 ### import variables according to firmware version specified ###
 print('Assuming firmware version: ', args.fw)
@@ -196,7 +196,7 @@ def DataProcessor():
                 
                 ### check packet length
                 if len(dataBytes) != PACKET_SIZE:
-                    print('Error: recieved incorrect number of packets')
+                    print('Error: recieved incorrect number of packets. PACKET_SIZE: ', PACKET_SIZE)
                     previousTime = False
                     restartListener()
                     continue
@@ -237,7 +237,7 @@ def DataProcessor():
                 ch1, ch2, ch3, ch4 = PreprocessSegment(dataSegment, NUM_PACKS_DETECT, NUM_CHAN, SAMPS_PER_CHANNEL)
             with dataTimesLock:
                 #values = SegmentPulses(ch1, dataTimes, SAMPLE_RATE, 2500, False) # Set true to save segmented pulses
-                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 80)
+                values = ThresholdDetect(ch1,dataTimes, SAMPLE_RATE, 2500)
             if values == None: # if no pulses were detected to segment, then get next segment
                 continue
             detectionCounter += 1
@@ -275,7 +275,7 @@ def DataProcessor():
             
             chanSpacing  = np.array([1, 2, 3, 1, 2, 1])
             doaEstimates = DOA_EstimateVerticalArray(tdoaEstimates, 1500, chanSpacing)
-            #print(doaEstimates)
+            print(doaEstimates)
             #print('End all: ', time.time() - gccStart)
             
     except Exception as e:

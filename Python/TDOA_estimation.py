@@ -128,5 +128,5 @@ def DOA_EstimateVerticalArray(TDOAs,soundSpeed,chanSpacing):
     
     vals = np.clip(vals, -1, 1)              # ensure that values are between -1 and 1 for arcsin
 
-    return np.arcsin(vals) * 180 / np.pi     # convert angle to degrees 
+    return np.arccos(vals) * 180 / np.pi     # convert angle to degrees 
 

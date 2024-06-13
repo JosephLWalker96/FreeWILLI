@@ -5,15 +5,16 @@
 #include <queue>
 #include <vector>
 #include <random>
-
+#include <iomanip> //std::setw
 #include "custom_types.h"
 #include "utils.h"
-#include <filesystem>
+
 using std::cerr;
 using std::endl;
 using std::cout;
 using std::string;
 using std::vector;
+using TimePoint = std::chrono::system_clock::time_point;
 
 void RestartListener(Session& sess){
      /**
@@ -26,7 +27,6 @@ void RestartListener(Session& sess){
     
     cout << "restarting listener: " << endl;
 
-    //sess.udpSocketLock.lock();
     if (close(sess.datagramSocket) == -1) {
         std::cerr << "Failed to close socket" << std::endl;
         throw std::runtime_error("Failed to close socket");
@@ -44,26 +44,28 @@ void RestartListener(Session& sess){
     serverAddr.sin_addr.s_addr = inet_addr(sess.UDP_IP.c_str());
     serverAddr.sin_port = htons(sess.UDP_PORT);
 
-    if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+    if (sess.UDP_IP == "192.168.100.220"){
+        cout << "Sending wake up data to IP address to data logger " << endl;
+        const char* m1 = "Open";
+        unsigned char m2[96] = {0};
+        unsigned char message[100];
+        std::memcpy(message, m1,4);
+        std::memcpy(message + 4, m2, 96);
+        if (sendto(sess.datagramSocket, message, sizeof(message), 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0){
+            cerr << "Error sending data" << endl;
+            throw std::runtime_error("Error sending data");
+        }
+    }
+    else if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
         cerr << "Error binding socket" << endl;
         throw std::runtime_error("Error binding socket");
     }
-    //sess.udpSocketLock.unlock();
-
-    //sess.dataBufferLock.lock();
     ClearQueue(sess.dataBuffer);
-    //sess.dataBufferLock.unlock();
-
-    //sess.dataSegmentLock.lock();
     sess.dataSegment.clear();
-    //sess.dataSegmentLock.unlock();
-
-    //sess.dataTimesLock.lock();
     sess.dataTimes.clear();
-    //sess.dataTimesLock.unlock();
 }
 
-int ProcessFile(Experiment& exp, const string& fileName) {
+int ProcessFile(Experiment& exp, const string fileName) {
     /**
     * @brief Processes a configuration file and initializes global variables accordingly.
     *
@@ -82,6 +84,26 @@ int ProcessFile(Experiment& exp, const string& fileName) {
     exp.REQUIRED_BYTES = exp.DATA_SIZE + exp.HEAD_SIZE;
     exp.DATA_BYTES_PER_CHANNEL = exp.SAMPS_PER_CHANNEL * exp.BYTES_PER_SAMP;
     return 0;
+}
+
+void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSec, string& feature){
+
+    outputFile = "../deployment_files/"  + std::to_string(timeStruct.tm_year + 1900) + '-' + std::to_string(timeStruct.tm_mon + 1) + '-' + 
+                     std::to_string(timeStruct.tm_mday) + '-' + std::to_string(timeStruct.tm_hour) + '-' + std::to_string(timeStruct.tm_min) + '-' +
+                     std::to_string(timeStruct.tm_sec) + '-' + std::to_string(microSec) + '_' + feature;
+    
+    cout << "created and writting to file: " << outputFile << endl;
+    
+    // Open the file in write mode and clear its contents if it exists, create a new file otherwise
+    std::ofstream file(outputFile, std::ofstream::out | std::ofstream::trunc);
+    if (file.is_open()) {
+        file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << endl;
+        file.close();
+    } 
+    else {
+        cerr << "Error: Unable to open file for writing: " << outputFile << endl;
+        throw std::runtime_error("Error: Unable to open file for writing: ");
+    }
 }
 
 arma::Col<double> ReadFIRFilterFile(const string& fileName) {
@@ -108,7 +130,6 @@ arma::Col<double> ReadFIRFilterFile(const string& fileName) {
         std::stringstream stringStream(line);
         string token;
         
-        //cout << "Filter values: ";
         while(std::getline(stringStream,token, ',')){
             try {
                 double value = std::stod(token);
@@ -118,13 +139,12 @@ arma::Col<double> ReadFIRFilterFile(const string& fileName) {
                 cerr << "Invalid numeric value: " << token << endl;
             }
         }
-        //cout << endl;
     }
     arma::Col<double> filter(filterValues);
     return filter;
 }
 
-void ClearQueue(std::queue<std::vector<uint8_t>>& q){
+void ClearQueue(std::queue<std::vector<uint8_t>>& fullQueue) {
     /**
     * @brief This function effectively clears the given queue by swapping it with an
     * empty queue, thus removing all its elements.
@@ -133,10 +153,10 @@ void ClearQueue(std::queue<std::vector<uint8_t>>& q){
     */
     
     std::queue<std::vector<uint8_t>> empty;
-    std::swap(q, empty);
+    std::swap(fullQueue, empty);
 }
 
-bool WithProbability(double& probability){
+bool WithProbability(double probability){
     /**
     * @brief Generates a boolean value based on the given probability.
     * This fucntion is used for testing.
