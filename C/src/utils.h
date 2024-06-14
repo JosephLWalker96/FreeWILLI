@@ -15,6 +15,7 @@ This file contains all function prototypes for utils.cpp
 
 using std::string;
 using std::vector;
+using TimePoint = std::chrono::system_clock::time_point;
 
 
 arma::Col<double> ReadFIRFilterFile(const string& fileName);

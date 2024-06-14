@@ -198,6 +198,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
         // Declare time checking variables
         bool previousTimeSet = false;
         auto previousTime = std::chrono::time_point<std::chrono::system_clock>::min();
+        //auto previousTime = std::chrono::system_clock::time_point::min();
+        //std::chrono::microseconds previousTime;
         
         // pre-allocate memory for vectors
         sess.dataSegment.reserve(exp.DATA_SEGMENT_LENGTH);
@@ -212,7 +214,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
        
         // Container for pulling bytes from buffer (dataBuffer)
         vector<uint8_t> dataBytes;
-
+        
+        
         while (!sess.errorOccurred) {
             
             sess.dataTimes.clear();
@@ -264,11 +267,14 @@ void DataProcessor(Session& sess, Experiment& exp) {
                     throw std::runtime_error("Error: failure in mktime");
                 }
 
-                auto currentTime = std::chrono::system_clock::from_time_t(timeResult);  // duration since the Unix epoch (00:00:00 UTC on 1 January 1970
+                auto currentTime = std::chrono::system_clock::from_time_t(timeResult);  // convert std::time_t to std::chrono::system_clock::time_point
                 currentTime += std::chrono::microseconds(microSec);
 
                 // Calculate the elapsed time in microseconds since the previous time point
                 auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime).count();
+                //std::chrono::microseconds elapsedTimeTest = currentTime - previousTime;
+
+                //cout << "Time comparison: " << elapsedTime << " " << elapsedTimeTest.count() << endl;
 
                 // Check if the previous time was set and if the elapsed time is not equal to the expected increment
                 if (previousTimeSet && (elapsedTime != exp.MICRO_INCR)){
@@ -308,9 +314,9 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             exp.ProcessFncPtr(sess.dataSegment, ch1, ch2, ch3, ch4, exp.NUM_CHAN);
             
-            DetectionResult values = ThresholdDetect(ch1, sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
-            
-            if (values.maxPeakIndex < 0){  // if no pulse was detected (maxPeakIndex remains -1) stop processing
+            DetectionResult detResult = ThresholdDetect(ch1, sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
+
+            if (detResult.maxPeakIndex < 0){  // if no pulse was detected (maxPeakIndex remains -1) stop processing
                 continue;                  // get next dataSegment; return to loop
             }
             
@@ -319,7 +325,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
              */
             
             detectionCounter++;
-            WritePulseAmplitudes(values.peakAmplitude, values.peakTimes, exp.detectionOutputFile);
 
             //auto beforeFilter = std::chrono::steady_clock::now();
             FilterWithFIR(ch1, ch2, ch3, ch4, firFilter);
@@ -346,9 +351,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
             arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
             
-            WriteArray(resultMatrix, values.peakTimes, exp.tdoaOutputFile);
-            WriteArray(DOAs, values.peakTimes, exp.doaOutputFile);
-            
+            WritePulseAmplitudes(detResult.peakAmplitude, detResult.peakTimes, exp.detectionOutputFile);
+            WriteArray(resultMatrix, detResult.peakTimes, exp.tdoaOutputFile);
+            WriteArray(DOAs, detResult.peakTimes, exp.doaOutputFile);
+
             //cout << DOAs.t() << endl;
             //auto endAll = std::chrono::steady_clock::now();
             //std::chrono::duration<double> durationFilter = endAll - beforeGCC;

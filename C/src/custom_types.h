@@ -72,8 +72,8 @@ struct DetectionResult {
     int maxPeakIndex = -1;
     std::vector<std::chrono::system_clock::time_point> peakTimes;
     std::vector<double> peakAmplitude;
-    
     std::vector<arma::Col<double>> tdoas;
     std::vector<arma::Col<double>> doas;
+    
 };
 

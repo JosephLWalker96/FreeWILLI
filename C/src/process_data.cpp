@@ -178,38 +178,3 @@ void ProcessSegmentInterleaved(vector<double>& data, arma::Col<double>& ch1, arm
         ch4(j) = data[i+3];
     }
 }
-
-void WritePulseAmplitudes(const vector<double>& clickPeakAmps, const vector<TimePoint>& timestamps, const string& filename) {
-    /**
-    * @brief Writes pulse amplitudes and corresponding timestamps to a file.
-    *
-    * @param clickPeakAmps A reference to a vector of doubles containing pulse amplitudes.
-    * @param timestamps A reference to a vector of TimePoint objects representing the timestamps corresponding to the pulse amplitudes.
-    * @param filename A string specifying the output file path or name.
-    */
-    
-
-    //cout << "clickPeakAmps.size(): " << clickPeakAmps.size() << endl;
-    std::ofstream outfile(filename, std::ios::app);
-    if (outfile.is_open()) {
-        // Check if vectors have the same size
-        if (clickPeakAmps.size() != timestamps.size()) {
-            cerr << "Error: Click amplitude and timestamp vectors have different sizes." << endl;
-            return;
-        }
-
-        // Write data rows
-        for (size_t i = 0; i < clickPeakAmps.size(); ++i) {
-            auto time_point = timestamps[i];
-            auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
-            outfile << time_since_epoch.count() << std::setw(20) << clickPeakAmps[i] << endl;
-        }
-
-        outfile.close();
-    } 
-    else {
-        cerr << "Error: Could not open file " << filename << endl;
-    }
-}
-
-
