@@ -59,6 +59,7 @@ struct Session {
     std::atomic<bool> errorOccurred = false;
     
     std::queue<vector<uint8_t>> dataBuffer;
+    vector<vector<uint8_t>> dataBytesSaved;
     vector<double> dataSegment;
     vector<std::chrono::system_clock::time_point> dataTimes;
     std::mutex dataBufferLock;                       // For thread-safe buffer access

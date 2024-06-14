@@ -140,7 +140,7 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
                 startPacketTime = std::chrono::steady_clock::now();
             }
 
-            if (queueSize > 1000)
+            if (queueSize > 1000) // check if buffer has grown to an unacceptable size 
                 throw std::runtime_error("Buffer overflowing");
                 
         }
@@ -220,6 +220,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             sess.dataTimes.clear();
             sess.dataSegment.clear();
+            sess.dataBytesSaved.clear();
 
             while (sess.dataSegment.size() < exp.DATA_SEGMENT_LENGTH) {
                 
@@ -239,6 +240,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
                     sess.dataBufferLock.unlock();
                 }
 
+                sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
+                
                 if (dataBytes.size() != exp.PACKET_SIZE) {
                     cout << "PACKET_SIZE: " << exp.PACKET_SIZE << " dataBytes size: " << dataBytes.size() << endl;
                     throw std::runtime_error("Error: incorrect number of bytes in packet");
@@ -284,7 +287,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
                 // Convert byte data to doubles
                 auto startCDTime = std::chrono::steady_clock::now();
-                ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE);
+                ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
                 auto endCDTime = std::chrono::steady_clock::now();
                 auto durationCD = endCDTime - startCDTime;
                 
@@ -363,16 +366,27 @@ void DataProcessor(Session& sess, Experiment& exp) {
         }
     } 
     catch (const GCC_Value_Error& e) {
-        // WRITE DATA TO FILE
         cerr << e.what() << endl;
+        try {
+           WriteDataToCerr(sess.dataTimes,sess.dataSegment, sess.dataBytesSaved);
+        }
+        catch (...) {
+            cerr << "failed to write errored data to cerr" << endl;
+        }
         sess.errorOccurred = true;
     }
 
     catch (const std::exception& e ) {
         cerr << "Error occured in data processor thread: " << endl;
         cerr << e.what() << endl;
+        try {
+           WriteDataToCerr(sess.dataTimes,sess.dataSegment, sess.dataBytesSaved);
+        }
+        catch (...) {
+            cerr << "failed to write errored data to cerr" << endl;
+        }
         sess.errorOccurred = true;
-      }
+    }
 }
 
 

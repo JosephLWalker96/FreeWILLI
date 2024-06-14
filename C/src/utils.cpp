@@ -269,3 +269,25 @@ void WriteArray(const arma::Col<double>& array, const vector<TimePoint>& timesta
     }
 }
 
+void WriteDataToCerr(vector<TimePoint>& dataTimes,vector<double>& dataSegment, vector<vector<uint8_t>>& dataBytesSaved){
+    cerr << "Errored Timestamps: " << endl;
+    for (const auto timestamp : dataTimes){
+        auto convertedTime = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count(); 
+        cerr << convertedTime << endl;
+    }
+    cerr << endl;
+    cerr << "Errored decoded data: " << endl;
+    for (const auto data : dataSegment)
+        cerr << data << " ";
+    cerr << endl;
+    cerr << "Errored bytes of last packet: " << endl;
+    for (const auto byteArray : dataBytesSaved){
+        for (const auto data : byteArray){
+            cerr << std::setw(2) << std::setfill('0') << static_cast<int>(data);
+        }
+        cerr << endl;
+    }
+    cerr << endl;
+
+
+}
