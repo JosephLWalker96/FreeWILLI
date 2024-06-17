@@ -140,7 +140,9 @@ sys.exit() if input("Are the above values correct? [Y/n]") != 'Y' else print("Ru
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
    
 ### Make a fake initial time for the data
-dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
+#dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
+dateTime = datetime.datetime.now()
+
 absStartTime = time.time() 
 
 flag = 0
