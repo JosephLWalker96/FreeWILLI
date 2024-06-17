@@ -3,6 +3,7 @@
 # Example to run program ./run_cpp_program.sh 2 0 self 1045 2500
 if [ "$#" -ne 5 ]; then
   echo "Usage: $0 <run_time_in_minutes> <sleep_time_in_minutes> <UDP_IP> <UDP_PORT> <DETECTION_THRESHOLD>"
+  echo "Example: ./run_cpp_program.sh 1 0 self 1045 2500"
   exit 1
 fi
 
@@ -29,8 +30,8 @@ ERROR_LOG="../deployment_files/error_log.txt"
 # Function to handle cleanup upon receiving SIGINT
 cleanup() {
   echo "Caught SIGINT signal! Terminating..."
-  if [ -n "$PID" ] && kill -0 $PID 2>/dev/null; then
-    kill $PID 2>/dev/null
+  if [ -n "$PID" ] && kill -0 $PID ; then
+    kill $PID
   fi
   exit 0
 }
@@ -50,7 +51,7 @@ while true; do
   sleep $RUN_TIME_SEC
   
   # Check if the program is still running and kill it if necessary
-  if kill -0 $PID 2>/dev/null; then
+  if kill -0 $PID ; then
     kill $PID
     echo "Restarting program."
   else
