@@ -54,6 +54,12 @@ while true; do
   
   # Get the PID of the last background command
   PID=$!
+  
+  if kill -0 $PID ; then
+    echo "Program Running..."
+  else
+    echo "Program failed to start..."
+  fi
 
   # Allow the program to run for the specified time in seconds
   sleep $RUN_TIME_SEC

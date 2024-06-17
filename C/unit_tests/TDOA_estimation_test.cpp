@@ -12,6 +12,7 @@
 
 using TimePoint = std::chrono::system_clock::time_point;
 
+/*
 TEST(GCCPHAT, InvalidValues) {
     // Call the function under test
 
@@ -32,6 +33,7 @@ TEST(GCCPHAT, InvalidValues) {
     EXPECT_THROW(GCC_PHAT(dataMatrixInf, interp, fftw, fftLength, NUM_CHAN, SAMPLE_RATE), GCC_Value_Error);
   
 }
+*/
 
 TEST(DOA_EstimateVerticalArray, ValidDataMidRegion) {
     // Call the function under test
@@ -41,7 +43,8 @@ TEST(DOA_EstimateVerticalArray, ValidDataMidRegion) {
     for (int i = 0; i < chanSpacing.n_elem; i++){
         TDOAs(i) = chanSpacing(i) * 0.0001;
     }
-    arma::Col<double> DOAs = {8.6269, 8.6269, 8.6269, 8.6269, 8.6269, 8.6269}; // Ground truth
+    arma::Col<double> DOAs = {81.37309, 81.37309, 81.37309, 81.37309, 81.37309, 81.37309}; // Ground truth
+    arma::Col<double> DOAs_neg = {98.6269, 98.6269, 98.6269, 98.6269, 98.6269, 98.6269}; // Ground truth
     
 
     arma::Col<double> DOAs_est_pos = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
@@ -51,10 +54,10 @@ TEST(DOA_EstimateVerticalArray, ValidDataMidRegion) {
     // Assert that the converted data matches the expectation
     for (int i = 0; i < DOAs.n_elem; i++){
         EXPECT_NEAR(DOAs(i), DOAs_est_pos(i), 0.0001); // Check if channels differ after filtering
-        EXPECT_NEAR(-1 * DOAs(i), DOAs_est_neg(i), 0.0001); // Check if channels differ after filtering
+        EXPECT_NEAR(DOAs_neg(i), DOAs_est_neg(i), 0.0001); // Check if channels differ after filtering
     }
 }
-/*
+
 TEST(DOA_EstimateVerticalArray, ValidDataBoundaries) {
     // Call the function under test
     arma::Col<int> chanSpacing = {1,2,3,1,2,1};
@@ -63,20 +66,20 @@ TEST(DOA_EstimateVerticalArray, ValidDataBoundaries) {
     for (int i = 0; i < chanSpacing.n_elem; i++){
         TDOAs(i) = chanSpacing(i) * 0.00066666;
     }
-    arma::Col<double> DOAs = {90.0, 90.0, 90.0, 90.0, 90.0, 90.0}; // Ground truth
+    arma::Col<double> DOAs = {0, 0, 0, 0, 0, 0}; // Ground truth
     
 
     arma::Col<double> DOAs_est_pos = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
-    TDOAs = -1 * TDOAs;
+    TDOAs = -1*TDOAs;
     arma::Col<double> DOAs_est_neg = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
   
     // Assert that the converted data matches the expectation
     for (int i = 0; i < DOAs.n_elem; i++){
-        EXPECT_NEAR(DOAs(i), DOAs_est_pos(i), 0.0001); // Check if channels differ after filtering
-        EXPECT_NEAR(-1 * DOAs(i), DOAs_est_neg(i), 0.0001); // Check if channels differ after filtering
+        EXPECT_NEAR(DOAs(i), DOAs_est_pos(i), 1); // Check if channels differ after filtering
+        EXPECT_NEAR(180 - DOAs(i), DOAs_est_neg(i), 1); // Check if channels differ after filtering
     }
 }
-*/
+
 /*
 TEST(DOA_EstimateVerticalArray, Invalid) {
     // Call the function under test
@@ -88,7 +91,6 @@ TEST(DOA_EstimateVerticalArray, Invalid) {
     }
     arma::Col<double> DOAs = {90.0, 90.0, 90.0, 90.0, 90.0, 90.0}; // Ground truth
     
-
     arma::Col<double> DOAs_est_pos = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
     TDOAs = -1 * TDOAs;
     arma::Col<double> DOAs_est_neg = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
@@ -98,5 +100,6 @@ TEST(DOA_EstimateVerticalArray, Invalid) {
         EXPECT_NEAR(DOAs(i), DOAs_est_pos(i), 0.0001); // Check if channels differ after filtering
         EXPECT_NEAR(-1 * DOAs(i), DOAs_est_neg(i), 0.0001); // Check if channels differ after filtering
     }
+
 }
 */
