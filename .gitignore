@@ -4,5 +4,6 @@ Data/
 __pycache__/
 Segmented_pulses/
 *.o
+**/deployment_files/
 nohup.out
 deployment_files/*

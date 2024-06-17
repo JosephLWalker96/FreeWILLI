@@ -1,2 +1,0 @@
-display_power=1
-Wifi, Bluetooth, and HDMI are now blocked.
