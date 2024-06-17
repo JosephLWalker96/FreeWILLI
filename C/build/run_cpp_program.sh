@@ -34,8 +34,6 @@ fi
 
 # Define the error log file as a variable
 ERROR_LOG="$DIR/error_log.txt"
-# Clear the error_log.txt file at the start
-> "$ERROR_LOG"
 
 # Function to handle cleanup upon receiving SIGINT
 cleanup() {
