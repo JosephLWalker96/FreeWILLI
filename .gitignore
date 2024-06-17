@@ -6,5 +6,3 @@ Segmented_pulses/
 *.o
 nohup.out
 deployment_files/*
-#!deployment_files/
-!deployment_files/.gitkeep

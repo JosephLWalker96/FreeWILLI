@@ -21,9 +21,19 @@ SLEEP_TIME_SEC=$((SLEEP_TIME * 60))
 # Program executable
 PROGRAM="./listen_RM101"
 
-# Define the error log file as a variable
-ERROR_LOG="../deployment_files/error_log.txt"
+DIR="../deployment_files"
 
+# Check if the directory exists
+if [ -d "$DIR" ]; then
+  # If it exists, clear its contents
+  rm -rf "${DIR:?}"/*
+else
+  # If it does not exist, create the directory
+  mkdir "$DIR"
+fi
+
+# Define the error log file as a variable
+ERROR_LOG="$DIR/error_log.txt"
 # Clear the error_log.txt file at the start
 > "$ERROR_LOG"
 
@@ -59,5 +69,5 @@ while true; do
   fi
 
   # Wait for the specified sleep time in seconds before restarting
-  #sleep $SLEEP_TIME_SEC
+  sleep $SLEEP_TIME_SEC
 done
