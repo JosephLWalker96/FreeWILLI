@@ -180,6 +180,9 @@ arma::Col<double> DOA_EstimateVerticalArray(arma::Col<double>& TDOAs, const doub
         cerr << "TDOAs: " << TDOAs.t() << endl;
         //throw std::runtime_error("Bad TDOA values encountered!");
     }
+    
+
+    // The following code is designed to test program behavior in the event of a segmentation fault
     /*
     if (WithProbability(0.0005)){
         cout << "Crashing here!!" << endl;
