@@ -19,7 +19,7 @@ RUN_TIME_SEC=$((RUN_TIME * 60))
 SLEEP_TIME_SEC=$((SLEEP_TIME * 60))
 
 # Program executable
-PROGRAM="./listen_RM101"
+PROGRAM="./HarpListen"
 
 DIR="../deployment_files"
 

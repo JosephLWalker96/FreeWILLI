@@ -31,10 +31,10 @@ DESCRIPTION:
 EXAMPLE RUN:
 
 Execute (datalogger simulator):
-./listen_* 192.168.7.2 1045 1240 2500
+./HarpListen 192.168.7.2 1045 1240 2500
 
 Execute (datalogger):
-./listen_* 192.168.100.220 50000 1240 2500
+./HarpListen 192.168.100.220 50000 1240 2500
 
 
 RESOURCES:
