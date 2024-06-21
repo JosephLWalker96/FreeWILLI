@@ -11,7 +11,7 @@
 #include "filters.h"
 //#include "TDOA_estimation.h"
 
-#include "gtest/gtest.h"
+// #include "gtest/gtest.h"
 #include <fftw/fftw.h>
 
 void FilterWithFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::FIR_filt<double, double, double>& firFilter) {
