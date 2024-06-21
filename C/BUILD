@@ -15,7 +15,7 @@ cc_library(
     srcs = ["src/filters.cpp", "src/custom_types.h", "src/filters.h", "src/utils.h"],
     # Add the linker flags here
     linkopts = ["-lopenblas", "-llapack","-lfftw3", "-flto"],
-    copts = ["-I/usr/include/sigpack-1.2.7/sigpack"],
+    includes = ["-I/usr/local/bin/sigpack-1.2.7/sigpack", "-I/opt/homebrew/Cellar/eigen/3.4.0_1/include/"],
 )
 
 cc_library(
@@ -23,7 +23,7 @@ cc_library(
     srcs = ["src/filters.cpp", "src/custom_types.h", "src/filters.h", "src/utils.h", "src/utils.cpp", "src/main.cpp", "src/process_data.h", "src/process_data.cpp", "src/TDOA_estimation.cpp",  "src/TDOA_estimation.h"],
     # Add the linker flags here
     linkopts = ["-lopenblas", "-llapack","-lfftw3", "-flto"],
-    copts = ["-I/usr/include/sigpack-1.2.7/sigpack"],
+    includes = ["-I/usr/local/bin/sigpack-1.2.7/sigpack", "-I/opt/homebrew/Cellar/eigen/3.4.0_1/include/"],
 )
 
 cc_library(
@@ -40,8 +40,7 @@ cc_test(
     ":filters",  # Replace with your Armadillo dependency name
   ],
   linkopts = ["-larmadillo"],
-  includes = ["/usr/include/sigpack-1.2.7/sigpack"],
-  copts = ["-I/usr/include/sigpack-1.2.7/sigpack"],
+  includes = ["-I/usr/local/bin/sigpack-1.2.7/sigpack"],
 )
 
 
@@ -63,6 +62,7 @@ cc_test(
     ":utils",
   ],
   linkopts = ["-larmadillo"],
+  includes = ["-I/usr/local/bin/sigpack-1.2.7/sigpack", "-I/opt/homebrew/Cellar/eigen/3.4.0_1/include/"],
 )
 
 cc_test(
@@ -73,5 +73,5 @@ cc_test(
     ":utils",
   ],
   linkopts = ["-larmadillo"],
-  copts = ["-I/usr/include/sigpack-1.2.7/sigpack"],
+  includes = ["-I/usr/local/bin/sigpack-1.2.7/sigpack", "-I/opt/homebrew/Cellar/eigen/3.4.0_1/include/"],
 )
