@@ -1,10 +1,19 @@
 cmake_minimum_required(VERSION 3.29.6)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(MACOSX TRUE)
+endif()
+
 project(HarpListen VERSION 1.0)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=apple-m1 -O3 -flto=auto")
+
+if(MACOSX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=apple-m1 -O3 -flto=auto")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -O3 -flto=auto")
+endif()
 
 set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
 set(OBJ_DIR ${CMAKE_SOURCE_DIR}/src)
@@ -13,15 +22,6 @@ file(GLOB SRCS "${SRC_DIR}/*.cpp")
 
 # Add executable
 add_executable(${PROJECT_NAME} ${SRCS})
-
-# set_target_properties(
-#     HarpListen 
-#     PROPERTIES 
-#         OSX_ARCHITECTURES "arm64"
-# )
-
-# Set compile options
-# target_compile_options(HarpListen PRIVATE -mcpu=apple-m1 -O3 -flto=auto)
 
 # Include directories
 add_subdirectory(${PROJECT_SOURCE_DIR}/sigpack)
