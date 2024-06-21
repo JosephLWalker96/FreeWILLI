@@ -32,14 +32,17 @@ void PrintTimes(const vector<TimePoint>& timestamps) {
         std::tm timeData = *std::localtime(&timeRepresentation); 
         auto microSeconds = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000; 
         
-        cout << "Timestamp: ";
-        cout << timeData.tm_year + 1900 << '-'
+        std::stringstream msg; // compose message to dispatch
+        msg << "Timestamp: "
+            << timeData.tm_year + 1900 << '-'
             << timeData.tm_mon + 1 << '-'
             << timeData.tm_mday << ' '
             << timeData.tm_hour << ':'
             << timeData.tm_min << ':'
             << timeData.tm_sec << ':'
             << microSeconds << endl;
+        
+        cout << msg.str();
     }
 }
 
@@ -52,18 +55,16 @@ void RestartListener(Session& sess){
      * @param sess A reference to the Session object representing the listener session.
      */
     
-    cout << "restarting listener: " << endl;
+    cout << "restarting listener: \n";
 
     if (close(sess.datagramSocket) == -1) {
-        std::cerr << "Failed to close socket" << std::endl;
-        throw std::runtime_error("Failed to close socket");
+        throw std::runtime_error("Failed to close socket \n");
     }
 
 
     sess.datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if (sess.datagramSocket == -1) {
-        cerr << "Error creating socket" << endl;
-        throw std::runtime_error("Error creating socket");
+        throw std::runtime_error("Error creating socket \n");
     }
 
     struct sockaddr_in serverAddr;
@@ -72,27 +73,25 @@ void RestartListener(Session& sess){
     serverAddr.sin_port = htons(sess.UDP_PORT);
 
     if (sess.UDP_IP == "192.168.100.220"){
-        cout << "Sending wake up data to IP address to data logger " << endl;
+        cout << "Sending wake up data to IP address to data logger \n";
         const char* m1 = "Open";
         unsigned char m2[96] = {0};
         unsigned char message[100];
         std::memcpy(message, m1,4);
         std::memcpy(message + 4, m2, 96);
         if (sendto(sess.datagramSocket, message, sizeof(message), 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0){
-            cerr << "Error sending data" << endl;
-            throw std::runtime_error("Error sending data");
+            throw std::runtime_error("Error sending wake-up data packet to data logger \n");
         }
     }
     else if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
-        cerr << "Error binding socket" << endl;
-        throw std::runtime_error("Error binding socket");
+        throw std::runtime_error("Error binding socket \n");
     }
     ClearQueue(sess.dataBuffer);
     sess.dataSegment.clear();
     sess.dataTimes.clear();
 }
 
-int ProcessFile(Experiment& exp, const string fileName) {
+bool ProcessFile(Experiment& exp, const string fileName) {
     /**
     * @brief Processes a configuration file and initializes global variables accordingly.
     *
@@ -101,7 +100,6 @@ int ProcessFile(Experiment& exp, const string fileName) {
     
     std::ifstream inputFile(fileName);
     if (!inputFile.is_open()) {
-        cerr << "Error: Unable to open config file: " << fileName  << endl;
         return 1;
     }
     inputFile >> exp.HEAD_SIZE >> exp.MICRO_INCR >> exp.NUM_CHAN >> exp.SAMPS_PER_CHANNEL >> exp.BYTES_PER_SAMP;
@@ -119,7 +117,9 @@ void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSe
                      std::to_string(timeStruct.tm_mday) + '-' + std::to_string(timeStruct.tm_hour) + '-' + std::to_string(timeStruct.tm_min) + '-' +
                      std::to_string(timeStruct.tm_sec) + '-' + std::to_string(microSec) + '_' + feature;
     
-    cout << "created and writting to file: " << outputFile << endl;
+    std::stringstream msg; // compose message to dispatch
+    msg << "created and writting to file: " << outputFile << endl;
+    cout << msg.str();
     
     // Open the file in write mode and clear its contents if it exists, create a new file otherwise
     std::ofstream file(outputFile, std::ofstream::out | std::ofstream::trunc);
@@ -128,8 +128,9 @@ void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSe
         file.close();
     } 
     else {
-        cerr << "Error: Unable to open file for writing: " << outputFile << endl;
-        throw std::runtime_error("Error: Unable to open file for writing: ");
+        std::stringstream throwMsg; // compose message to dispatch
+        throwMsg << "Error: Unable to open file for writing: " << outputFile << endl;
+        throw std::runtime_error(throwMsg.str());
     }
 }
 
@@ -147,8 +148,9 @@ arma::Col<double> ReadFIRFilterFile(const string& fileName) {
 
     std::ifstream inputFile(fileName);
     if (!inputFile.is_open()) {
-        cerr << "Error: Unable to open filter file '" << fileName << "'." << endl;
-        throw std::runtime_error("Error: Unable to open filter file");
+        std::stringstream msg; // compose message to dispatch
+        msg << "Error: Unable to open filter file '" << fileName << "'." << endl;
+        throw std::runtime_error(msg.str());
     }
     string line;
     vector<double> filterValues;
@@ -163,7 +165,9 @@ arma::Col<double> ReadFIRFilterFile(const string& fileName) {
                 filterValues.push_back(value);
                 //cout << value << " ";
             } catch(const std::invalid_argument& e) {
-                cerr << "Invalid numeric value: " << token << endl;
+                std::stringstream errMsg; // compose message to dispatch
+                errMsg << "Invalid numeric value: " << token << endl;
+                cerr << errMsg.str();
             }
         }
     }
@@ -214,7 +218,7 @@ void WritePulseAmplitudes(const vector<double>& clickPeakAmps, const vector<Time
     if (outfile.is_open()) {
         // Check if vectors have the same size
         if (clickPeakAmps.size() != timestamps.size()) {
-            cerr << "Error: Click amplitude and timestamp vectors have different sizes." << endl;
+            cerr << "Error: Click amplitude and timestamp vectors have different sizes. \n";
             return;
         }
 
@@ -228,7 +232,9 @@ void WritePulseAmplitudes(const vector<double>& clickPeakAmps, const vector<Time
         outfile.close();
     } 
     else {
-        cerr << "Error: Could not open file " << filename << endl;
+        std::stringstream msg; // compose message to dispatch
+        msg << "Error: Could not open file " << filename << endl;
+        cerr << msg.str();
     }
 }
 
@@ -265,29 +271,29 @@ void WriteArray(const arma::Col<double>& array, const vector<TimePoint>& timesta
         outfile.close();
     } 
     else {
-        cerr << "Error: Could not open file " << filename << endl;
+        std::stringstream msg; // compose message to dispatch
+        msg << "Error: Could not open file " << filename << endl;
+        cerr << msg.str();
     }
 }
 
-void WriteDataToCerr(vector<TimePoint>& dataTimes,vector<double>& dataSegment, vector<vector<uint8_t>>& dataBytesSaved){
-    cerr << "Errored Timestamps: " << endl;
+void WriteDataToCerr(vector<TimePoint>& dataTimes, vector<vector<uint8_t>>& dataBytesSaved){
+    std::stringstream msg; // compose message to dispatch
+    msg << "Timestmaps of data causing error: \n";
     for (const auto timestamp : dataTimes){
         auto convertedTime = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count(); 
-        cerr << convertedTime << endl;
+        msg << convertedTime << endl;
     }
-    cerr << endl;
-    cerr << "Errored decoded data: " << endl;
-    for (const auto data : dataSegment)
-        cerr << data << " ";
-    cerr << endl;
-    cerr << "Errored bytes of last packet: " << endl;
+    msg << endl;
+    
+    msg << "Errored bytes of last packets: " << endl;
     for (const auto byteArray : dataBytesSaved){
+        msg << endl;
         for (const auto data : byteArray){
-            cerr << std::setw(2) << std::setfill('0') << static_cast<int>(data);
+            msg << std::setw(2) << std::setfill('0') << static_cast<int>(data);
         }
-        cerr << endl;
+        msg << endl;
     }
-    cerr << endl;
-
-
+    msg << endl;
+    cerr << msg.str();
 }

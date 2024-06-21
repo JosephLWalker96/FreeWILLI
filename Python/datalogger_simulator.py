@@ -140,8 +140,8 @@ sys.exit() if input("Are the above values correct? [Y/n]") != 'Y' else print("Ru
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
    
 ### Make a fake initial time for the data
-#dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
-dateTime = datetime.datetime.now()
+dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
+#dateTime = datetime.datetime.now()
 
 absStartTime = time.time() 
 
@@ -186,12 +186,7 @@ while(True):
     second = int(dateTime.second)
     microseconds = int(dateTime.microsecond)
     
-    dateTime = dateTime + timedelta(microseconds=int(MICRO_INCR)) # increment the time for next packet
     
-    timePack = struct.pack("BBBBBB", *np.array([year,month,day,hour,minute,second]))
-    microPack  = microseconds.to_bytes(4, byteorder='big')
-    zeroPack = struct.pack("BB", 0, 0)
-    timeHeader = timePack + microPack + zeroPack
     
     if args.high_act:
         byteIndex = highAmplitudeIndex * NUM_CHAN * BYTES_PER_SAMP
@@ -200,15 +195,25 @@ while(True):
     else:
         dataPacket = dataBytes[flag * DATA_SIZE:(flag+1) * DATA_SIZE]
     
-    packet  = timeHeader + dataPacket
-    
     ###simulate datalogger glitches
     if args.time_glitch > 0:
         if args.time_glitch == flag:
-            dateTime = dateTime + timedelta(microseconds=int(103))
-    elif args.data_glitch > 0:
+            print('CREATING BAD DATA TIME')
+            #dateTime = dateTime + timedelta(microseconds=int(103))
+            microseconds += 103;
+    if args.data_glitch > 0:
         if args.data_glitch == flag:
-            packet = packet + packet[:30]
+            print('CREATING BAD DATA Vals')
+            dataPacket = dataPacket + dataPacket[:30]
+    
+
+    timePack = struct.pack("BBBBBB", *np.array([year,month,day,hour,minute,second]))
+    microPack  = microseconds.to_bytes(4, byteorder='big')
+    zeroPack = struct.pack("BB", 0, 0)
+    timeHeader = timePack + microPack + zeroPack
+    
+    packet  = timeHeader + dataPacket
+    
     
     ### check packet size ###
     if len(packet) != PACKET_SIZE and args.data_glitch == 0:
@@ -229,7 +234,9 @@ while(True):
     if flag == 8000 and not args.loop and not args.cos_shift:
         print('Reached flag ',flag,time.time() - absStartTime)
         break
+    
     flag += 1
+    dateTime = dateTime + timedelta(microseconds=int(MICRO_INCR)) # increment the time for next packet
 
 
 sock.close() # Close the socket
