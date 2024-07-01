@@ -113,7 +113,7 @@ bool ProcessFile(Experiment& exp, const string fileName) {
 
 void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSec, string& feature){
 
-    outputFile = "../deployment_files/"  + std::to_string(timeStruct.tm_year + 1900) + '-' + std::to_string(timeStruct.tm_mon + 1) + '-' + 
+    outputFile = "deployment_files/"  + std::to_string(timeStruct.tm_year + 1900) + '-' + std::to_string(timeStruct.tm_mon + 1) + '-' + 
                      std::to_string(timeStruct.tm_mday) + '-' + std::to_string(timeStruct.tm_hour) + '-' + std::to_string(timeStruct.tm_min) + '-' +
                      std::to_string(timeStruct.tm_sec) + '-' + std::to_string(microSec) + '_' + feature;
     
@@ -150,7 +150,7 @@ arma::Col<double> ReadFIRFilterFile(const string& fileName) {
     if (!inputFile.is_open()) {
         std::stringstream msg; // compose message to dispatch
         msg << "Error: Unable to open filter file '" << fileName << "'." << endl;
-        throw std::runtime_error(msg.str());
+        throw std::ios_base::failure(msg.str());
     }
     string line;
     vector<double> filterValues;

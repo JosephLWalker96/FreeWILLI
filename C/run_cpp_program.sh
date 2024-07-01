@@ -19,9 +19,9 @@ RUN_TIME_SEC=$((RUN_TIME * 60))
 SLEEP_TIME_SEC=$((SLEEP_TIME * 60))
 
 # Program executable
-PROGRAM="./listen_RM101"
+PROGRAM="./out/HarpListen"
 
-DIR="../deployment_files"
+DIR="deployment_files"
 
 # Check if the directory exists
 if [ -d "$DIR" ]; then

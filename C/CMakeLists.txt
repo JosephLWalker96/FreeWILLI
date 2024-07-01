@@ -118,7 +118,8 @@ target_link_libraries(HarpListen PRIVATE ${BLAS_LIBRARIES})
 
 # Eigen3
 find_package (Eigen3 REQUIRED NO_MODULE)
-message(STATUS "Eigen3 libraries: ")
+message(STATUS "Eigen3 libraries: ${EIGEN3_LIBRARIES}")
+message(STATUS "Eigen3 include dir: ${EIGEN3_INCLUDE_DIR}")
 target_link_libraries(HarpListen PRIVATE Eigen3::Eigen)
 # set(EIGEN_ROOT_DIR "/opt/homebrew/Cellar/eigen/3.4.0_1/include/eigen3/")
 # include_directories(
