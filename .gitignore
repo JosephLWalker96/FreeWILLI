@@ -7,3 +7,5 @@ Segmented_pulses/
 **/deployment_files/
 nohup.out
 deployment_files/*
+/C/build/*
+/C/bin/*

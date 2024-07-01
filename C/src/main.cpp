@@ -31,10 +31,10 @@ DESCRIPTION:
 EXAMPLE RUN:
 
 Execute (datalogger simulator):
-./listen_* 192.168.7.2 1045 1240 2500
+./HarpListen 192.168.7.2 1045 1240 2500
 
 Execute (datalogger):
-./listen_* 192.168.100.220 50000 1240 2500
+./HarpListen 192.168.100.220 50000 1240 2500
 
 
 RESOURCES:
@@ -87,7 +87,7 @@ using namespace std::chrono_literals;
 
 
 // Global variables (used for manual testing and logging to console)
-int packetCounter = 0;
+int packetCounter = 0; // this should only be used inside the UDPListener function, as it is not protected by a mutex
 int detectionCounter = 0;
 bool test = true;
 
@@ -136,18 +136,29 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
             if (packetCounter % printInterval == 0) {
                 endPacketTime = std::chrono::steady_clock::now();
                 durationPacketTime = endPacketTime - startPacketTime;
-                cout << "Num packets received is " <<  packetCounter << " " << durationPacketTime.count() / printInterval  << " " << queueSize << " " << packetCounter - queueSize << " " << detectionCounter << endl;
+                
+                std::stringstream msg; // compose message to dispatch
+                msg << "Num packets received is " <<  packetCounter << " " << durationPacketTime.count() / printInterval  
+                    << " " << queueSize << " " << packetCounter - queueSize << " " << detectionCounter << endl;
+                
+                cout << msg.str(); // using one instance of "<<" makes the operation atomic
+                
                 startPacketTime = std::chrono::steady_clock::now();
             }
 
-            if (queueSize > 1000) // check if buffer has grown to an unacceptable size 
+            if (queueSize > 1000) { // check if buffer has grown to an unacceptable size 
                 cout << "Buffer overflowing!! \n";
-                throw std::runtime_error("Buffer overflowing");
+                throw std::runtime_error("Buffer overflowing \n");
+            }
                 
         }
     } catch (const std::exception& e ) {
-        cerr << "Error occured in UDP Listener Thread: " << endl;
-        cerr << e.what() << endl;
+        cerr << "Error occured in UDP Listener Thread: \n";
+        
+        std::stringstream msg; // compose message to dispatch
+        msg << e.what() << endl;
+        cerr << msg.str();
+
         sess.errorOccurred = true;
     }
 }
@@ -243,10 +254,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
                 sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
                 
-                if (dataBytes.size() != exp.PACKET_SIZE) {
-                    cout << "PACKET_SIZE: " << exp.PACKET_SIZE << " dataBytes size: " << dataBytes.size() << endl;
-                    throw std::runtime_error("Error: incorrect number of bytes in packet");
-                }
                 
                 std::tm timeStruct{};                                     // Initialize a std::tm structure to hold the date and time components
                 timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
@@ -268,22 +275,35 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
                 // Check if mktime failed
                 if (timeResult == std::time_t(-1)) {
-                    throw std::runtime_error("Error: failure in mktime");
+                    throw std::runtime_error("Error: failure in mktime \n");
                 }
 
                 auto currentTime = std::chrono::system_clock::from_time_t(timeResult);  // convert std::time_t to std::chrono::system_clock::time_point
                 currentTime += std::chrono::microseconds(microSec);
+                sess.dataTimes.push_back(currentTime);
 
                 // Calculate the elapsed time in microseconds since the previous time point
                 auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime).count();
-                //std::chrono::microseconds elapsedTimeTest = currentTime - previousTime;
 
-                //cout << "Time comparison: " << elapsedTime << " " << elapsedTimeTest.count() << endl;
+
+                /* 
+                 * conduct checks to data here:
+                 *
+                 */
+
+                // Check if the amount of bytes in packet is what is expected
+                if (dataBytes.size() != exp.PACKET_SIZE) {
+                    std::stringstream msg; // compose message to dispatch
+                    msg << "Error: incorrect number of bytes in packet: " <<  "PACKET_SIZE: " << exp.PACKET_SIZE << " dataBytes size: " << dataBytes.size() << endl;
+                    throw std::runtime_error(msg.str());
+                }
+                
 
                 // Check if the previous time was set and if the elapsed time is not equal to the expected increment
                 if (previousTimeSet && (elapsedTime != exp.MICRO_INCR)){
-                    cerr << "Error: Time not incremented by " <<  exp.MICRO_INCR << " " << elapsedTime << endl;
-                    throw std::runtime_error("Error: Time not incremented by MICRO_INCR");
+                    std::stringstream msg; // compose message to dispatch
+                    msg <<  "Error: Time not incremented by " <<  exp.MICRO_INCR << " " << elapsedTime << endl;
+                    throw std::runtime_error(msg.str());
                 }
 
                 // Convert byte data to doubles
@@ -292,7 +312,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 auto endCDTime = std::chrono::steady_clock::now();
                 auto durationCD = endCDTime - startCDTime;
                 
-                sess.dataTimes.push_back(currentTime);
                 
                 previousTime = currentTime;
                 previousTimeSet = true;
@@ -329,9 +348,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
              */
             
             detectionCounter++;
+            
+            //PrintTimes(sess.dataTimes);
 
             //auto beforeFilter = std::chrono::steady_clock::now();
-            FilterWithFIR(ch1, ch2, ch3, ch4, firFilter);
             //FilterWithLiquidFIR(ch1,ch2,ch3,ch4, fir_filt);
             //FilterWithIIR(ch1,ch2,ch3,ch4, iir_filt);
             //auto afterFilter = std::chrono::steady_clock::now();
@@ -367,13 +387,19 @@ void DataProcessor(Session& sess, Experiment& exp) {
         }
     } 
     catch (const GCC_Value_Error& e) {
-        cerr << e.what() << endl;
+        
+        std::stringstream msg; // compose message to dispatch
+        msg << e.what() << endl;
+        cerr << msg.str();
+        
+        /*        
         try {
-           WriteDataToCerr(sess.dataTimes,sess.dataSegment, sess.dataBytesSaved);
+           WriteDataToCerr(sess.dataTimes, sess.dataBytesSaved);
         }
         catch (...) {
-            cerr << "failed to write errored data to cerr" << endl;
+            cerr << "failed to write data to cerr \n";
         }
+        */
         sess.errorOccurred = true;
     }
     catch (const std::ios_base::failure& e) {
@@ -392,12 +418,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 
         try {
-           WriteDataToCerr(sess.dataTimes,sess.dataSegment, sess.dataBytesSaved);
+           WriteDataToCerr(sess.dataTimes, sess.dataBytesSaved);
         }
         catch (...) {
-            cerr << "failed to write errored data to cerr" << endl;
+            cerr << "failed to write data to cerr \n";
         }
         sess.errorOccurred = true;
+        cerr << "End of catch statement\n";
     }
 }
 
@@ -430,6 +457,7 @@ int main(int argc, char *argv[]) {
         if (ProcessFile(exp, path)) {
             cout  << "Error: Unable to open config file: " << path  << endl;
             return EXIT_FAILURE;
+        }
         exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else if (firmwareVersion == 1240) {
@@ -437,6 +465,7 @@ int main(int argc, char *argv[]) {
         if (ProcessFile(exp, path)) {
             cout  << "Error: Unable to open config file: " << path  << endl;
             return EXIT_FAILURE;
+        }
         exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else {
