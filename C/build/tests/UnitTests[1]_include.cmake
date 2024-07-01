@@ -1,0 +1,5 @@
+if(EXISTS "/Users/zhengzeng/Documents/GitHub/Embedded_miniHarp/C/build/tests/UnitTests[1]_tests.cmake")
+  include("/Users/zhengzeng/Documents/GitHub/Embedded_miniHarp/C/build/tests/UnitTests[1]_tests.cmake")
+else()
+  add_test(UnitTests_NOT_BUILT UnitTests_NOT_BUILT)
+endif()
