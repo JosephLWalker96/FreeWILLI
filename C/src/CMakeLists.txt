@@ -51,5 +51,6 @@ target_link_libraries(HarpListen PRIVATE ${BLAS_LIBRARIES})
 
 # Eigen3
 find_package (Eigen3 REQUIRED NO_MODULE)
-message(STATUS "Eigen3 libraries: ")
+message(STATUS "Eigen3 libraries: ${EIGEN3_LIBRARIES}")
+message(STATUS "Eigen3 include dir: ${EIGEN3_INCLUDE_DIR}")
 target_link_libraries(HarpListen PRIVATE Eigen3::Eigen)

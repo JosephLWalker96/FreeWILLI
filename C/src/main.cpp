@@ -414,13 +414,13 @@ int main(int argc, char *argv[]) {
     //import variables according to firmware version specified
     cout << "Firmware version: " << firmwareVersion << endl;
     if (firmwareVersion == 1550) {
-        const string path = "../config_files/1550_config.txt";
+        const string path = "config_files/1550_config.txt";
         if (ProcessFile(exp, path))
             return EXIT_FAILURE;
         exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else if (firmwareVersion == 1240) {
-        const string path = "../config_files/1240_config.txt";
+        const string path = "config_files/1240_config.txt";
         if (ProcessFile(exp, path))
             return EXIT_FAILURE;
         exp.ProcessFncPtr = ProcessSegmentInterleaved;

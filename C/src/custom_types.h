@@ -44,7 +44,7 @@ struct Experiment {
     string detectionOutputFile = ""; // Change to your desired file name
     string tdoaOutputFile = ""; // Change to your desired file name
     string doaOutputFile = ""; // Change to your desired file name
-    const string filterWeights = "../filters/My_filter.txt";
+    const string filterWeights = "filters/My_filter.txt";
     
     const double speedOfSound = 1500.0;
     double energyDetThresh = 2500.0; // energy detector threshold - 2500.0 is default 
