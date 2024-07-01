@@ -141,6 +141,7 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
             }
 
             if (queueSize > 1000) // check if buffer has grown to an unacceptable size 
+                cout << "Buffer overflowing!! \n";
                 throw std::runtime_error("Buffer overflowing");
                 
         }
@@ -375,10 +376,21 @@ void DataProcessor(Session& sess, Experiment& exp) {
         }
         sess.errorOccurred = true;
     }
-
+    catch (const std::ios_base::failure& e) {
+        std::stringstream msg; // compose message to dispatch
+        msg << e.what() << endl;
+        cerr << msg.str();
+        std::exit(EXIT_FAILURE);
+    }
     catch (const std::exception& e ) {
-        cerr << "Error occured in data processor thread: " << endl;
-        cerr << e.what() << endl;
+        cerr << "Error occured in data processor thread: \n";
+
+        
+        std::stringstream msg; // compose message to dispatch
+        msg << e.what() << endl;
+        cerr << msg.str();
+
+
         try {
            WriteDataToCerr(sess.dataTimes,sess.dataSegment, sess.dataBytesSaved);
         }
@@ -415,13 +427,15 @@ int main(int argc, char *argv[]) {
     cout << "Firmware version: " << firmwareVersion << endl;
     if (firmwareVersion == 1550) {
         const string path = "config_files/1550_config.txt";
-        if (ProcessFile(exp, path))
+        if (ProcessFile(exp, path)) {
+            cout  << "Error: Unable to open config file: " << path  << endl;
             return EXIT_FAILURE;
         exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
     else if (firmwareVersion == 1240) {
         const string path = "config_files/1240_config.txt";
-        if (ProcessFile(exp, path))
+        if (ProcessFile(exp, path)) {
+            cout  << "Error: Unable to open config file: " << path  << endl;
             return EXIT_FAILURE;
         exp.ProcessFncPtr = ProcessSegmentInterleaved;
     }
@@ -441,6 +455,14 @@ int main(int argc, char *argv[]) {
     cout << "Number of channels:     " << exp.NUM_CHAN               << endl;
     cout << "Data bytes per channel: " << exp.DATA_BYTES_PER_CHANNEL << endl;
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
+
+    // Define a vector of 3 elements
+    Eigen::Vector3d v;
+    // Initialize the vector with values
+    v << 1, 2, 3;
+    // Print the vector
+    std::cout << "Eigen vector: " << v.transpose() << std::endl;
+    
 
     while (true) {
         
