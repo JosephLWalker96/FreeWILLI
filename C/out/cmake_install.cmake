@@ -1,4 +1,4 @@
-# Install script for directory: /home/harp/Documents/Embedded_miniHarp/C
+# Install script for directory: /home/HARP/Embedded_miniHarp/C
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -44,7 +44,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("/home/harp/Documents/Embedded_miniHarp/C/out/sigpack/cmake_install.cmake")
+  include("/home/HARP/Embedded_miniHarp/C/out/sigpack/cmake_install.cmake")
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -55,5 +55,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/harp/Documents/Embedded_miniHarp/C/out/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/HARP/Embedded_miniHarp/C/out/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

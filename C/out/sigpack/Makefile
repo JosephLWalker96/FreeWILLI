@@ -48,19 +48,19 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = /usr/bin/cmake
+CMAKE_COMMAND = /usr/local/bin/cmake
 
 # The command to remove a file.
-RM = /usr/bin/cmake -E rm -f
+RM = /usr/local/bin/cmake -E rm -f
 
 # Escaping for special characters.
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/harp/Documents/Embedded_miniHarp/C
+CMAKE_SOURCE_DIR = /home/HARP/Embedded_miniHarp/C
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/harp/Documents/Embedded_miniHarp/C/out
+CMAKE_BINARY_DIR = /home/HARP/Embedded_miniHarp/C/out
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -68,7 +68,7 @@ CMAKE_BINARY_DIR = /home/harp/Documents/Embedded_miniHarp/C/out
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
-	/usr/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
+	/usr/local/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
 .PHONY : edit_cache
 
 # Special rule for the target edit_cache
@@ -78,7 +78,7 @@ edit_cache/fast: edit_cache
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/usr/bin/cmake --regenerate-during-build -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+	/usr/local/bin/cmake --regenerate-during-build -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
 .PHONY : rebuild_cache
 
 # Special rule for the target rebuild_cache
@@ -87,14 +87,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/harp/Documents/Embedded_miniHarp/C/out && $(CMAKE_COMMAND) -E cmake_progress_start /home/harp/Documents/Embedded_miniHarp/C/out/CMakeFiles /home/harp/Documents/Embedded_miniHarp/C/out/sigpack//CMakeFiles/progress.marks
-	cd /home/harp/Documents/Embedded_miniHarp/C/out && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sigpack/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/harp/Documents/Embedded_miniHarp/C/out/CMakeFiles 0
+	cd /home/HARP/Embedded_miniHarp/C/out && $(CMAKE_COMMAND) -E cmake_progress_start /home/HARP/Embedded_miniHarp/C/out/CMakeFiles /home/HARP/Embedded_miniHarp/C/out/sigpack//CMakeFiles/progress.marks
+	cd /home/HARP/Embedded_miniHarp/C/out && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sigpack/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/HARP/Embedded_miniHarp/C/out/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/harp/Documents/Embedded_miniHarp/C/out && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sigpack/clean
+	cd /home/HARP/Embedded_miniHarp/C/out && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sigpack/clean
 .PHONY : clean
 
 # The main clean target
@@ -103,17 +103,17 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/harp/Documents/Embedded_miniHarp/C/out && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sigpack/preinstall
+	cd /home/HARP/Embedded_miniHarp/C/out && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sigpack/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/harp/Documents/Embedded_miniHarp/C/out && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sigpack/preinstall
+	cd /home/HARP/Embedded_miniHarp/C/out && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 sigpack/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /home/harp/Documents/Embedded_miniHarp/C/out && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/HARP/Embedded_miniHarp/C/out && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Help Target
@@ -135,6 +135,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /home/harp/Documents/Embedded_miniHarp/C/out && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/HARP/Embedded_miniHarp/C/out && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

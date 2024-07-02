@@ -1,4 +1,4 @@
-# Install script for directory: /home/harp/Documents/Embedded_miniHarp/C/sigpack
+# Install script for directory: /home/HARP/Embedded_miniHarp/C/sigpack
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
