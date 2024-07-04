@@ -187,6 +187,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
         // declare FFT object
         sp::FFTW fftw(channelSize, FFTW_ESTIMATE); // no 0 padding is currently being used
         
+
+
+
+
         // Read filter weights from file 
         arma::Col<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
         
@@ -222,10 +226,20 @@ void DataProcessor(Session& sess, Experiment& exp) {
         arma::Col<double> ch2(channelSize);
         arma::Col<double> ch3(channelSize);
         arma::Col<double> ch4(channelSize);
+
         arma::Mat<arma::cx_double> savedFFTs(channelSize, exp.NUM_CHAN); // save the FFT transformed channels
+        int fftOutputSize = (channelSize / 2) + 1;
+        arma::Mat<arma::cx_double> savedFFTs_FFTW(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
        
         // Container for pulling bytes from buffer (dataBuffer)
         vector<uint8_t> dataBytes;
+
+
+        // FFT without sigpack
+        fftw_plan p1 = fftw_plan_dft_r2c_1d(channelSize, ch1.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(0)), FFTW_ESTIMATE);
+        fftw_plan p2 = fftw_plan_dft_r2c_1d(channelSize, ch2.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(1)), FFTW_ESTIMATE);
+        fftw_plan p3 = fftw_plan_dft_r2c_1d(channelSize, ch3.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(2)), FFTW_ESTIMATE);
+        fftw_plan p4 = fftw_plan_dft_r2c_1d(channelSize, ch4.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(3)), FFTW_ESTIMATE);
         
         
         while (!sess.errorOccurred) {
@@ -358,18 +372,74 @@ void DataProcessor(Session& sess, Experiment& exp) {
             //std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
             //cout << "C FIR Filter: " << durationFilter.count() << endl;
             
-            auto beforeGCC = std::chrono::steady_clock::now();
             
             // Perform FFT using SigPack's FFTW object
+            auto beforeFFT = std::chrono::steady_clock::now();
             savedFFTs.col(0) = fftw.fft(ch1);
             savedFFTs.col(1) = fftw.fft(ch2);
             savedFFTs.col(2) = fftw.fft(ch3);
             savedFFTs.col(3) = fftw.fft(ch4);
+            auto afterFFT = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationFFT = afterFFT - beforeFFT;
+           
+            // Print the first 5 values from each channel (SigPack)
+            cout << "sigpack backwards: " << endl;
+            for (int channel = 0; channel < 4; ++channel) {
+                for (int i = 0; i < 5; ++i) {
+                    cout << savedFFTs(991 - i, channel) << " ";
+                }
+                cout << endl;
+            }
+
+
+            cout << "sigpack forwards: " << endl;
+            for (int channel = 0; channel < 4; ++channel) {
+                for (int i = 0; i < 5; ++i) {
+                    cout << savedFFTs(i, channel) << " ";
+                }
+                cout << endl;
+            }
+
+            cout << "sigpack FFT time: " << durationFFT.count() << endl;
+
             
+            auto beforeFFTW = std::chrono::steady_clock::now();
+            fftw_execute(p1);
+            fftw_execute(p2);
+            fftw_execute(p3);
+            fftw_execute(p4);
+            auto afterFFTW = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
+
+            // Print the first 5 values from each channel (SigPack)
+            for (int channel = 0; channel < 4; ++channel) {
+                for (int i = 0; i < 5; ++i) {
+                    cout << savedFFTs_FFTW(fftOutputSize - (i +1), channel) << " ";
+                }
+                cout << endl;
+            }
+            cout << "FFTW time: " << durationFFTW.count() << endl;
+
+
+
+            
+            auto beforeGCC = std::chrono::steady_clock::now();
             arma::Col<double> resultMatrix = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
-            //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, exp.interp); // need to create dataE matrix 
             auto afterGCC = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
+            cout << "GCC time: " << durationGCC.count() << endl;
+            
+
+
+            auto beforeGCCW = std::chrono::steady_clock::now();
+            arma::Col<double> resultMatrix_FFTW = GCC_PHAT_FFTW(savedFFTs_FFTW, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            auto afterGCCW = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
+            cout << "GCCW time: " << durationGCCW.count() << endl;
+
+            //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, exp.interp); // need to create dataE matrix 
+            //auto afterGCC = std::chrono::steady_clock::now();
+            //std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
             //cout << "C GCC: " << durationGCC.count() << endl;
             //cout << resultMatrix.t() << endl;
 

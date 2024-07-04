@@ -13,7 +13,8 @@
 #include "utils.h"
 
 #include <sigpack.h>
-#include <fftw/fftw.h>
+//#include <fftw/fftw.h>
+#include <fftw3.h>
 
 using std::cout;
 using std::endl;
@@ -54,8 +55,30 @@ arma::Col<double> GCC_PHAT(arma::Mat<arma::cx_double>& savedFFTs, const int& int
             SIG1 = savedFFTs.col(sig1_ind);
             SIG2 = savedFFTs.col(sig2_ind);
 
+            /*
+            cout << "SIG1:";
+            for (int i = 0; i < 5; i++){
+                cout << SIG1(i) << " ";
+            }
+            cout << endl;
+            
+            cout << "SIG2:";
+            for (int i = 0; i < 5; i++){
+                cout << SIG2(i) << " ";
+            }
+            cout << endl;
+            */
+
             arma::cx_vec crossSpectra = SIG1 % arma::conj(SIG2);
             arma::vec crossSpectraMagnitude = arma::abs(crossSpectra);
+           
+            /*
+            cout << "crossSpectraMagnitude:";
+            for (int i = 0; i < 5; i++){
+                cout << crossSpectraMagnitude(991-i) << " ";
+            }
+            cout << endl;
+            */
 
             // Uncomment lines bellow for testing
             //R_abs(2) =0;
@@ -80,6 +103,123 @@ arma::Col<double> GCC_PHAT(arma::Mat<arma::cx_double>& savedFFTs, const int& int
 
             arma::vec back = crossCorr.subvec(crossCorr.n_elem - maxShift, crossCorr.n_elem- 1);
             arma::vec front = crossCorr.subvec(0, maxShift);
+            
+            arma::vec crossCorrInverted = arma::join_cols(back,front);
+
+            double shift = (double)arma::index_max(crossCorrInverted) - maxShift;
+            double timeDelta = shift / (interp * SAMPLE_RATE );
+
+            //tau_matrix(sig2_ind, sig1_ind) = tau;
+            tauVector(pairCounter) = timeDelta;
+            pairCounter++;
+        }
+    }
+    return tauVector;
+}
+
+arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, const int& interp, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
+    /**
+    * @brief Computes the Generalized Cross-Correlation with Phase Transform (GcrossCorr-PHAT) between pairs of signals.
+    *
+    * @param data A reference to an Armadillo matrix containing the input signals. Each column represents a signal.
+    * @param interp An integer specifying the interpolation factor used in the computation.
+    * @param fftw An instance of the FFTW object from SigPack library used for Fast Fourier Transform (FFT) computations.
+    * @param fftLength An integer specifying the length of the FFT.
+    *
+    * @return A column vector of doubles containing the computed TDOA estimates for all unique pairs of signals.
+    */
+    
+    //arma::Mat<double> tau_matrix(NUM_CHAN, NUM_CHAN, arma::fill::zeros);
+
+    //int n = data.col(0).n_elem + data.col(1).n_elem;
+  //
+    arma::Col<double> tauVector(6); // 4 channels produces 6 unique pairings
+    arma::Col<arma::cx_double> SIG1(fftLength);
+    arma::Col<arma::cx_double> SIG2(fftLength);
+
+    // IFFT input and output
+    static fftw_plan ip1 = nullptr;
+    arma::cx_vec crossSpectraMagnitudeNorm(992);
+    arma::vec crossCorr(992);
+    
+    // Get a pointer to the data of crossSpectraMagnitudeNorm for FFTW
+    //std::complex<double>* dataPtr = crossSpectraMagnitudeNorm.memptr();
+
+    // Create the plan once if it doesn't exist
+    if (ip1 == nullptr) {
+        ip1 = fftw_plan_dft_c2r_1d(992, reinterpret_cast<fftw_complex*>(crossSpectraMagnitudeNorm.memptr()), crossCorr.memptr(), FFTW_ESTIMATE);
+    }
+
+    int pairCounter = 0;
+    for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++ ){
+        for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
+            
+            
+            // Uncomment lines bellow for manual testing
+            //sig2(2) =0;
+            //sig2(2) = arma::datum::nan; 
+            //sig2(2) = arma::datum::inf;
+            
+            
+            SIG1 = savedFFTs.col(sig1_ind);
+            SIG2 = savedFFTs.col(sig2_ind);
+            /*
+            cout << "SIG1:";
+            for (int i = 0; i < 5; i++){
+                cout << SIG1(i) << " ";
+            }
+            cout << endl;
+            
+            cout << "SIG2:";
+            for (int i = 0; i < 5; i++){
+                cout << SIG2(i) << " ";
+            }
+            cout << endl;
+            */
+
+
+            arma::cx_vec crossSpectra = SIG1 % arma::conj(SIG2);
+            arma::vec crossSpectraMagnitude = arma::abs(crossSpectra);
+            
+            /*
+            cout << "crossSpectraMagnitude:";
+            for (int i = 0; i < 5; i++){
+                cout << crossSpectraMagnitude(fftLength - (i+1)) << " ";
+            }
+            cout << endl;
+            */
+
+            // Uncomment lines bellow for testing
+            //R_abs(2) =0;
+            //R_abs(2) = arma::datum::nan; 
+            //R_abs(2) = arma::datum::inf;
+
+            if  (crossSpectraMagnitude.has_inf()) [[unlikely]]{
+                throw GCC_Value_Error("FFTW R_abs contains inf value");
+            }
+            else if (crossSpectraMagnitude.has_nan()) [[unlikely]] {
+                throw GCC_Value_Error("FFTW R_abs contains nan value");
+            }
+            else if (arma::any(crossSpectraMagnitude == 0)) [[unlikely]] {
+                throw GCC_Value_Error("FFTW R_abs contains 0 value");
+            }
+
+            crossSpectraMagnitudeNorm = crossSpectra / crossSpectraMagnitude;
+            //cout << "Hello before ifft" << endl;
+            fftw_execute(ip1);
+            //cout << "Hello after ifft" << endl;
+            //arma::vec crossCorr = fftw.ifft(crossSpectraMagnitudeNorm);
+            
+            //int maxShift = interp * fftLength / 2;
+            int maxShift = (interp * (992 / 2));
+            if (fftLength % 2 != 0) {
+                maxShift = interp * ((992 - 1) / 2);
+            }
+            //cout << "Max shift: " << maxShift << endl;
+            //cout << "Hello before subvec" << endl;
+            arma::vec back = crossCorr.subvec(crossCorr.n_elem - maxShift, crossCorr.n_elem- 1);
+            arma::vec front = crossCorr.subvec(0, maxShift);
+            //cout << "Hello after subvec" << endl;
             
             arma::vec crossCorrInverted = arma::join_cols(back,front);
 
