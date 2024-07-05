@@ -221,7 +221,7 @@ arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, fftw_plan
             //}
             //cout << "Max shift: " << maxShift << endl;
             //cout << "Hello before subvec" << endl;
-            //crossCorr /= 992;
+            crossCorr /= 992;
             arma::vec back = crossCorr.subvec(crossCorr.n_elem - maxShift, crossCorr.n_elem- 1);
             arma::vec front = crossCorr.subvec(0, maxShift);
             //cout << "Hello after subvec" << endl;

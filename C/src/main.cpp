@@ -185,7 +185,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
         int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; // the number of samples per channel within a dataSegment
         
         // declare FFT object
-        //sp::FFTW fftw(channelSize, FFTW_ESTIMATE); // no 0 padding is currently being used
+        sp::FFTW fftw(channelSize, FFTW_ESTIMATE); // no 0 padding is currently being used
         
 
 
@@ -366,6 +366,24 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             detectionCounter++;
             
+            cout << "ch1 vals: ";
+            for (int i = 0; i < 8; ++i) {
+                cout << ch1(i) << " ";
+            }
+            cout << endl;
+            
+            cout << "ch2 vals: ";
+            for (int i = 0; i < 8; ++i) {
+                cout << ch2(i) << " ";
+            }
+            cout << endl;
+
+            cout << "ch3 vals: ";
+            for (int i = 0; i < 8; ++i) {
+                cout << ch3(i) << " ";
+            }
+            cout << endl;
+            
             //PrintTimes(sess.dataTimes);
 
             //auto beforeFilter = std::chrono::steady_clock::now();
@@ -377,7 +395,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             
             // Perform FFT using SigPack's FFTW object
-            /*
+            
             auto beforeFFT = std::chrono::steady_clock::now();
             savedFFTs.col(0) = fftw.fft(ch1);
             savedFFTs.col(1) = fftw.fft(ch2);
@@ -385,7 +403,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             savedFFTs.col(3) = fftw.fft(ch4);
             auto afterFFT = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFT = afterFFT - beforeFFT;
-            */ 
+             
             
             // Print the first 5 values from each channel (SigPack)
             /*
@@ -429,13 +447,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
             */
 
 
-            /*
-            auto beforeGCC = std::chrono::steady_clock::now();
-            arma::Col<double> resultMatrix = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
-            auto afterGCC = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
-            cout << "GCC time: " << durationGCC.count() << endl;
-            */
+            
+            //auto beforeGCC = std::chrono::steady_clock::now();
+            //arma::Col<double> resultMatrix = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            //auto afterGCC = std::chrono::steady_clock::now();
+            //std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
+            //cout << "GCC time: " << durationGCC.count() << endl;
+            
 
 
             auto beforeGCCW = std::chrono::steady_clock::now();
