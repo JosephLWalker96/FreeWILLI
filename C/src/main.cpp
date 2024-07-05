@@ -185,7 +185,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
         int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; // the number of samples per channel within a dataSegment
         
         // declare FFT object
-        sp::FFTW fftw(channelSize, FFTW_ESTIMATE); // no 0 padding is currently being used
+        //sp::FFTW fftw(channelSize, FFTW_ESTIMATE); // no 0 padding is currently being used
         
 
 
@@ -236,10 +236,12 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 
         // FFT without sigpack
-        fftw_plan p1 = fftw_plan_dft_r2c_1d(channelSize, ch1.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(0)), FFTW_ESTIMATE);
-        fftw_plan p2 = fftw_plan_dft_r2c_1d(channelSize, ch2.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(1)), FFTW_ESTIMATE);
-        fftw_plan p3 = fftw_plan_dft_r2c_1d(channelSize, ch3.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(2)), FFTW_ESTIMATE);
-        fftw_plan p4 = fftw_plan_dft_r2c_1d(channelSize, ch4.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(3)), FFTW_ESTIMATE);
+        //cout << " before FFT policy redefine" << endl;
+        exp.p1 = fftw_plan_dft_r2c_1d(channelSize, ch1.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(0)), FFTW_ESTIMATE);
+        exp.p2 = fftw_plan_dft_r2c_1d(channelSize, ch2.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(1)), FFTW_ESTIMATE);
+        exp.p3 = fftw_plan_dft_r2c_1d(channelSize, ch3.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(2)), FFTW_ESTIMATE);
+        exp.p4 = fftw_plan_dft_r2c_1d(channelSize, ch4.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(3)), FFTW_ESTIMATE);
+        //cout << " after FFT policy redefine" << endl;
         
         
         while (!sess.errorOccurred) {
@@ -321,6 +323,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 }
 
                 // Convert byte data to doubles
+                
                 auto startCDTime = std::chrono::steady_clock::now();
                 ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
                 auto endCDTime = std::chrono::steady_clock::now();
@@ -374,6 +377,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             
             // Perform FFT using SigPack's FFTW object
+            /*
             auto beforeFFT = std::chrono::steady_clock::now();
             savedFFTs.col(0) = fftw.fft(ch1);
             savedFFTs.col(1) = fftw.fft(ch2);
@@ -381,8 +385,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
             savedFFTs.col(3) = fftw.fft(ch4);
             auto afterFFT = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFT = afterFFT - beforeFFT;
-           
+            */ 
+            
             // Print the first 5 values from each channel (SigPack)
+            /*
             cout << "sigpack backwards: " << endl;
             for (int channel = 0; channel < 4; ++channel) {
                 for (int i = 0; i < 5; ++i) {
@@ -401,17 +407,18 @@ void DataProcessor(Session& sess, Experiment& exp) {
             }
 
             cout << "sigpack FFT time: " << durationFFT.count() << endl;
-
+            */
             
             auto beforeFFTW = std::chrono::steady_clock::now();
-            fftw_execute(p1);
-            fftw_execute(p2);
-            fftw_execute(p3);
-            fftw_execute(p4);
+            fftw_execute(exp.p1);
+            fftw_execute(exp.p2);
+            fftw_execute(exp.p3);
+            fftw_execute(exp.p4);
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
 
             // Print the first 5 values from each channel (SigPack)
+            /*
             for (int channel = 0; channel < 4; ++channel) {
                 for (int i = 0; i < 5; ++i) {
                     cout << savedFFTs_FFTW(fftOutputSize - (i +1), channel) << " ";
@@ -419,23 +426,25 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 cout << endl;
             }
             cout << "FFTW time: " << durationFFTW.count() << endl;
+            */
 
 
-
-            
+            /*
             auto beforeGCC = std::chrono::steady_clock::now();
             arma::Col<double> resultMatrix = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCC = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
             cout << "GCC time: " << durationGCC.count() << endl;
-            
+            */
 
 
             auto beforeGCCW = std::chrono::steady_clock::now();
-            arma::Col<double> resultMatrix_FFTW = GCC_PHAT_FFTW(savedFFTs_FFTW, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            //cout << " before GCC FFTW" << endl;
+            arma::Col<double> resultMatrix = GCC_PHAT_FFTW(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            //cout << " after GCC FFTW" << endl;
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            cout << "GCCW time: " << durationGCCW.count() << endl;
+            //cout << "GCCW time: " << durationGCCW.count() << endl;
 
             //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, exp.interp); // need to create dataE matrix 
             //auto afterGCC = std::chrono::steady_clock::now();
@@ -444,6 +453,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             //cout << resultMatrix.t() << endl;
 
             arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
+            cout << "DOAs: " << DOAs.t() << endl;
             
             WritePulseAmplitudes(detResult.peakAmplitude, detResult.peakTimes, exp.detectionOutputFile);
             WriteArray(resultMatrix, detResult.peakTimes, exp.tdoaOutputFile);
@@ -579,6 +589,20 @@ int main(int argc, char *argv[]) {
         else {
             cout << "Unknown problem occurred" << endl;
         }
+        
+        cout << "destroying heap allocated fftw objects" << endl;
+        fftw_destroy_plan(exp.p1);
+        fftw_destroy_plan(exp.p2);
+        fftw_destroy_plan(exp.p3);
+        fftw_destroy_plan(exp.p4);
+        exp.p1 = nullptr;
+        exp.p2 = nullptr;
+        exp.p3 = nullptr;
+        exp.p4 = nullptr;
+       
+        fftw_destroy_plan(exp.ip1);
+        exp.ip1 = nullptr;  // Setting ip1 to nullptr
+
         sess.errorOccurred = false;
     }
 }

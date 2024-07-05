@@ -5,6 +5,26 @@ import os
 from scipy.io import loadmat
 import sys
 import struct
+import argparse
+
+
+class TDOASimAction(argparse.Action):
+    """
+    Custom argparse action to handle the --tdoa_sim argument.
+
+    This action class provides custom behavior for the --tdoa_sim command-line argument:
+    - If the --tdoa_sim argument is not provided, it defaults to False.
+    - If the --tdoa_sim argument is provided without a value, it sets tdoa_sim to 0.
+    - If the --tdoa_sim argument is provided with a value, it sets tdoa_sim to that integer value.
+    """
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        # Check if the argument is given without a value
+        if values is None:
+            setattr(namespace, self.dest, 0)
+        else:
+            setattr(namespace, self.dest, int(values))
+
 
 def CheckSystem():
     """
@@ -45,6 +65,7 @@ def SetHighPriority(NICE_VAL):
         p.nice(psutil.HIGH_PRIORITY_CLASS)
     else:
         print("You are not using a UNIX- or Windows-based system.")
+
 
 
 def Normalize(dataMat):

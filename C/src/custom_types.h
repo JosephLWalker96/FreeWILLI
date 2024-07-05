@@ -10,7 +10,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <armadillo>
-
+#include <fftw3.h>
 //#define PRINT_DATA_PROCESSOR
 //#define PRINT_PROCESS_SEGMENT
 //#define PRINT_PROCESS_SEGMENT_1240
@@ -51,6 +51,14 @@ struct Experiment {
     
     arma::Col<int> chanSpacing = {1, 2, 3, 1, 2, 1};
     void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;
+
+    fftw_plan p1 = nullptr;
+    fftw_plan p2 = nullptr;
+    fftw_plan p3 = nullptr;
+    fftw_plan p4 = nullptr;
+
+    fftw_plan ip1 = nullptr;
+
 };
 
 struct Session {

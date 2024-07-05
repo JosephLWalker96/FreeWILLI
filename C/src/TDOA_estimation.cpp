@@ -117,7 +117,7 @@ arma::Col<double> GCC_PHAT(arma::Mat<arma::cx_double>& savedFFTs, const int& int
     return tauVector;
 }
 
-arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, const int& interp, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
+arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, fftw_plan& ip1, const int& interp, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     /**
     * @brief Computes the Generalized Cross-Correlation with Phase Transform (GcrossCorr-PHAT) between pairs of signals.
     *
@@ -138,17 +138,21 @@ arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, const int
     arma::Col<arma::cx_double> SIG2(fftLength);
 
     // IFFT input and output
-    static fftw_plan ip1 = nullptr;
-    arma::cx_vec crossSpectraMagnitudeNorm(992);
-    arma::vec crossCorr(992);
+    //cout << "before static " << endl;
+    //static fftw_plan ip1 = nullptr;
+    //cout << "after static " << endl;
+    static arma::cx_vec crossSpectraMagnitudeNorm(992);
+    static arma::vec crossCorr(992);
     
     // Get a pointer to the data of crossSpectraMagnitudeNorm for FFTW
     //std::complex<double>* dataPtr = crossSpectraMagnitudeNorm.memptr();
 
     // Create the plan once if it doesn't exist
+    //cout << "before if == nullptr " << endl;
     if (ip1 == nullptr) {
         ip1 = fftw_plan_dft_c2r_1d(992, reinterpret_cast<fftw_complex*>(crossSpectraMagnitudeNorm.memptr()), crossCorr.memptr(), FFTW_ESTIMATE);
     }
+    //cout << "after if == nullptr " << endl;
 
     int pairCounter = 0;
     for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++ ){
@@ -212,11 +216,12 @@ arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, const int
             
             //int maxShift = interp * fftLength / 2;
             int maxShift = (interp * (992 / 2));
-            if (fftLength % 2 != 0) {
-                maxShift = interp * ((992 - 1) / 2);
-            }
+            //if (fftLength % 2 != 0) {
+            //    maxShift = interp * ((992 - 1) / 2);
+            //}
             //cout << "Max shift: " << maxShift << endl;
             //cout << "Hello before subvec" << endl;
+            //crossCorr /= 992;
             arma::vec back = crossCorr.subvec(crossCorr.n_elem - maxShift, crossCorr.n_elem- 1);
             arma::vec front = crossCorr.subvec(0, maxShift);
             //cout << "Hello after subvec" << endl;
@@ -224,13 +229,16 @@ arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, const int
             arma::vec crossCorrInverted = arma::join_cols(back,front);
 
             double shift = (double)arma::index_max(crossCorrInverted) - maxShift;
+            cout << "shift: " << shift << endl;
             double timeDelta = shift / (interp * SAMPLE_RATE );
+            cout << "timeDelta: " << timeDelta << endl;
 
             //tau_matrix(sig2_ind, sig1_ind) = tau;
             tauVector(pairCounter) = timeDelta;
             pairCounter++;
         }
     }
+    //cout << "returning from GCC FFTW" << endl;
     return tauVector;
 }
 

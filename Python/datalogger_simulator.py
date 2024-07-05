@@ -69,7 +69,7 @@ import argparse                    # For parsing command-line arguments
 import psutil                      # For system and process utilities
 import os                          # For operating system interfaces
 import sys                         # For system-specific parameters and functions
-from utils import SetHighPriority, Sleep, Normalize, Load4ChannelDataset, DuplicateAndShiftChannels, InterleaveData, ScaleData, ConvertToBytes
+from utils import SetHighPriority, Sleep, Normalize, Load4ChannelDataset, DuplicateAndShiftChannels, InterleaveData, ScaleData, ConvertToBytes, TDOASimAction
 
 SetHighPriority(15) # set this process to run the program at high priority (nice value = -15)
 
@@ -85,8 +85,11 @@ parser.add_argument('--high_act', action='store_true', help='Enable high activit
 parser.add_argument('--cos_shift', action='store_true', help='pad data variably according to a cosine wave')
 parser.add_argument('--time_glitch', default=0, type=int, help='Simulate time glitch at specific flag')
 parser.add_argument('--data_glitch', default=0, type=int, help='Simulate data glitch at specific flag')
-parser.add_argument('--tdoa_sim', default = 0, type=int, help='channel offset amount') # IN DEVELOPMENT
+parser.add_argument('--tdoa_sim', nargs='?', const=0, type=int, default=False, action=TDOASimAction, help='channel offset amount')
+
 args = parser.parse_args() # Parsing the arguments
+
+print("TDOA_SIM val: ", args.tdoa_sim)
 
 DATA_SCALE = 2**15
 
@@ -107,7 +110,7 @@ else:
 
 dataMatrix = Load4ChannelDataset(args.data_path)
 
-if args.tdoa_sim:
+if args.tdoa_sim is not False:
     dataMatrixShifted = DuplicateAndShiftChannels(np.copy(dataMatrix), args.tdoa_sim, NUM_CHAN)
 elif args.cos_shift:
     shift = int(66*np.cos((0) / 5))
