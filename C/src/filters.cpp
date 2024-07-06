@@ -42,10 +42,10 @@ void FilterWithLiquidFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::C
     };
 
     // Filter each channel
-    ch1 = applyFilter(ch1, q1);
-    ch2 = applyFilter(ch2, q2);
-    ch3 = applyFilter(ch3, q3);
-    ch4 = applyFilter(ch4, q4);
+    applyFilter(ch1, q1);
+    applyFilter(ch2, q2);
+    applyFilter(ch3, q3);
+    applyFilter(ch4, q4);
 }
 
 void FilterWithIIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::IIR_filt<double, double, double>& iirFilter){
