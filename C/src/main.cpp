@@ -381,11 +381,14 @@ void DataProcessor(Session& sess, Experiment& exp) {
            
 
             // Sigpack FIR filter
+            /*
             auto beforeFilter = std::chrono::steady_clock::now();
             FilterWithFIR(ch1,ch2,ch3,ch4, firFilter);
             auto afterFilter = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
             cout << "Sigpack FIR Filter: " << durationFilter.count() << endl;
+            */
+
 
 
             // Liquid FIR filter
@@ -394,7 +397,19 @@ void DataProcessor(Session& sess, Experiment& exp) {
             auto afterLFilter = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationLFilter = afterLFilter - beforeLFilter;
             cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
-            
+
+            cout << "first samples from ch1: " << endl;
+            for (int i = 0; i < 80; i++){
+                cout << ch1(i) << " ";
+            }
+            cout << endl;
+            cout << "first samples from ch3: " << endl;
+            for (int i = 0; i < 80; i++){
+                cout << ch3(i) << " ";
+            }
+            cout << endl;
+
+
             // Perform FFT using SigPack's FFTW object
             
             /*
