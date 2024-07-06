@@ -5,7 +5,7 @@
 //#include <eigen3/Eigen/Dense>
 //#include <eigen3/unsupported/Eigen/FFT>
 //#include <eigen3/Eigen/Core>
-#include <sigpack.h>
+//#include <sigpack.h>
 
 #include "custom_types.h"
 #include <liquid/liquid.h>
@@ -14,7 +14,7 @@
 
 // #include "gtest/gtest.h"
 //#include <fftw/fftw.h>
-
+/*
 void FilterWithFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::FIR_filt<double, double, double>& firFilter) {
     ch1 = firFilter.filter(ch1);
     firFilter.clear();
@@ -25,7 +25,7 @@ void FilterWithFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<dou
     ch4 = firFilter.filter(ch4);
     firFilter.clear();
 }
-
+*/
 void FilterWithLiquidFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, 
                          firfilt_rrrf& q1, firfilt_rrrf& q2, firfilt_rrrf& q3, firfilt_rrrf& q4) {
     
@@ -47,7 +47,7 @@ void FilterWithLiquidFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::C
     applyFilter(ch3, q3);
     applyFilter(ch4, q4);
 }
-
+/*
 void FilterWithIIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::IIR_filt<double, double, double>& iirFilter){
     //
     // THIS FUNCTION IS DEPRICATED
@@ -67,3 +67,4 @@ void FilterWithIIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<dou
     arma::Col<double> ch4Filtered = arma::reverse(iirFilter.filter(ch4Padded));
     ch4Filtered = arma::reverse(iirFilter.filter(ch4Filtered));
 }
+*/

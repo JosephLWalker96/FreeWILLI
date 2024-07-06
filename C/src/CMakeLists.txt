@@ -7,8 +7,8 @@ set_target_properties(HarpListen PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
 )
 
-target_link_libraries(MainLib PUBLIC SigPack)
-target_link_libraries(HarpListen PRIVATE MainLib SigPack)
+#######target_link_libraries(MainLib PUBLIC SigPack)
+target_link_libraries(HarpListen PRIVATE MainLib)
 
 # Linking external libraries
 

@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <chrono>
-#include <eigen3/Eigen/Dense>
+//#include <eigen3/Eigen/Dense>
 #include <iostream>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 #include <iomanip> // for output formatting

@@ -42,7 +42,6 @@ target_include_directories(UnitTests PRIVATE
 target_link_libraries(UnitTests PRIVATE
   gtest_main
   MainLib
-  SigPack
   ${ARMADILLO_LIBRARIES}
   ${LAPACK_LIBRARIES}
   ${LIQUID_LIBRARIES}

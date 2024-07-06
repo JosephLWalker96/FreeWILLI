@@ -64,10 +64,12 @@ RESOURCES:
 #include <cstdint>
 //#include <armadillo> not needed if <sigpack.h> is used
 
+/*
 #include <sigpack.h>
 #include <fftw/fftw.h>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Core>
+*/
 
 #include <liquid/liquid.h>
 #include <fftw3.h>
@@ -186,7 +188,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
         int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; // the number of samples per channel within a dataSegment
         
         // declare FFT object
-        sp::FFTW fftw(channelSize, FFTW_ESTIMATE); // no 0 padding is currently being used
+        //sp::FFTW fftw(channelSize, FFTW_ESTIMATE); // no 0 padding is currently being used
         
 
 
@@ -210,8 +212,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
         */
 
         // Define FIR filter using SigPack library
-        sp::FIR_filt<double, double, double> firFilter;
-        firFilter.set_coeffs(filterWeights);
+        //sp::FIR_filt<double, double, double> firFilter;
+        //firFilter.set_coeffs(filterWeights);
         
         // Declare time checking variables
         bool previousTimeSet = false;
@@ -392,10 +394,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
             // Liquid FIR filter
             auto beforeLFilter = std::chrono::steady_clock::now();
-            cout << "memory addres of channel 1: " << &ch1 << endl;
-            std::complex<double>* first_column_address = savedFFTs_FFTW.colptr(0);
-            cout << "Memory address of the first column: " << static_cast<void*>(first_column_address) << endl;
-            
             FilterWithLiquidFIR(ch1, ch2, ch3, ch4, exp.q1, exp.q2, exp.q3, exp.q4);
             auto afterLFilter = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationLFilter = afterLFilter - beforeLFilter;
@@ -415,6 +413,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             */
 
             // Perform FFT using SigPack's FFTW object
+            /*
             auto beforeFFT = std::chrono::steady_clock::now();
             savedFFTs.col(0) = fftw.fft(ch1);
             savedFFTs.col(1) = fftw.fft(ch2);
@@ -422,7 +421,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             savedFFTs.col(3) = fftw.fft(ch4);
             auto afterFFT = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFT = afterFFT - beforeFFT;
-            
+            */
             
             // Print the first 5 values from each channel (SigPack)
             /*
@@ -472,16 +471,16 @@ void DataProcessor(Session& sess, Experiment& exp) {
             }
             cout << "FFTW time: " << durationFFTW.count() << endl;
             */
-            
+            /*
             auto beforeGCC = std::chrono::steady_clock::now();
             arma::Col<double> resultMatrix = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCC = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
             cout << "GCC time: " << durationGCC.count() << endl;
-
+            */
              
             auto beforeGCCW = std::chrono::steady_clock::now();
-            arma::Col<double> resultMatrix_FFT = GCC_PHAT_FFTW(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            arma::Col<double> resultMatrix = GCC_PHAT_FFTW(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
             cout << "GCCW time: " << durationGCCW.count() << endl;
@@ -494,9 +493,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             //cout << resultMatrix.t() << endl;
 
             arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
-            cout << "DOAs: " << DOAs.t() << endl;
-            arma::Col<double> DOAs_FFT = DOA_EstimateVerticalArray(resultMatrix_FFT, exp.speedOfSound, exp.chanSpacing);
-            cout << "DOA_FFTs: " << DOAs_FFT.t() << endl;
+            cout << "DOA_FFTs: " << DOAs.t() << endl;
             
             WritePulseAmplitudes(detResult.peakAmplitude, detResult.peakTimes, exp.detectionOutputFile);
             WriteArray(resultMatrix, detResult.peakTimes, exp.tdoaOutputFile);
@@ -608,12 +605,6 @@ int main(int argc, char *argv[]) {
     cout << "Data bytes per channel: " << exp.DATA_BYTES_PER_CHANNEL << endl;
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
 
-    // Define a vector of 3 elements
-    Eigen::Vector3d v;
-    // Initialize the vector with values
-    v << 1, 2, 3;
-    // Print the vector
-    std::cout << "Eigen vector: " << v.transpose() << std::endl;
     
 
     while (true) {

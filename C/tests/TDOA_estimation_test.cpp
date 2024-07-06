@@ -3,7 +3,6 @@
 #include <iostream>
 #include <chrono>
 #include <string>
-#include <sigpack.h>
 #include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
 #include "../src/TDOA_estimation.h"
