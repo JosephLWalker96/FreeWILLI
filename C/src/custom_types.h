@@ -10,6 +10,8 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <armadillo>
+
+#include <liquid/liquid.h>
 #include <fftw3.h>
 //#define PRINT_DATA_PROCESSOR
 //#define PRINT_PROCESS_SEGMENT
@@ -59,6 +61,10 @@ struct Experiment {
 
     fftw_plan ip1 = nullptr;
 
+    firfilt_rrrf q1 = nullptr;
+    firfilt_rrrf q2 = nullptr;
+    firfilt_rrrf q3 = nullptr;
+    firfilt_rrrf q4 = nullptr;
 };
 
 struct Session {

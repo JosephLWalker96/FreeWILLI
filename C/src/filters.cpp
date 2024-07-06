@@ -8,11 +8,12 @@
 #include <sigpack.h>
 
 #include "custom_types.h"
+#include <liquid/liquid.h>
 #include "filters.h"
 //#include "TDOA_estimation.h"
 
 // #include "gtest/gtest.h"
-#include <fftw/fftw.h>
+//#include <fftw/fftw.h>
 
 void FilterWithFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::FIR_filt<double, double, double>& firFilter) {
     ch1 = firFilter.filter(ch1);
@@ -25,37 +26,27 @@ void FilterWithFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<dou
     firFilter.clear();
 }
 
-void FilterWithLiquidFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::FIR_filt<double, double, double>& firFilter){
-    //
-    // THIS FUNCTION IS DEPRICATED
-    //
-
-    /*
-    float ch1Filtered_test[ch1.n_elem];
-    float ch2Filtered_test[ch1.n_elem];
-    float ch3_filtered_test[ch1.n_elem];
-    float ch4_filtered_test[ch1.n_elem];
+void FilterWithLiquidFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, 
+                         firfilt_rrrf& q1, firfilt_rrrf& q2, firfilt_rrrf& q3, firfilt_rrrf& q4) {
     
+    // Helper function to apply filter
+    auto applyFilter = [](arma::Col<double>& input, firfilt_rrrf& q) {
+        arma::Col<double> output(input.n_elem);
+        for (size_t i = 0; i < input.n_elem; ++i) {
+            firfilt_rrrf_push(q, static_cast<float>(input(i)));
+            float y;
+            firfilt_rrrf_execute(q, &y);
+            output(i) = y;
+        }
+        return output;
+    };
 
-    for (int i=0; i<ch1.n_elem; i++) {
-        firfilt_rrrf_push(q, ch1(i));
-        firfilt_rrrf_execute(q, &ch1Filtered_test[i]);
-    }
-    for (int i=0; i<ch2.n_elem; i++) {
-        firfilt_rrrf_push(q, ch2(i));
-        firfilt_rrrf_execute(q, &ch2Filtered_test[i]);
-    }
-    for (int i=0; i<ch3.n_elem; i++) {
-        firfilt_rrrf_push(q, ch3(i));
-        firfilt_rrrf_execute(q, &ch3_filtered_test[i]);
-    }
-    for (int i=0; i<ch4.n_elem; i++) {
-        firfilt_rrrf_push(q, ch4(i));
-        firfilt_rrrf_execute(q, &ch4_filtered_test[i]);
-    }
-    */
+    // Filter each channel
+    ch1 = applyFilter(ch1, q1);
+    ch2 = applyFilter(ch2, q2);
+    ch3 = applyFilter(ch3, q3);
+    ch4 = applyFilter(ch4, q4);
 }
-
 
 void FilterWithIIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::IIR_filt<double, double, double>& iirFilter){
     //

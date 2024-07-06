@@ -193,7 +193,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
         // Read filter weights from file 
         arma::Col<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
-        
+        // Convert filter coefficients to float
+        std::vector<float> filterWeightsFloat(filterWeights.begin(), filterWeights.end());        
 
         // Define FIR filter using the liquid library 
         //firfilt_rrrf q = firfilt_rrrf_create(h,h.n_elem);// create filter object
@@ -236,12 +237,16 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 
         // FFT without sigpack
-        //cout << " before FFT policy redefine" << endl;
         exp.p1 = fftw_plan_dft_r2c_1d(channelSize, ch1.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(0)), FFTW_ESTIMATE);
         exp.p2 = fftw_plan_dft_r2c_1d(channelSize, ch2.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(1)), FFTW_ESTIMATE);
         exp.p3 = fftw_plan_dft_r2c_1d(channelSize, ch3.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(2)), FFTW_ESTIMATE);
         exp.p4 = fftw_plan_dft_r2c_1d(channelSize, ch4.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(3)), FFTW_ESTIMATE);
-        //cout << " after FFT policy redefine" << endl;
+        
+        // Create FIR filter objects
+        exp.q1 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        exp.q2 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        exp.q3 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        exp.q4 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
         
         
         while (!sess.errorOccurred) {
@@ -366,25 +371,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             detectionCounter++;
             
-            cout << "ch1 vals: ";
-            for (int i = 0; i < 8; ++i) {
-                cout << ch1(i) << " ";
-            }
-            cout << endl;
-            
-            cout << "ch2 vals: ";
-            for (int i = 0; i < 8; ++i) {
-                cout << ch2(i) << " ";
-            }
-            cout << endl;
-
-            cout << "ch3 vals: ";
-            for (int i = 0; i < 8; ++i) {
-                cout << ch3(i) << " ";
-            }
-            cout << endl;
-            
-            //PrintTimes(sess.dataTimes);
 
             //auto beforeFilter = std::chrono::steady_clock::now();
             //FilterWithLiquidFIR(ch1,ch2,ch3,ch4, fir_filt);
@@ -392,10 +378,26 @@ void DataProcessor(Session& sess, Experiment& exp) {
             //auto afterFilter = std::chrono::steady_clock::now();
             //std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
             //cout << "C FIR Filter: " << durationFilter.count() << endl;
-            
+           
+
+            // Sigpack FIR filter
+            auto beforeFilter = std::chrono::steady_clock::now();
+            FilterWithFIR(ch1,ch2,ch3,ch4, firFilter);
+            auto afterFilter = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
+            cout << "Sigpack FIR Filter: " << durationFilter.count() << endl;
+
+
+            // Liquid FIR filter
+            auto beforeLFilter = std::chrono::steady_clock::now();
+            FilterWithLiquidFIR(ch1, ch2, ch3, ch4, exp.q1, exp.q2, exp.q3, exp.q4);
+            auto afterLFilter = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationLFilter = afterLFilter - beforeLFilter;
+            cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
             
             // Perform FFT using SigPack's FFTW object
             
+            /*
             auto beforeFFT = std::chrono::steady_clock::now();
             savedFFTs.col(0) = fftw.fft(ch1);
             savedFFTs.col(1) = fftw.fft(ch2);
@@ -406,7 +408,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
              
             
             // Print the first 5 values from each channel (SigPack)
-            /*
             cout << "sigpack backwards: " << endl;
             for (int channel = 0; channel < 4; ++channel) {
                 for (int i = 0; i < 5; ++i) {
@@ -415,7 +416,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 cout << endl;
             }
 
-
+            
             cout << "sigpack forwards: " << endl;
             for (int channel = 0; channel < 4; ++channel) {
                 for (int i = 0; i < 5; ++i) {
@@ -426,7 +427,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
             cout << "sigpack FFT time: " << durationFFT.count() << endl;
             */
-            
+
             auto beforeFFTW = std::chrono::steady_clock::now();
             fftw_execute(exp.p1);
             fftw_execute(exp.p2);
@@ -447,22 +448,20 @@ void DataProcessor(Session& sess, Experiment& exp) {
             */
 
 
-            
-            //auto beforeGCC = std::chrono::steady_clock::now();
-            //arma::Col<double> resultMatrix = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
-            //auto afterGCC = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
-            //cout << "GCC time: " << durationGCC.count() << endl;
-            
+            /* 
+            auto beforeGCC = std::chrono::steady_clock::now();
+            arma::Col<double> resultMatrixB = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            auto afterGCC = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
+            cout << "GCC time: " << durationGCC.count() << endl;
+            */
 
 
             auto beforeGCCW = std::chrono::steady_clock::now();
-            //cout << " before GCC FFTW" << endl;
             arma::Col<double> resultMatrix = GCC_PHAT_FFTW(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
-            //cout << " after GCC FFTW" << endl;
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            //cout << "GCCW time: " << durationGCCW.count() << endl;
+            cout << "GCCW time: " << durationGCCW.count() << endl;
 
             //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, exp.interp); // need to create dataE matrix 
             //auto afterGCC = std::chrono::steady_clock::now();
@@ -608,7 +607,7 @@ int main(int argc, char *argv[]) {
             cout << "Unknown problem occurred" << endl;
         }
         
-        cout << "destroying heap allocated fftw objects" << endl;
+        // Destroy FFT objects
         fftw_destroy_plan(exp.p1);
         fftw_destroy_plan(exp.p2);
         fftw_destroy_plan(exp.p3);
@@ -617,9 +616,18 @@ int main(int argc, char *argv[]) {
         exp.p2 = nullptr;
         exp.p3 = nullptr;
         exp.p4 = nullptr;
-       
         fftw_destroy_plan(exp.ip1);
-        exp.ip1 = nullptr;  // Setting ip1 to nullptr
+        exp.ip1 = nullptr;
+
+        // Destroy FIR filter objects
+        firfilt_rrrf_destroy(exp.q1);
+        firfilt_rrrf_destroy(exp.q2);
+        firfilt_rrrf_destroy(exp.q3);
+        firfilt_rrrf_destroy(exp.q4);
+        exp.q1 = nullptr;
+        exp.q2 = nullptr;
+        exp.q3 = nullptr;
+        exp.q4 = nullptr;
 
         sess.errorOccurred = false;
     }
