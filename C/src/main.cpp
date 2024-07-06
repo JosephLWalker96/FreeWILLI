@@ -187,20 +187,11 @@ void DataProcessor(Session& sess, Experiment& exp) {
     try {
         int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; // the number of samples per channel within a dataSegment
         
-        // declare FFT object
-        //sp::FFTW fftw(channelSize, FFTW_ESTIMATE); // no 0 padding is currently being used
-        
-
-
-
 
         // Read filter weights from file 
         arma::Col<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
         // Convert filter coefficients to float
         std::vector<float> filterWeightsFloat(filterWeights.begin(), filterWeights.end());        
-
-        // Define FIR filter using the liquid library 
-        //firfilt_rrrf q = firfilt_rrrf_create(h,h.n_elem);// create filter object
         
         
         // Define IIR filter using SigPack library
@@ -211,9 +202,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
         iir_filt.set_coeffs(b_iir,a_iir);
         */
 
-        // Define FIR filter using SigPack library
-        //sp::FIR_filt<double, double, double> firFilter;
-        //firFilter.set_coeffs(filterWeights);
         
         // Declare time checking variables
         bool previousTimeSet = false;
@@ -374,15 +362,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             detectionCounter++;
             
-
-            //auto beforeFilter = std::chrono::steady_clock::now();
-            //FilterWithLiquidFIR(ch1,ch2,ch3,ch4, fir_filt);
-            //FilterWithIIR(ch1,ch2,ch3,ch4, iir_filt);
-            //auto afterFilter = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
-            //cout << "C FIR Filter: " << durationFilter.count() << endl;
-           
-
             // Sigpack FIR filter
             /*
             auto beforeFilter = std::chrono::steady_clock::now();
@@ -399,51 +378,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             std::chrono::duration<double> durationLFilter = afterLFilter - beforeLFilter;
             cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
 
-            /*
-            cout << "first samples from ch1: " << endl;
-            for (int i = 0; i < 80; i++){
-                cout << ch1(i) << " ";
-            }
-            cout << endl;
-            cout << "first samples from ch3: " << endl;
-            for (int i = 0; i < 80; i++){
-                cout << ch3(i) << " ";
-            }
-            cout << endl;
-            */
-
-            // Perform FFT using SigPack's FFTW object
-            /*
-            auto beforeFFT = std::chrono::steady_clock::now();
-            savedFFTs.col(0) = fftw.fft(ch1);
-            savedFFTs.col(1) = fftw.fft(ch2);
-            savedFFTs.col(2) = fftw.fft(ch3);
-            savedFFTs.col(3) = fftw.fft(ch4);
-            auto afterFFT = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationFFT = afterFFT - beforeFFT;
-            */
             
-            // Print the first 5 values from each channel (SigPack)
-            /*
-            cout << "sigpack backwards: " << endl;
-            for (int channel = 0; channel < 4; ++channel) {
-                for (int i = 0; i < 5; ++i) {
-                    cout << savedFFTs(991 - i, channel) << " ";
-                }
-                cout << endl;
-            }
-
-            
-            cout << "sigpack forwards: " << endl;
-            for (int channel = 0; channel < 4; ++channel) {
-                for (int i = 0; i < 5; ++i) {
-                    cout << savedFFTs(i, channel) << " ";
-                }
-                cout << endl;
-            }
-
-            cout << "sigpack FFT time: " << durationFFT.count() << endl;
-            */
             
             auto beforeFFTW = std::chrono::steady_clock::now();
             fftw_execute(exp.p1);
@@ -453,31 +388,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
             
-            /*
-            // Print the first 5 values from each channel (SigPack)
-            cout << "FFTW forwards: " << endl;
-            for (int channel = 0; channel < 4; ++channel) {
-                for (int i = 0; i < 5; ++i) {
-                    cout << savedFFTs_FFTW(i, channel) << " ";
-                }
-                cout << endl;
-            }
-            cout << "FFTW backwards: " << endl;
-            for (int channel = 0; channel < 4; ++channel) {
-                for (int i = 0; i < 5; ++i) {
-                    cout << savedFFTs_FFTW(fftOutputSize - (i +1), channel) << " ";
-                }
-                cout << endl;
-            }
-            cout << "FFTW time: " << durationFFTW.count() << endl;
-            */
-            /*
-            auto beforeGCC = std::chrono::steady_clock::now();
-            arma::Col<double> resultMatrix = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
-            auto afterGCC = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
-            cout << "GCC time: " << durationGCC.count() << endl;
-            */
              
             auto beforeGCCW = std::chrono::steady_clock::now();
             arma::Col<double> resultMatrix = GCC_PHAT_FFTW(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
@@ -498,11 +408,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
             WritePulseAmplitudes(detResult.peakAmplitude, detResult.peakTimes, exp.detectionOutputFile);
             WriteArray(resultMatrix, detResult.peakTimes, exp.tdoaOutputFile);
             WriteArray(DOAs, detResult.peakTimes, exp.doaOutputFile);
-
-            //cout << DOAs.t() << endl;
-            //auto endAll = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationFilter = endAll - beforeGCC;
-            //cout << "Duration Filter: " << durationFilter.count() << endl;
 
         }
     } 

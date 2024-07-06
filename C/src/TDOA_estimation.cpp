@@ -9,8 +9,6 @@
 #include "TDOA_estimation.h"
 #include "utils.h"
 
-//#include <sigpack.h>
-//#include <fftw/fftw.h>
 #include <fftw3.h>
 
 using std::cout;
