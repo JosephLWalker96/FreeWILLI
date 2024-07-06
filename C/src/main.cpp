@@ -381,17 +381,16 @@ void DataProcessor(Session& sess, Experiment& exp) {
            
 
             // Sigpack FIR filter
-            /*
             auto beforeFilter = std::chrono::steady_clock::now();
             FilterWithFIR(ch1,ch2,ch3,ch4, firFilter);
             auto afterFilter = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
             cout << "Sigpack FIR Filter: " << durationFilter.count() << endl;
-            */
 
 
 
             // Liquid FIR filter
+            /*
             auto beforeLFilter = std::chrono::steady_clock::now();
             FilterWithLiquidFIR(ch1, ch2, ch3, ch4, exp.q1, exp.q2, exp.q3, exp.q4);
             auto afterLFilter = std::chrono::steady_clock::now();
@@ -408,11 +407,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 cout << ch3(i) << " ";
             }
             cout << endl;
-
+            */
 
             // Perform FFT using SigPack's FFTW object
             
-            /*
             auto beforeFFT = std::chrono::steady_clock::now();
             savedFFTs.col(0) = fftw.fft(ch1);
             savedFFTs.col(1) = fftw.fft(ch2);
@@ -421,7 +419,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             auto afterFFT = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFT = afterFFT - beforeFFT;
              
-            
+            /*
             // Print the first 5 values from each channel (SigPack)
             cout << "sigpack backwards: " << endl;
             for (int channel = 0; channel < 4; ++channel) {
@@ -441,8 +439,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             }
 
             cout << "sigpack FFT time: " << durationFFT.count() << endl;
-            */
-
+            
             auto beforeFFTW = std::chrono::steady_clock::now();
             fftw_execute(exp.p1);
             fftw_execute(exp.p2);
@@ -450,6 +447,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             fftw_execute(exp.p4);
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
+            */
 
             // Print the first 5 values from each channel (SigPack)
             /*
@@ -462,22 +460,18 @@ void DataProcessor(Session& sess, Experiment& exp) {
             cout << "FFTW time: " << durationFFTW.count() << endl;
             */
 
-
-            /* 
             auto beforeGCC = std::chrono::steady_clock::now();
-            arma::Col<double> resultMatrixB = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            arma::Col<double> resultMatrix = GCC_PHAT(savedFFTs, exp.interp, fftw, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCC = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
-            cout << "GCC time: " << durationGCC.count() << endl;
-            */
 
-
+            /*
             auto beforeGCCW = std::chrono::steady_clock::now();
             arma::Col<double> resultMatrix = GCC_PHAT_FFTW(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
             cout << "GCCW time: " << durationGCCW.count() << endl;
-
+            */
             //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, exp.interp); // need to create dataE matrix 
             //auto afterGCC = std::chrono::steady_clock::now();
             //std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
