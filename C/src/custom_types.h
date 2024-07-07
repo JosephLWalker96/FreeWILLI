@@ -9,7 +9,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <armadillo>
 #include <eigen3/Eigen/Dense>
 #include <liquid/liquid.h>
 #include <fftw3.h>

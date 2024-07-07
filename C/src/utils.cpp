@@ -1,3 +1,4 @@
+#include "custom_types.h"
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -6,9 +7,8 @@
 #include <vector>
 #include <random>
 #include <iomanip> //std::setw
-#include "custom_types.h"
 #include "utils.h"
-#include <eigen3/Eigen/Dense>
+//#include <eigen3/Eigen/Dense>
 
 using std::cerr;
 using std::endl;

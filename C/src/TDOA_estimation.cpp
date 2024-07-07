@@ -1,112 +1,22 @@
+#include "custom_types.h"
 #include <vector>
 #include <cmath>
 #include <cstdlib>
 #include <chrono>
 #include <iostream>
 
-#include <eigen3/Eigen/Dense>
-#include "custom_types.h"
-#include "TDOA_estimation.h"
+//#include <eigen3/Eigen/Dense>
+//#include <fftw3.h>
+
+///#include "TDOA_estimation.h"
 #include "utils.h"
 
-#include <fftw3.h>
 
 using std::cout;
 using std::endl;
 using std::cerr;
 using std::vector;
 
-
-
-
-arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, fftw_plan& ip1, const int& interp, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
-    /**
-    * @brief Computes the Generalized Cross-Correlation with Phase Transform (GcrossCorr-PHAT) between pairs of signals.
-    *
-    * @param data A reference to an Armadillo matrix containing the input signals. Each column represents a signal.
-    * @param interp An integer specifying the interpolation factor used in the computation.
-    * @param fftw An instance of the FFTW object from SigPack library used for Fast Fourier Transform (FFT) computations.
-    * @param fftLength An integer specifying the length of the FFT.
-    *
-    * @return A column vector of doubles containing the computed TDOA estimates for all unique pairs of signals.
-    */
-    
-    //arma::Mat<double> tau_matrix(NUM_CHAN, NUM_CHAN, arma::fill::zeros);
-
-    //int n = data.col(0).n_elem + data.col(1).n_elem;
-  //
-    arma::Col<double> tauVector(6); // 4 channels produces 6 unique pairings
-    arma::Col<arma::cx_double> SIG1(fftLength);
-    arma::Col<arma::cx_double> SIG2(fftLength);
-
-    static arma::cx_vec crossSpectraMagnitudeNorm(497);
-    static arma::vec crossCorr(992);
-    
-
-    if (ip1 == nullptr) {
-        ip1 = fftw_plan_dft_c2r_1d(992, reinterpret_cast<fftw_complex*>(crossSpectraMagnitudeNorm.memptr()), crossCorr.memptr(), FFTW_ESTIMATE);
-    }
-
-    int pairCounter = 0;
-    for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++ ){
-        for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
-            
-            
-            // Uncomment lines bellow for manual testing
-            //sig2(2) =0;
-            //sig2(2) = arma::datum::nan; 
-            //sig2(2) = arma::datum::inf;
-            
-            
-            SIG1 = savedFFTs.col(sig1_ind);
-            SIG2 = savedFFTs.col(sig2_ind);
-
-            arma::cx_vec crossSpectra = SIG1 % arma::conj(SIG2);
-            cout << "crossSpectra:";
-            for (int i = 0; i < 8; i++){
-                cout << crossSpectra(i) << " ";
-            }
-            cout << endl;
-            arma::vec crossSpectraMagnitude = arma::abs(crossSpectra);
-            
-            cout << "crossSpectraMagnitude:";
-            for (int i = 0; i < 8; i++){
-                cout << crossSpectraMagnitude(i) << " ";
-            }
-            cout << endl;
-
-            // Uncomment lines bellow for testing
-            //R_abs(2) =0;
-            //R_abs(2) = arma::datum::nan; 
-            //R_abs(2) = arma::datum::inf;
-
-            if  (crossSpectraMagnitude.has_inf()) [[unlikely]]{
-                throw GCC_Value_Error("FFTW R_abs contains inf value");
-            }
-            else if (crossSpectraMagnitude.has_nan()) [[unlikely]] {
-                throw GCC_Value_Error("FFTW R_abs contains nan value");
-            }
-            else if (arma::any(crossSpectraMagnitude == 0)) [[unlikely]] {
-                throw GCC_Value_Error("FFTW R_abs contains 0 value");
-            }
-
-            crossSpectraMagnitudeNorm = crossSpectra / crossSpectraMagnitude;
-            fftw_execute(ip1);
-            int maxShift = (interp * (992 / 2));
-            arma::vec back = crossCorr.subvec(crossCorr.n_elem - maxShift, crossCorr.n_elem- 1);
-            arma::vec front = crossCorr.subvec(0, maxShift);
-            
-            arma::vec crossCorrInverted = arma::join_cols(back,front);
-
-            double shift = (double)arma::index_max(crossCorrInverted) - maxShift;
-            double timeDelta = shift / (interp * SAMPLE_RATE );
-
-            tauVector(pairCounter) = timeDelta;
-            pairCounter++;
-        }
-    }
-    return tauVector;
-}
 
 Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, const int& interp, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     /**

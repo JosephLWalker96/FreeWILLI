@@ -27,7 +27,6 @@ DESCRIPTION:
        It also uses FFTW for fast Fourier transforms and includes error handling to manage runtime exceptions.
 
 
-
 EXAMPLE RUN:
 
 Execute (datalogger simulator):
@@ -41,6 +40,8 @@ RESOURCES:
     debugging (core dump): https://www.youtube.com/watch?v=3T3ZDquDDVg&t=190s
     download armadillo manually: https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 */
+
+#include "custom_types.h"
 
 #include <cstddef>
 #include <iostream>
@@ -70,14 +71,13 @@ RESOURCES:
 #include <eigen3/Eigen/Core>
 */
 
-#include <eigen3/Eigen/Dense>
-#include <liquid/liquid.h>
-#include <fftw3.h>
+//#include <eigen3/Eigen/Dense>
+//#include <liquid/liquid.h>
+//#include <fftw3.h>
 
 #include "process_data.h"
 #include "TDOA_estimation.h"
 #include "utils.h"
-#include "custom_types.h"
 #include "filters.h"
 
 using std::cout;
@@ -472,8 +472,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 
 int main(int argc, char *argv[]) {
-    arma::arma_version ver;
-    cout << "ARMA version: "<< ver.as_string() << endl;
     
     // Declare a listening 'Session'
     Session sess;
@@ -528,7 +526,6 @@ int main(int argc, char *argv[]) {
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
 
-    
 
     while (true) {
         

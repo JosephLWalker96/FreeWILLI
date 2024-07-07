@@ -72,6 +72,7 @@ DetectionResult ThresholdDetect(Eigen::VectorXd& data, std::vector<TimePoint>& t
     return result;
 }
 
+/*
 void ProcessSegment(arma::Col<double>& data, vector<TimePoint>& times, const string& outputFile) {
     arma::Col<double> dataAbsolute = arma::abs(data);
     
@@ -123,7 +124,9 @@ void ProcessSegment(arma::Col<double>& data, vector<TimePoint>& times, const str
         }
     }
 }
+*/
 
+/*
 void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const string& outputFile, unsigned int& NUM_CHAN, unsigned int& SAMPS_PER_CHANNEL, unsigned int& NUM_PACKS_DETECT) {
     //
     // THIS FUNCTION IS DEPRICATED
@@ -159,6 +162,8 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
 
     //ProcessSegment(ch1, times, outputFile);  // Use memptr to access raw data
 }
+
+*/
 
 void ProcessSegmentInterleaved(std::vector<double>& data, Eigen::VectorXd& ch1, Eigen::VectorXd& ch2, Eigen::VectorXd& ch3, Eigen::VectorXd& ch4, unsigned int& NUM_CHAN) {
     /**

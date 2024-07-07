@@ -6,11 +6,10 @@ This file contains all function prototypes for utils.cpp
 
 #pragma once
 
+#include "custom_types.h"
 #include <iostream>
 #include <string>
 #include <random>
-#include <eigen3/Eigen/Dense>
-#include "custom_types.h"
 
 using std::string;
 using std::vector;
