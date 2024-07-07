@@ -65,6 +65,14 @@ arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, fftw_plan
             arma::cx_vec crossSpectra = SIG1 % arma::conj(SIG2);
             arma::vec crossSpectraMagnitude = arma::abs(crossSpectra);
             
+            
+            /*
+            cout << "crossSpectraMagnitude:";
+            for (int i = 0; i < 5; i++){
+                cout << crossSpectraMagnitude(fftLength - (i+1)) << " ";
+            }
+            cout << endl;
+            */
 
             // Uncomment lines bellow for testing
             //R_abs(2) =0;
@@ -131,7 +139,18 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
             SIG2 = savedFFTs.col(sig2_ind);
 
             Eigen::VectorXcd crossSpectra = SIG1.array() * SIG2.conjugate().array();
+            cout << "First 8 of crossSpectra";
+            for (int i = 0; i < 10; i++) {
+                cout <<  crossSpectra(i) << " "; 
+            }
+            cout << endl;
+
             Eigen::VectorXd crossSpectraMagnitude = crossSpectra.cwiseAbs();
+            cout << "First 8 of crossSpectraMagnitude";
+            for (int i = 0; i < 10; i++) {
+                cout <<  crossSpectraMagnitude(i) << " "; 
+            }
+            cout << endl;
 
             if ((crossSpectraMagnitude.array().isInf()).any()) {
                 throw GCC_Value_Error("FFTW crossSpectraMagnitude contains inf value");
@@ -142,6 +161,8 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
             }
 
             crossSpectraMagnitudeNorm = crossSpectra.array() / crossSpectraMagnitude.array();
+            
+            
             fftw_execute(ip1);
 
             int maxShift = (interp * (992 / 2));
