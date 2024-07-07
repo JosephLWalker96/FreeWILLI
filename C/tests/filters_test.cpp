@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
+//#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 #include "../src/filters.h"
 
 /*

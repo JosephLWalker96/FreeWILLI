@@ -422,9 +422,23 @@ void DataProcessor(Session& sess, Experiment& exp) {
             Eigen::VectorXd DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
             cout << "DOA_FFTs: " << DOAs.transpose() << endl;
             
+            auto beforeW = std::chrono::steady_clock::now();
             WritePulseAmplitudes(detResult.peakAmplitude, detResult.peakTimes, exp.detectionOutputFile);
+            auto afterW = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationW = afterW - beforeW;
+            cout << "Write: " << durationW.count() << endl;
+
+            auto beforeW1 = std::chrono::steady_clock::now();
             WriteArray(resultMatrix, detResult.peakTimes, exp.tdoaOutputFile);
+            auto afterW1 = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationW1 = afterW1 - beforeW1;
+            cout << "Write1: " << durationW1.count() << endl;
+
+            auto beforeW2 = std::chrono::steady_clock::now();
             WriteArray(DOAs, detResult.peakTimes, exp.doaOutputFile);
+            auto afterW2 = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationW2 = afterW2 - beforeW2;
+            cout << "Write:2 " << durationW2.count() << endl;
 
         }
     } 
