@@ -141,18 +141,21 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
             SIG2 = savedFFTs.col(sig2_ind);
 
             Eigen::VectorXcd crossSpectra = SIG1.array() * SIG2.conjugate().array();
+            Eigen::VectorXd crossSpectraMagnitude = crossSpectra.cwiseAbs();
+            
+            /*
             cout << "First 8 of crossSpectra";
             for (int i = 0; i < 10; i++) {
                 cout <<  crossSpectra(i) << " "; 
             }
             cout << endl;
 
-            Eigen::VectorXd crossSpectraMagnitude = crossSpectra.cwiseAbs();
             cout << "First 8 of crossSpectraMagnitude";
             for (int i = 0; i < 10; i++) {
                 cout <<  crossSpectraMagnitude(i) << " "; 
             }
             cout << endl;
+            */
 
             if ((crossSpectraMagnitude.array().isInf()).any()) {
                 throw GCC_Value_Error("FFTW crossSpectraMagnitude contains inf value");
@@ -174,9 +177,12 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
             Eigen::VectorXd crossCorrInverted(maxShift * 2);
             crossCorrInverted << back, front;
 
-            double shift = static_cast<double>((crossCorrInverted.array().abs()).maxCoeff() - maxShift);
+            //double shift = static_cast<double>((crossCorrInverted.array().abs()).maxCoeff() - maxShift);
+            //double timeDelta = shift / (interp * SAMPLE_RATE);
+            Eigen::Index maxIndex;
+            crossCorrInverted.maxCoeff(&maxIndex);
+            double shift = static_cast<double>(maxIndex) - maxShift;
             double timeDelta = shift / (interp * SAMPLE_RATE);
-
             tauVector(pairCounter) = timeDelta;
             pairCounter++;
         }

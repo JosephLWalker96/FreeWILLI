@@ -381,12 +381,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
             */
 
             // Liquid FIR filter
+            /*
             auto beforeLFilter = std::chrono::steady_clock::now();
             FilterWithLiquidFIR(ch1, ch2, ch3, ch4, exp.q1, exp.q2, exp.q3, exp.q4);
             auto afterLFilter = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationLFilter = afterLFilter - beforeLFilter;
             cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
-
+            */
             
             
             auto beforeFFTW = std::chrono::steady_clock::now();
@@ -396,7 +397,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
             fftw_execute(exp.p4);
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
-            
+           
+            /*
             cout << "First 10 values of ch1:" << std::endl;
             for (int i = 0; i < std::min(channelSize, 10); ++i) {
                 std::cout << ch1(i) << " ";
@@ -408,7 +410,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 std::cout << savedFFTs_FFTW(i,0) << " ";
             }
             cout << endl;
-             
+            */
+
             auto beforeGCCW = std::chrono::steady_clock::now();
             Eigen::VectorXd resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
