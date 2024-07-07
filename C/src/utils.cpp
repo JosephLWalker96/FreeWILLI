@@ -8,6 +8,7 @@
 #include <iomanip> //std::setw
 #include "custom_types.h"
 #include "utils.h"
+#include <eigen3/Eigen/Dense>
 
 using std::cerr;
 using std::endl;
@@ -134,7 +135,7 @@ void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSe
     }
 }
 
-arma::Col<double> ReadFIRFilterFile(const string& fileName) {
+vector<double> ReadFIRFilterFile(const string& fileName) {
      /**
      * @brief Reads a file containing the FIR filter taps and returns the values as an Armadillo column vector.
      *
@@ -171,8 +172,8 @@ arma::Col<double> ReadFIRFilterFile(const string& fileName) {
             }
         }
     }
-    arma::Col<double> filter(filterValues);
-    return filter;
+    //arma::Col<double> filter(filterValues);
+    return filterValues;
 }
 
 void ClearQueue(std::queue<std::vector<uint8_t>>& fullQueue) {
@@ -238,42 +239,39 @@ void WritePulseAmplitudes(const vector<double>& clickPeakAmps, const vector<Time
     }
 }
 
-
-void WriteArray(const arma::Col<double>& array, const vector<TimePoint>& timestamps, const string& filename) {
+void WriteArray(const Eigen::VectorXd& array, const std::vector<TimePoint>& timestamps, const std::string& filename) {
     /**
     * @brief Writes pulse amplitudes and corresponding timestamps to a file.
     *
-    * @param clickPeakAmps A reference to a vector of doubles containing pulse amplitudes.
+    * @param array A reference to an Eigen vector of doubles containing pulse amplitudes.
     * @param timestamps A reference to a vector of TimePoint objects representing the timestamps corresponding to the pulse amplitudes.
     * @param filename A string specifying the output file path or name.
     */
     
-
-    //cout << "clickPeakAmps.size(): " << clickPeakAmps.size() << endl;
     std::ofstream outfile(filename, std::ios::app);
     if (outfile.is_open()) {
-        // Check if vectors have the same size
+        // Check if vectors have the same size (uncomment if needed)
         /*
-        if (clickPeakAmps.size() != timestamps.size()) {
-            cerr << "Error: Click amplitude and timestamp vectors have different sizes." << endl;
+        if (array.size() != timestamps.size()) {
+            std::cerr << "Error: Click amplitude and timestamp vectors have different sizes." << std::endl;
             return;
         }
         */
+        
         // Write data rows
         auto time_point = timestamps[0];
         auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
         outfile << time_since_epoch.count() << std::setw(20);
-        for (size_t i = 0; i < array.n_elem; ++i) {
+        for (int i = 0; i < array.size(); ++i) {
             outfile << array[i] << " ";
         }
-        outfile << endl;
+        outfile << std::endl;
 
         outfile.close();
-    } 
-    else {
+    } else {
         std::stringstream msg; // compose message to dispatch
-        msg << "Error: Could not open file " << filename << endl;
-        cerr << msg.str();
+        msg << "Error: Could not open file " << filename << std::endl;
+        std::cerr << msg.str();
     }
 }
 

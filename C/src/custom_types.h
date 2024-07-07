@@ -10,7 +10,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <armadillo>
-
+#include <eigen3/Eigen/Dense>
 #include <liquid/liquid.h>
 #include <fftw3.h>
 //#define PRINT_DATA_PROCESSOR
@@ -51,8 +51,12 @@ struct Experiment {
     const double speedOfSound = 1500.0;
     double energyDetThresh = 2500.0; // energy detector threshold - 2500.0 is default 
     
-    arma::Col<int> chanSpacing = {1, 2, 3, 1, 2, 1};
-    void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;
+    //arma::Col<int> chanSpacing = {1, 2, 3, 1, 2, 1};
+    //Eigen::Matrix<int, Eigen::Dynamic, 1> chanSpacing(6);
+    vector<double> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
+    
+    //void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;
+    void(*ProcessFncPtr)(std::vector<double>&, Eigen::Matrix<double, Eigen::Dynamic, 1>&, Eigen::Matrix<double, Eigen::Dynamic, 1>&, Eigen::Matrix<double, Eigen::Dynamic, 1>&, Eigen::Matrix<double, Eigen::Dynamic, 1>&, unsigned int&) = nullptr;
 
     fftw_plan p1 = nullptr;
     fftw_plan p2 = nullptr;
@@ -87,8 +91,11 @@ struct DetectionResult {
     int maxPeakIndex = -1;
     std::vector<std::chrono::system_clock::time_point> peakTimes;
     std::vector<double> peakAmplitude;
-    std::vector<arma::Col<double>> tdoas;
-    std::vector<arma::Col<double>> doas;
+    
+    //std::vector<arma::Col<double>> tdoas;
+    //std::vector<arma::Col<double>> doas;
+    std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1>> tdoas;
+    std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1>> doas;
     
 };
 

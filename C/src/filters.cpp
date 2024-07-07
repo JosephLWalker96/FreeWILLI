@@ -26,19 +26,20 @@ void FilterWithFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<dou
     firFilter.clear();
 }
 */
-void FilterWithLiquidFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, 
+
+void FilterWithLiquidFIR(Eigen::VectorXd& ch1, Eigen::VectorXd& ch2, Eigen::VectorXd& ch3, Eigen::VectorXd& ch4, 
                          firfilt_rrrf& q1, firfilt_rrrf& q2, firfilt_rrrf& q3, firfilt_rrrf& q4) {
-    
+
     // Helper function to apply filter
-    auto applyFilter = [](arma::Col<double>& input, firfilt_rrrf& q) {
-        arma::Col<double> output(input.n_elem);
-        for (size_t i = 0; i < input.n_elem; ++i) {
+    auto applyFilter = [](Eigen::VectorXd& input, firfilt_rrrf& q) {
+        Eigen::VectorXd output(input.size());
+        for (size_t i = 0; i < input.size(); ++i) {
             firfilt_rrrf_push(q, static_cast<float>(input(i)));
             float y;
             firfilt_rrrf_execute(q, &y);
             output(i) = y;
         }
-        return output;
+        input = output;
     };
 
     // Filter each channel
@@ -47,6 +48,9 @@ void FilterWithLiquidFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::C
     applyFilter(ch3, q3);
     applyFilter(ch4, q4);
 }
+
+
+
 /*
 void FilterWithIIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, sp::IIR_filt<double, double, double>& iirFilter){
     //

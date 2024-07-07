@@ -43,14 +43,14 @@ void ConvertData(vector<double>& dataSegment, vector<uint8_t>& dataBytes, unsign
     }
 }
 
-DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& times, const double& threshold, const unsigned int& SAMPLE_RATE){
+DetectionResult ThresholdDetect(Eigen::VectorXd& data, std::vector<TimePoint>& times, const double& threshold, const unsigned int& SAMPLE_RATE) {
     /**
     * @brief Detects peaks in the input data above a specified threshold.
     *
     * This function analyzes the input data to detect peaks that exceed the specified threshold.
     * If a peak is found, its index, amplitude, and corresponding time are recorded in a DetectionResult structure.
     *
-    * @param data A reference to an Armadillo column vector containing the input data.
+    * @param data A reference to an Eigen vector containing the input data.
     * @param times A vector of TimePoint objects representing the timestamps corresponding to the input data.
     * @param threshold The threshold value above which peaks are detected.
     *
@@ -59,8 +59,8 @@ DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& time
     
     DetectionResult result{};
 
-    int peakIndex = arma::index_max(data);
-    double peakAmplitude = arma::max(data);
+    int peakIndex = 0;
+    double peakAmplitude = data.maxCoeff(&peakIndex);
 
     if (peakAmplitude >= threshold) {
         result.minPeakIndex = peakIndex;
@@ -161,16 +161,22 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
     //ProcessSegment(ch1, times, outputFile);  // Use memptr to access raw data
 }
 
-
-void ProcessSegmentInterleaved(vector<double>& data, arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, unsigned int& NUM_CHAN) {
+void ProcessSegmentInterleaved(std::vector<double>& data, Eigen::VectorXd& ch1, Eigen::VectorXd& ch2, Eigen::VectorXd& ch3, Eigen::VectorXd& ch4, unsigned int& NUM_CHAN) {
     /**
-    * @brief Processes interleaved data into separate channel. Each channel's data is saved into a corresponding Armadillo column vector.
+    * @brief Processes interleaved data into separate channel. Each channel's data is saved into a corresponding Eigen vector.
     * 
     * @param data A reference to a vector of doubles containing interleaved data from multiple channels.
-    * @param ch1 - ch4 A reference to an Armadillo column vector to store channels 1-4 data.
+    * @param ch1 - ch4 A reference to an Eigen vector to store channels 1-4 data.
     */        
     
-    // Iterate through the data vector and save every NUM_CHANth element into the arma::Col
+    // Ensure the Eigen vectors have the correct size
+    size_t channelSize = data.size() / NUM_CHAN;
+    ch1.resize(channelSize);
+    ch2.resize(channelSize);
+    ch3.resize(channelSize);
+    ch4.resize(channelSize);
+    
+    // Iterate through the data vector and save every NUM_CHANth element into the Eigen vector
     for (size_t i = 0, j = 0; i < data.size(); i += NUM_CHAN, ++j) {
         ch1(j) = data[i];
         ch2(j) = data[i+1];

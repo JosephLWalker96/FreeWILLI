@@ -62,7 +62,7 @@ RESOURCES:
 #include <iomanip> //put_time
 #include <ctime>
 #include <cstdint>
-//#include <armadillo> not needed if <sigpack.h> is used
+#include <armadillo> not needed if <sigpack.h> is used
 
 /*
 #include <sigpack.h>
@@ -71,6 +71,7 @@ RESOURCES:
 #include <eigen3/Eigen/Core>
 */
 
+#include <eigen3/Eigen/Dense>
 #include <liquid/liquid.h>
 #include <fftw3.h>
 
@@ -189,9 +190,11 @@ void DataProcessor(Session& sess, Experiment& exp) {
         
 
         // Read filter weights from file 
-        arma::Col<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
+        //arma::Col<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
+        vector<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
+        
         // Convert filter coefficients to float
-        std::vector<float> filterWeightsFloat(filterWeights.begin(), filterWeights.end());        
+        vector<float> filterWeightsFloat(filterWeights.begin(), filterWeights.end());        
         
         
         // Define IIR filter using SigPack library
@@ -214,24 +217,30 @@ void DataProcessor(Session& sess, Experiment& exp) {
         sess.dataTimes.reserve(exp.NUM_PACKS_DETECT);
         
         // Initialize armadillo containers to be used for storing channel data
+        /*
         static arma::Col<double> ch1(channelSize);
         static arma::Col<double> ch2(channelSize);
         static arma::Col<double> ch3(channelSize);
         static arma::Col<double> ch4(channelSize);
+        */
+        static Eigen::VectorXd ch1(channelSize);
+        static Eigen::VectorXd ch2(channelSize);
+        static Eigen::VectorXd ch3(channelSize);
+        static Eigen::VectorXd ch4(channelSize);
 
-        arma::Mat<arma::cx_double> savedFFTs(channelSize, exp.NUM_CHAN); // save the FFT transformed channels
+        Eigen::MatrixXcd savedFFTs(channelSize, exp.NUM_CHAN); // save the FFT transformed channels
         int fftOutputSize = (channelSize / 2) + 1;
-        arma::Mat<arma::cx_double> savedFFTs_FFTW(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
+        Eigen::MatrixXcd savedFFTs_FFTW(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
        
         // Container for pulling bytes from buffer (dataBuffer)
         vector<uint8_t> dataBytes;
 
 
         // FFT without sigpack
-        exp.p1 = fftw_plan_dft_r2c_1d(channelSize, ch1.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(0)), FFTW_ESTIMATE);
-        exp.p2 = fftw_plan_dft_r2c_1d(channelSize, ch2.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(1)), FFTW_ESTIMATE);
-        exp.p3 = fftw_plan_dft_r2c_1d(channelSize, ch3.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(2)), FFTW_ESTIMATE);
-        exp.p4 = fftw_plan_dft_r2c_1d(channelSize, ch4.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(3)), FFTW_ESTIMATE);
+        exp.p1 = fftw_plan_dft_r2c_1d(channelSize, ch1.data(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.col(0).data()), FFTW_ESTIMATE);
+        exp.p2 = fftw_plan_dft_r2c_1d(channelSize, ch2.data(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.col(1).data()), FFTW_ESTIMATE);
+        exp.p3 = fftw_plan_dft_r2c_1d(channelSize, ch3.data(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.col(2).data()), FFTW_ESTIMATE);
+        exp.p4 = fftw_plan_dft_r2c_1d(channelSize, ch4.data(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.col(3).data()), FFTW_ESTIMATE);
         
         // Create FIR filter objects
         exp.q1 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
@@ -388,22 +397,27 @@ void DataProcessor(Session& sess, Experiment& exp) {
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
             
+            cout << "First 10 values of ch1:" << std::endl;
+            for (int i = 0; i < std::min(channelSize, 10); ++i) {
+                std::cout << ch1(i) << " ";
+            }
+            cout << endl;
+
+            cout << "First 10 values of FFT ch1:" << std::endl;
+            for (int i = 0; i < std::min(channelSize, 10); ++i) {
+                std::cout << savedFFTs_FFTW(i,0) << " ";
+            }
+            cout << endl;
              
             auto beforeGCCW = std::chrono::steady_clock::now();
-            arma::Col<double> resultMatrix = GCC_PHAT_FFTW(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            Eigen::VectorXd resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            cout << "GCCW time: " << durationGCCW.count() << endl;
+            cout << "Eigen C GCC: " << durationGCCW.count() << endl;
             
 
-            //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, exp.interp); // need to create dataE matrix 
-            //auto afterGCC = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
-            //cout << "C GCC: " << durationGCC.count() << endl;
-            //cout << resultMatrix.t() << endl;
-
-            arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
-            cout << "DOA_FFTs: " << DOAs.t() << endl;
+            Eigen::VectorXd DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
+            cout << "DOA_FFTs: " << DOAs.transpose() << endl;
             
             WritePulseAmplitudes(detResult.peakAmplitude, detResult.peakTimes, exp.detectionOutputFile);
             WriteArray(resultMatrix, detResult.peakTimes, exp.tdoaOutputFile);
