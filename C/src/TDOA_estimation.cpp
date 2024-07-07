@@ -63,16 +63,18 @@ arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, fftw_plan
             SIG2 = savedFFTs.col(sig2_ind);
 
             arma::cx_vec crossSpectra = SIG1 % arma::conj(SIG2);
-            arma::vec crossSpectraMagnitude = arma::abs(crossSpectra);
-            
-            
-            /*
-            cout << "crossSpectraMagnitude:";
-            for (int i = 0; i < 5; i++){
-                cout << crossSpectraMagnitude(fftLength - (i+1)) << " ";
+            cout << "crossSpectra:";
+            for (int i = 0; i < 8; i++){
+                cout << crossSpectra(i) << " ";
             }
             cout << endl;
-            */
+            arma::vec crossSpectraMagnitude = arma::abs(crossSpectra);
+            
+            cout << "crossSpectraMagnitude:";
+            for (int i = 0; i < 8; i++){
+                cout << crossSpectraMagnitude(i) << " ";
+            }
+            cout << endl;
 
             // Uncomment lines bellow for testing
             //R_abs(2) =0;
