@@ -13,11 +13,11 @@ target_link_libraries(HarpListen PRIVATE MainLib)
 # Linking external libraries
 
 # Armadillo
-find_package(Armadillo REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
-message(STATUS "Armadillo libraries: ${ARMADILLO_LIBRARIES}")
-message(STATUS "Armadillo include dirs: ${ARMADILLO_INCLUDE_DIRS}")
-include_directories(${ARMADILLO_INCLUDE_DIRS})
-target_link_libraries(HarpListen PRIVATE ${ARMADILLO_LIBRARIES})
+#find_package(Armadillo REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
+#message(STATUS "Armadillo libraries: ${ARMADILLO_LIBRARIES}")
+#message(STATUS "Armadillo include dirs: ${ARMADILLO_INCLUDE_DIRS}")
+#include_directories(${ARMADILLO_INCLUDE_DIRS})
+#target_link_libraries(HarpListen PRIVATE ${ARMADILLO_LIBRARIES})
 
 # LAPACK
 find_package(LAPACK REQUIRED)

@@ -62,7 +62,6 @@ RESOURCES:
 #include <iomanip> //put_time
 #include <ctime>
 #include <cstdint>
-#include <armadillo> not needed if <sigpack.h> is used
 
 /*
 #include <sigpack.h>

@@ -1,6 +1,5 @@
 #include <cmath>
 #include <cstdlib>
-#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
 //#include <eigen3/Eigen/Dense>
 //#include <eigen3/unsupported/Eigen/FFT>

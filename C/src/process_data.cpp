@@ -5,7 +5,6 @@
 #include <chrono>
 //#include <eigen3/Eigen/Dense>
 #include <iostream>
-#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 #include <iomanip> // for output formatting
 
 #include "custom_types.h"

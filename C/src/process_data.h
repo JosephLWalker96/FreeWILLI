@@ -6,7 +6,6 @@ This file contains all function prototypes for process_data.cpp
 
 #pragma once
 
-#include <armadillo>
 #include <eigen3/Eigen/Dense>
 #include "custom_types.h"
 

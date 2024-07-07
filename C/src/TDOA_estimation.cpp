@@ -3,7 +3,6 @@
 #include <cstdlib>
 #include <chrono>
 #include <iostream>
-#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
 #include <eigen3/Eigen/Dense>
 #include "custom_types.h"

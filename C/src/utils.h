@@ -9,8 +9,6 @@ This file contains all function prototypes for utils.cpp
 #include <iostream>
 #include <string>
 #include <random>
-//#include <vector>
-//#include <armadillo>
 #include <eigen3/Eigen/Dense>
 #include "custom_types.h"
 
