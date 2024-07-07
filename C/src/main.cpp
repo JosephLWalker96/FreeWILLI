@@ -396,6 +396,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             fftw_execute(exp.p4);
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
+            cout << "Eigen FFTW: " << durationFFTW.count() << endl;
            
             /*
             cout << "First 10 values of ch1:" << std::endl;
@@ -524,6 +525,7 @@ int main(int argc, char *argv[]) {
     cout << "Time between packets:   " << exp.MICRO_INCR             << endl;
     cout << "Number of channels:     " << exp.NUM_CHAN               << endl;
     cout << "Data bytes per channel: " << exp.DATA_BYTES_PER_CHANNEL << endl;
+    cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
 
     
