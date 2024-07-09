@@ -57,4 +57,4 @@ message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
 
 #####add_subdirectory(${PROJECT_SOURCE_DIR}/libs/sigpack)
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
-#add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
+add_subdirectory(${PROJECT_SOURCE_DIR}/tests)

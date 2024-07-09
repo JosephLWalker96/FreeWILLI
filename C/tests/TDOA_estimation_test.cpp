@@ -72,12 +72,11 @@ TEST(DOA_EstimateVerticalArray, ValidDataMidRegion) {
 
 TEST(DOA_EstimateVerticalArray, ValidDataBoundaries) {
     // Call the function under test
-    Eigen::VectorXi chanSpacing(6);
-    chanSpacing << 1, 2, 3, 1, 2, 1;
+    vector<double> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
     Eigen::VectorXd TDOAs(chanSpacing.size());
     
     for (int i = 0; i < chanSpacing.size(); i++) {
-        TDOAs(i) = chanSpacing(i) * 0.00066666;
+        TDOAs(i) = chanSpacing[i] * 0.00066666;
     }
     Eigen::VectorXd DOAs(6);
     DOAs << 0, 0, 0, 0, 0, 0; // Ground truth
