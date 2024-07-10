@@ -65,14 +65,14 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
             }
             cout << endl;
             */
+            if ((crossSpectraMagnitude.array() == 0).any()) {
+                crossSpectraMagnitude = crossSpectraMagnitude.unaryExpr([](double x) { return x == 0 ? 1.0 : x; });
+            }
 
             if ((crossSpectraMagnitude.array().isInf()).any()) {
                 throw GCC_Value_Error("FFTW crossSpectraMagnitude contains inf value");
             } else if ((crossSpectraMagnitude.array().isNaN()).any()) {
                 throw GCC_Value_Error("FFTW crossSpectraMagnitude contains nan value");
-            } else if ((crossSpectraMagnitude.array() == 0).any()) {
-                throw GCC_Value_Error("FFTW crossSpectraMagnitude contains 0 value");
-            }
 
             crossSpectraMagnitudeNorm = crossSpectra.array() / crossSpectraMagnitude.array();
             
