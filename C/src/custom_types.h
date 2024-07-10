@@ -12,10 +12,6 @@
 #include <eigen3/Eigen/Dense>
 #include <liquid/liquid.h>
 #include <fftw3.h>
-//#define PRINT_DATA_PROCESSOR
-//#define PRINT_PROCESS_SEGMENT
-//#define PRINT_PROCESS_SEGMENT_1240
-//#define PRINT_PROCESS_SEGMENT_1550
 
 using std::vector;
 using std::string;
@@ -40,40 +36,39 @@ struct Experiment {
     unsigned int MICRO_INCR;                                // time between packets
     const unsigned int SAMPLE_RATE = 1e5;
     const int interp = 1;
-    const double TIME_WINDOW = 0.01;                 // fraction of a second to consider  
-    //const string OUTPUT_FILE = "clicks_data.txt";
-    string detectionOutputFile = ""; // Change to your desired file name
-    string tdoaOutputFile = ""; // Change to your desired file name
-    string doaOutputFile = ""; // Change to your desired file name
+    const float TIME_WINDOW = 0.01;                 // fraction of a second to consider  
+    
+    string detectionOutputFile = ""; // Define at runtime
+    string tdoaOutputFile      = "";
+    string doaOutputFile       = "";
+
     const string filterWeights = "filters/My_filter.txt";
     
-    const double speedOfSound = 1500.0;
-    double energyDetThresh = 2500.0; // energy detector threshold - 2500.0 is default 
+    const float speedOfSound = 1500.0;
+    float energyDetThresh = 2500.0; // energy detector threshold - 2500.0 is default 
     
-    //arma::Col<int> chanSpacing = {1, 2, 3, 1, 2, 1};
-    //Eigen::Matrix<int, Eigen::Dynamic, 1> chanSpacing(6);
     vector<float> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
     
-    //void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;
     void(*ProcessFncPtr)(std::vector<float>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, unsigned int&) = nullptr;
 
-    fftwf_plan p1 = nullptr;
-    fftwf_plan p2 = nullptr;
-    fftwf_plan p3 = nullptr;
-    fftwf_plan p4 = nullptr;
+    // Define FFTWF plans during runtime 
+    fftwf_plan fftCh1 = nullptr; // fftwf object that points to channel 1
+    fftwf_plan fftCh2 = nullptr;
+    fftwf_plan fftCh3 = nullptr;
+    fftwf_plan fftCh4 = nullptr;
 
-    fftwf_plan ip1 = nullptr;
+    fftwf_plan inverseFFT = nullptr;
 
-    firfilt_rrrf q1 = nullptr;
-    firfilt_rrrf q2 = nullptr;
-    firfilt_rrrf q3 = nullptr;
-    firfilt_rrrf q4 = nullptr;
+    firfilt_rrrf firFilterCh1 = nullptr; // liquid FIR filter object for channel 1
+    firfilt_rrrf firFilterCh2 = nullptr;
+    firfilt_rrrf firFilterCh3 = nullptr;
+    firfilt_rrrf firFilterCh4 = nullptr;
 };
 
 struct Session {
-    int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0); // udp socket
-    int UDP_PORT;              // Listening port
-    std::atomic<bool> errorOccurred = false;
+    int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);  // udp socket
+    int UDP_PORT;                                         // Listening port
+    std::atomic<bool> errorOccurred = false;              // set true if error occurs in thread
     
     std::queue<vector<uint8_t>> dataBuffer;
     vector<vector<uint8_t>> dataBytesSaved;
@@ -91,10 +86,7 @@ struct DetectionResult {
     std::vector<std::chrono::system_clock::time_point> peakTimes;
     std::vector<float> peakAmplitude;
     
-    //std::vector<arma::Col<double>> tdoas;
-    //std::vector<arma::Col<double>> doas;
     std::vector<Eigen::Matrix<float, Eigen::Dynamic, 1>> tdoas;
     std::vector<Eigen::Matrix<float, Eigen::Dynamic, 1>> doas;
-    
 };
 

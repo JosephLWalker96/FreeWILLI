@@ -5,10 +5,6 @@
 #include <chrono>
 #include <iostream>
 
-//#include <eigen3/Eigen/Dense>
-//#include <fftw3.h>
-
-///#include "TDOA_estimation.h"
 #include "utils.h"
 
 
@@ -18,7 +14,7 @@ using std::cerr;
 using std::vector;
 
 
-Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& ip1, const int& interp, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
+Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFFT, const int& interp, int& channelLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     /**
     * @brief Computes the Generalized Cross-Correlation with Phase Transform (GCC-PHAT) between pairs of signals.
     *
@@ -32,15 +28,19 @@ Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& ip1, co
     * @return An Eigen vector of doubles containing the computed TDOA estimates for all unique pairs of signals.
     */
 
+    int fftLength = savedFFTs.rows();
+    //cout << "TDOA check: " << 497 << " " << fftLength;
+    //cout << "TDOA check: " << 992 << " " << channelLength;
+
     Eigen::VectorXf tauVector(6); // 4 channels produce 6 unique pairings
     Eigen::VectorXcf SIG1(fftLength);
     Eigen::VectorXcf SIG2(fftLength);
 
-    static Eigen::VectorXcf crossSpectraMagnitudeNorm(497);
-    static Eigen::VectorXf crossCorr(992);
+    static Eigen::VectorXcf crossSpectraMagnitudeNorm(fftLength);
+    static Eigen::VectorXf crossCorr(channelLength);
 
-    if (ip1 == nullptr) {
-        ip1 = fftwf_plan_dft_c2r_1d(992, reinterpret_cast<fftwf_complex*>(crossSpectraMagnitudeNorm.data()), crossCorr.data(), FFTW_ESTIMATE);
+    if (inverseFFT == nullptr) {
+        inverseFFT = fftwf_plan_dft_c2r_1d(channelLength, reinterpret_cast<fftwf_complex*>(crossSpectraMagnitudeNorm.data()), crossCorr.data(), FFTW_ESTIMATE);
     }
 
     int pairCounter = 0;
@@ -52,19 +52,6 @@ Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& ip1, co
             Eigen::VectorXcf crossSpectra = SIG1.array() * SIG2.conjugate().array();
             Eigen::VectorXf crossSpectraMagnitude = crossSpectra.cwiseAbs();
             
-            /*
-            cout << "First 8 of crossSpectra";
-            for (int i = 0; i < 10; i++) {
-                cout <<  crossSpectra(i) << " "; 
-            }
-            cout << endl;
-
-            cout << "First 8 of crossSpectraMagnitude";
-            for (int i = 0; i < 10; i++) {
-                cout <<  crossSpectraMagnitude(i) << " "; 
-            }
-            cout << endl;
-            */
             if ((crossSpectraMagnitude.array() == 0).any()) {
                 crossSpectraMagnitude = crossSpectraMagnitude.unaryExpr([](float x) { return x == 0 ? 1.0f : x; });
             }
@@ -77,19 +64,18 @@ Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& ip1, co
             crossSpectraMagnitudeNorm = crossSpectra.array() / crossSpectraMagnitude.array();
             
             
-            fftwf_execute(ip1);
+            fftwf_execute(inverseFFT);
 
-            int maxShift = (interp * (992 / 2));
+            int maxShift = (interp * (channelLength / 2));
             Eigen::VectorXf back = crossCorr.tail(maxShift);
             Eigen::VectorXf front = crossCorr.head(maxShift);
 
             Eigen::VectorXf crossCorrInverted(maxShift * 2);
             crossCorrInverted << back, front;
 
-            //double shift = static_cast<double>((crossCorrInverted.array().abs()).maxCoeff() - maxShift);
-            //double timeDelta = shift / (interp * SAMPLE_RATE);
             Eigen::Index maxIndex;
             crossCorrInverted.maxCoeff(&maxIndex);
+            
             double shift = static_cast<double>(maxIndex) - maxShift;
             double timeDelta = shift / (interp * SAMPLE_RATE);
             tauVector(pairCounter) = timeDelta;

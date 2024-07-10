@@ -189,21 +189,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
         
 
         // Read filter weights from file 
-        //arma::Col<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
         vector<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
         
         // Convert filter coefficients to float
         vector<float> filterWeightsFloat(filterWeights.begin(), filterWeights.end());        
-        
-        
-        // Define IIR filter using SigPack library
-        /*
-        sp::IIR_filt<double, double, double> iir_filt;
-        arma::Col<double> b_iir = {0.49580191, -1.9260157, 2.8613285, -1.9260157, 0.49580191};
-        arma::Col<double> a_iir = {1.0, -2.53934052, 2.67821627, -1.31270499, 0.26392123};
-        iir_filt.set_coeffs(b_iir,a_iir);
-        */
-
         
         // Declare time checking variables
         bool previousTimeSet = false;
@@ -215,20 +204,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
         sess.dataSegment.reserve(exp.DATA_SEGMENT_LENGTH);
         sess.dataTimes.reserve(exp.NUM_PACKS_DETECT);
         
-        // Initialize armadillo containers to be used for storing channel data
-        /*
-        static arma::Col<double> ch1(channelSize);
-        static arma::Col<double> ch2(channelSize);
-        static arma::Col<double> ch3(channelSize);
-        static arma::Col<double> ch4(channelSize);
-        */
         static Eigen::VectorXf ch1(channelSize);
         static Eigen::VectorXf ch2(channelSize);
         static Eigen::VectorXf ch3(channelSize);
         static Eigen::VectorXf ch4(channelSize);
 
-        Eigen::MatrixXcf savedFFTs(channelSize, exp.NUM_CHAN); // save the FFT transformed channels
         int fftOutputSize = (channelSize / 2) + 1;
+        Eigen::MatrixXcf savedFFTs(channelSize, exp.NUM_CHAN); // save the FFT transformed channels
         Eigen::MatrixXcf savedFFTs_FFTW(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
        
         // Container for pulling bytes from buffer (dataBuffer)
@@ -236,16 +218,16 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 
         // FFT without sigpack
-        exp.p1 = fftwf_plan_dft_r2c_1d(channelSize, ch1.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(0).data()), FFTW_ESTIMATE);
-        exp.p2 = fftwf_plan_dft_r2c_1d(channelSize, ch2.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(1).data()), FFTW_ESTIMATE);
-        exp.p3 = fftwf_plan_dft_r2c_1d(channelSize, ch3.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(2).data()), FFTW_ESTIMATE);
-        exp.p4 = fftwf_plan_dft_r2c_1d(channelSize, ch4.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(3).data()), FFTW_ESTIMATE);
+        exp.fftCh1 = fftwf_plan_dft_r2c_1d(channelSize, ch1.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(0).data()), FFTW_ESTIMATE);
+        exp.fftCh2 = fftwf_plan_dft_r2c_1d(channelSize, ch2.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(1).data()), FFTW_ESTIMATE);
+        exp.fftCh3 = fftwf_plan_dft_r2c_1d(channelSize, ch3.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(2).data()), FFTW_ESTIMATE);
+        exp.fftCh4 = fftwf_plan_dft_r2c_1d(channelSize, ch4.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(3).data()), FFTW_ESTIMATE);
         
         // Create FIR filter objects
-        exp.q1 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        exp.q2 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        exp.q3 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        exp.q4 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        exp.firFilterCh1 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        exp.firFilterCh2 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        exp.firFilterCh3 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        exp.firFilterCh4 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
         
         
         while (!sess.errorOccurred) {
@@ -370,30 +352,21 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             detectionCounter++;
             
-            // Sigpack FIR filter
-            /*
-            auto beforeFilter = std::chrono::steady_clock::now();
-            FilterWithFIR(ch1,ch2,ch3,ch4, firFilter);
-            auto afterFilter = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
-            cout << "Sigpack FIR Filter: " << durationFilter.count() << endl;
-            */
 
             // Liquid FIR filter
-            /*
             auto beforeLFilter = std::chrono::steady_clock::now();
-            FilterWithLiquidFIR(ch1, ch2, ch3, ch4, exp.q1, exp.q2, exp.q3, exp.q4);
+            FilterWithLiquidFIR(ch1, ch2, ch3, ch4, exp.firFilterCh1, exp.firFilterCh2, exp.firFilterCh3, exp.firFilterCh4);
             auto afterLFilter = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationLFilter = afterLFilter - beforeLFilter;
             cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
-            */
+            
             
             
             auto beforeFFTW = std::chrono::steady_clock::now();
-            fftwf_execute(exp.p1);
-            fftwf_execute(exp.p2);
-            fftwf_execute(exp.p3);
-            fftwf_execute(exp.p4);
+            fftwf_execute(exp.fftCh1);
+            fftwf_execute(exp.fftCh2);
+            fftwf_execute(exp.fftCh3);
+            fftwf_execute(exp.fftCh4);
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
             cout << "Eigen FFTW: " << durationFFTW.count() << endl;
@@ -413,7 +386,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             */
 
             auto beforeGCCW = std::chrono::steady_clock::now();
-            Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.inverseFFT, exp.interp, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
             cout << "Eigen C GCC: " << durationGCCW.count() << endl;
@@ -533,10 +506,10 @@ int main(int argc, char *argv[]) {
     cout << "HEAD_SIZE: "              << exp.HEAD_SIZE               << endl; 
     cout << "SAMPS_PER_CHAN: "         << exp.SAMPS_PER_CHANNEL       << endl;
     cout << "BYTES_PER_SAMP: "         << exp.BYTES_PER_SAMP          << endl;
-    cout << "Bytes per packet:       " << exp.REQUIRED_BYTES         << endl;
-    cout << "Time between packets:   " << exp.MICRO_INCR             << endl;
-    cout << "Number of channels:     " << exp.NUM_CHAN               << endl;
-    cout << "Data bytes per channel: " << exp.DATA_BYTES_PER_CHANNEL << endl;
+    cout << "Bytes per packet:       " << exp.REQUIRED_BYTES          << endl;
+    cout << "Time between packets:   " << exp.MICRO_INCR              << endl;
+    cout << "Number of channels:     " << exp.NUM_CHAN                << endl;
+    cout << "Data bytes per channel: " << exp.DATA_BYTES_PER_CHANNEL  << endl;
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
 
@@ -558,27 +531,28 @@ int main(int argc, char *argv[]) {
             cout << "Unknown problem occurred" << endl;
         }
         
-        // Destroy FFT objects
-        fftwf_destroy_plan(exp.p1);
-        fftwf_destroy_plan(exp.p2);
-        fftwf_destroy_plan(exp.p3);
-        fftwf_destroy_plan(exp.p4);
-        exp.p1 = nullptr;
-        exp.p2 = nullptr;
-        exp.p3 = nullptr;
-        exp.p4 = nullptr;
-        fftwf_destroy_plan(exp.ip1);
-        exp.ip1 = nullptr;
+        // Destroy FFTWF objects
+        fftwf_destroy_plan(exp.fftCh1);
+        fftwf_destroy_plan(exp.fftCh2);
+        fftwf_destroy_plan(exp.fftCh3);
+        fftwf_destroy_plan(exp.fftCh4);
+        exp.fftCh1 = nullptr;
+        exp.fftCh2 = nullptr;
+        exp.fftCh3 = nullptr;
+        exp.fftCh4 = nullptr;
+        
+        fftwf_destroy_plan(exp.inverseFFT);
+        exp.inverseFFT = nullptr;
 
         // Destroy FIR filter objects
-        firfilt_rrrf_destroy(exp.q1);
-        firfilt_rrrf_destroy(exp.q2);
-        firfilt_rrrf_destroy(exp.q3);
-        firfilt_rrrf_destroy(exp.q4);
-        exp.q1 = nullptr;
-        exp.q2 = nullptr;
-        exp.q3 = nullptr;
-        exp.q4 = nullptr;
+        firfilt_rrrf_destroy(exp.firFilterCh1);
+        firfilt_rrrf_destroy(exp.firFilterCh2);
+        firfilt_rrrf_destroy(exp.firFilterCh3);
+        firfilt_rrrf_destroy(exp.firFilterCh4);
+        exp.firFilterCh1 = nullptr;
+        exp.firFilterCh2 = nullptr;
+        exp.firFilterCh3 = nullptr;
+        exp.firFilterCh4 = nullptr;
 
         sess.errorOccurred = false;
     }

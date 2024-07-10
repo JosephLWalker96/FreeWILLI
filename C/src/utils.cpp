@@ -87,6 +87,7 @@ void RestartListener(Session& sess){
     else if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
         throw std::runtime_error("Error binding socket \n");
     }
+
     ClearQueue(sess.dataBuffer);
     sess.dataSegment.clear();
     sess.dataTimes.clear();
