@@ -39,6 +39,11 @@ find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)
 message(STATUS "FFTW libraries: ${FFTW_LIBRARIES}")
 target_link_libraries(HarpListen PRIVATE ${FFTW_LIBRARIES})
 
+# FFTW3f for single precision
+find_library(FFTWF_LIBRARIES NAMES fftw3f REQUIRED)
+message(STATUS "FFTWf libraries: ${FFTWF_LIBRARIES}")
+target_link_libraries(HarpListen PRIVATE ${FFTWF_LIBRARIES})
+
 find_path(FFTW_INCLUDE_DIRS NAMES fftw3.h REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
 message(STATUS "FFTW include dirs: ${FFTW_INCLUDE_DIRS}")
 include_directories(HarpListen PRIVATE ${FFTW_INCLUDE_DIRS})

@@ -26,14 +26,14 @@ void FilterWithFIR(arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<dou
 }
 */
 
-void FilterWithLiquidFIR(Eigen::VectorXd& ch1, Eigen::VectorXd& ch2, Eigen::VectorXd& ch3, Eigen::VectorXd& ch4, 
+void FilterWithLiquidFIR(Eigen::VectorXf& ch1, Eigen::VectorXf& ch2, Eigen::VectorXf& ch3, Eigen::VectorXf& ch4, 
                          firfilt_rrrf& q1, firfilt_rrrf& q2, firfilt_rrrf& q3, firfilt_rrrf& q4) {
 
     // Helper function to apply filter
-    auto applyFilter = [](Eigen::VectorXd& input, firfilt_rrrf& q) {
-        Eigen::VectorXd output(input.size());
+    auto applyFilter = [](Eigen::VectorXf& input, firfilt_rrrf& q) {
+        Eigen::VectorXf output(input.size());
         for (size_t i = 0; i < input.size(); ++i) {
-            firfilt_rrrf_push(q, static_cast<float>(input(i)));
+            firfilt_rrrf_push(q, input(i));
             float y;
             firfilt_rrrf_execute(q, &y);
             output(i) = y;

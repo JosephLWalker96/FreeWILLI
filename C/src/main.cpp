@@ -222,24 +222,24 @@ void DataProcessor(Session& sess, Experiment& exp) {
         static arma::Col<double> ch3(channelSize);
         static arma::Col<double> ch4(channelSize);
         */
-        static Eigen::VectorXd ch1(channelSize);
-        static Eigen::VectorXd ch2(channelSize);
-        static Eigen::VectorXd ch3(channelSize);
-        static Eigen::VectorXd ch4(channelSize);
+        static Eigen::VectorXf ch1(channelSize);
+        static Eigen::VectorXf ch2(channelSize);
+        static Eigen::VectorXf ch3(channelSize);
+        static Eigen::VectorXf ch4(channelSize);
 
-        Eigen::MatrixXcd savedFFTs(channelSize, exp.NUM_CHAN); // save the FFT transformed channels
+        Eigen::MatrixXcf savedFFTs(channelSize, exp.NUM_CHAN); // save the FFT transformed channels
         int fftOutputSize = (channelSize / 2) + 1;
-        Eigen::MatrixXcd savedFFTs_FFTW(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
+        Eigen::MatrixXcf savedFFTs_FFTW(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
        
         // Container for pulling bytes from buffer (dataBuffer)
         vector<uint8_t> dataBytes;
 
 
         // FFT without sigpack
-        exp.p1 = fftw_plan_dft_r2c_1d(channelSize, ch1.data(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.col(0).data()), FFTW_ESTIMATE);
-        exp.p2 = fftw_plan_dft_r2c_1d(channelSize, ch2.data(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.col(1).data()), FFTW_ESTIMATE);
-        exp.p3 = fftw_plan_dft_r2c_1d(channelSize, ch3.data(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.col(2).data()), FFTW_ESTIMATE);
-        exp.p4 = fftw_plan_dft_r2c_1d(channelSize, ch4.data(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.col(3).data()), FFTW_ESTIMATE);
+        exp.p1 = fftwf_plan_dft_r2c_1d(channelSize, ch1.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(0).data()), FFTW_ESTIMATE);
+        exp.p2 = fftwf_plan_dft_r2c_1d(channelSize, ch2.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(1).data()), FFTW_ESTIMATE);
+        exp.p3 = fftwf_plan_dft_r2c_1d(channelSize, ch3.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(2).data()), FFTW_ESTIMATE);
+        exp.p4 = fftwf_plan_dft_r2c_1d(channelSize, ch4.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(3).data()), FFTW_ESTIMATE);
         
         // Create FIR filter objects
         exp.q1 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
@@ -326,7 +326,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
                     throw std::runtime_error(msg.str());
                 }
 
-                // Convert byte data to doubles
+                // Convert byte data to floats
                 
                 auto startCDTime = std::chrono::steady_clock::now();
                 ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
@@ -390,10 +390,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             
             auto beforeFFTW = std::chrono::steady_clock::now();
-            fftw_execute(exp.p1);
-            fftw_execute(exp.p2);
-            fftw_execute(exp.p3);
-            fftw_execute(exp.p4);
+            fftwf_execute(exp.p1);
+            fftwf_execute(exp.p2);
+            fftwf_execute(exp.p3);
+            fftwf_execute(exp.p4);
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
             cout << "Eigen FFTW: " << durationFFTW.count() << endl;
@@ -413,13 +413,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
             */
 
             auto beforeGCCW = std::chrono::steady_clock::now();
-            Eigen::VectorXd resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
             cout << "Eigen C GCC: " << durationGCCW.count() << endl;
             
 
-            Eigen::VectorXd DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
+            Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
             cout << "DOA_FFTs: " << DOAs.transpose() << endl;
             
             auto beforeW = std::chrono::steady_clock::now();
@@ -559,15 +559,15 @@ int main(int argc, char *argv[]) {
         }
         
         // Destroy FFT objects
-        fftw_destroy_plan(exp.p1);
-        fftw_destroy_plan(exp.p2);
-        fftw_destroy_plan(exp.p3);
-        fftw_destroy_plan(exp.p4);
+        fftwf_destroy_plan(exp.p1);
+        fftwf_destroy_plan(exp.p2);
+        fftwf_destroy_plan(exp.p3);
+        fftwf_destroy_plan(exp.p4);
         exp.p1 = nullptr;
         exp.p2 = nullptr;
         exp.p3 = nullptr;
         exp.p4 = nullptr;
-        fftw_destroy_plan(exp.ip1);
+        fftwf_destroy_plan(exp.ip1);
         exp.ip1 = nullptr;
 
         // Destroy FIR filter objects

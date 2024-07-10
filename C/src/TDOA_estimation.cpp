@@ -18,7 +18,7 @@ using std::cerr;
 using std::vector;
 
 
-Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, const int& interp, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
+Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& ip1, const int& interp, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     /**
     * @brief Computes the Generalized Cross-Correlation with Phase Transform (GCC-PHAT) between pairs of signals.
     *
@@ -32,15 +32,15 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
     * @return An Eigen vector of doubles containing the computed TDOA estimates for all unique pairs of signals.
     */
 
-    Eigen::VectorXd tauVector(6); // 4 channels produce 6 unique pairings
-    Eigen::VectorXcd SIG1(fftLength);
-    Eigen::VectorXcd SIG2(fftLength);
+    Eigen::VectorXf tauVector(6); // 4 channels produce 6 unique pairings
+    Eigen::VectorXcf SIG1(fftLength);
+    Eigen::VectorXcf SIG2(fftLength);
 
-    static Eigen::VectorXcd crossSpectraMagnitudeNorm(497);
-    static Eigen::VectorXd crossCorr(992);
+    static Eigen::VectorXcf crossSpectraMagnitudeNorm(497);
+    static Eigen::VectorXf crossCorr(992);
 
     if (ip1 == nullptr) {
-        ip1 = fftw_plan_dft_c2r_1d(992, reinterpret_cast<fftw_complex*>(crossSpectraMagnitudeNorm.data()), crossCorr.data(), FFTW_ESTIMATE);
+        ip1 = fftwf_plan_dft_c2r_1d(992, reinterpret_cast<fftwf_complex*>(crossSpectraMagnitudeNorm.data()), crossCorr.data(), FFTW_ESTIMATE);
     }
 
     int pairCounter = 0;
@@ -49,8 +49,8 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
             SIG1 = savedFFTs.col(sig1_ind);
             SIG2 = savedFFTs.col(sig2_ind);
 
-            Eigen::VectorXcd crossSpectra = SIG1.array() * SIG2.conjugate().array();
-            Eigen::VectorXd crossSpectraMagnitude = crossSpectra.cwiseAbs();
+            Eigen::VectorXcf crossSpectra = SIG1.array() * SIG2.conjugate().array();
+            Eigen::VectorXf crossSpectraMagnitude = crossSpectra.cwiseAbs();
             
             /*
             cout << "First 8 of crossSpectra";
@@ -66,7 +66,7 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
             cout << endl;
             */
             if ((crossSpectraMagnitude.array() == 0).any()) {
-                crossSpectraMagnitude = crossSpectraMagnitude.unaryExpr([](double x) { return x == 0 ? 1.0 : x; });
+                crossSpectraMagnitude = crossSpectraMagnitude.unaryExpr([](float x) { return x == 0 ? 1.0f : x; });
             }
 
             if ((crossSpectraMagnitude.array().isInf()).any()) {
@@ -77,13 +77,13 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
             crossSpectraMagnitudeNorm = crossSpectra.array() / crossSpectraMagnitude.array();
             
             
-            fftw_execute(ip1);
+            fftwf_execute(ip1);
 
             int maxShift = (interp * (992 / 2));
-            Eigen::VectorXd back = crossCorr.tail(maxShift);
-            Eigen::VectorXd front = crossCorr.head(maxShift);
+            Eigen::VectorXf back = crossCorr.tail(maxShift);
+            Eigen::VectorXf front = crossCorr.head(maxShift);
 
-            Eigen::VectorXd crossCorrInverted(maxShift * 2);
+            Eigen::VectorXf crossCorrInverted(maxShift * 2);
             crossCorrInverted << back, front;
 
             //double shift = static_cast<double>((crossCorrInverted.array().abs()).maxCoeff() - maxShift);
@@ -98,7 +98,7 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
     }
     return tauVector;
 }
-Eigen::VectorXd DOA_EstimateVerticalArray(Eigen::VectorXd& TDOAs, const double& soundSpeed, vector<double>& chanSpacing) {
+Eigen::VectorXf DOA_EstimateVerticalArray(Eigen::VectorXf& TDOAs, const double& soundSpeed, vector<float>& chanSpacing) {
     /**
     * @brief Estimates the vertical direction of arrival (DOA) using time difference of arrivals (TDOAs) 
     * between microphone channels in an array.
@@ -110,15 +110,15 @@ Eigen::VectorXd DOA_EstimateVerticalArray(Eigen::VectorXd& TDOAs, const double& 
     * @return Eigen::VectorXd Array containing the estimated vertical DOA angles in degrees.
     */
     
-    Eigen::VectorXd vals = (TDOAs * soundSpeed).array(); // calculate the distance differences and normalize
+    Eigen::VectorXf vals = (TDOAs * soundSpeed).array(); // calculate the distance differences and normalize
     
     // Convert std::vector<double> to Eigen::VectorXd
-    Eigen::VectorXd divisorEigen = Eigen::Map<Eigen::VectorXd>(chanSpacing.data(), chanSpacing.size());
+    Eigen::VectorXf divisorEigen = Eigen::Map<Eigen::VectorXf>(chanSpacing.data(), chanSpacing.size());
 
     // Perform element-wise division
     vals = vals.array() / divisorEigen.array();
-    double max = vals.array().abs().maxCoeff();
-    if (max > 1) {
+    float max = vals.array().abs().maxCoeff();
+    if (max > 1.0f) {
         std::cerr << "Out of bounds values: " << std::endl;
         std::cerr << vals.transpose() << std::endl; 
         std::cerr << "TDOAs: " << TDOAs.transpose() << std::endl;
@@ -129,7 +129,7 @@ Eigen::VectorXd DOA_EstimateVerticalArray(Eigen::VectorXd& TDOAs, const double& 
     vals = vals.array().min(1).max(-1);
 
     // Convert angle to degrees
-    return vals.array().acos() * 180.0 / M_PI;
+    return vals.array().acos() * 180.0f / 3.1415f;
 }
 
 /*

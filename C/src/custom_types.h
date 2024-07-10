@@ -52,17 +52,17 @@ struct Experiment {
     
     //arma::Col<int> chanSpacing = {1, 2, 3, 1, 2, 1};
     //Eigen::Matrix<int, Eigen::Dynamic, 1> chanSpacing(6);
-    vector<double> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
+    vector<float> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
     
     //void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;
-    void(*ProcessFncPtr)(std::vector<double>&, Eigen::Matrix<double, Eigen::Dynamic, 1>&, Eigen::Matrix<double, Eigen::Dynamic, 1>&, Eigen::Matrix<double, Eigen::Dynamic, 1>&, Eigen::Matrix<double, Eigen::Dynamic, 1>&, unsigned int&) = nullptr;
+    void(*ProcessFncPtr)(std::vector<float>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, unsigned int&) = nullptr;
 
-    fftw_plan p1 = nullptr;
-    fftw_plan p2 = nullptr;
-    fftw_plan p3 = nullptr;
-    fftw_plan p4 = nullptr;
+    fftwf_plan p1 = nullptr;
+    fftwf_plan p2 = nullptr;
+    fftwf_plan p3 = nullptr;
+    fftwf_plan p4 = nullptr;
 
-    fftw_plan ip1 = nullptr;
+    fftwf_plan ip1 = nullptr;
 
     firfilt_rrrf q1 = nullptr;
     firfilt_rrrf q2 = nullptr;
@@ -77,7 +77,7 @@ struct Session {
     
     std::queue<vector<uint8_t>> dataBuffer;
     vector<vector<uint8_t>> dataBytesSaved;
-    vector<double> dataSegment;
+    vector<float> dataSegment;
     vector<std::chrono::system_clock::time_point> dataTimes;
     std::mutex dataBufferLock;                       // For thread-safe buffer access
     
@@ -89,12 +89,12 @@ struct DetectionResult {
     int minPeakIndex = -1;
     int maxPeakIndex = -1;
     std::vector<std::chrono::system_clock::time_point> peakTimes;
-    std::vector<double> peakAmplitude;
+    std::vector<float> peakAmplitude;
     
     //std::vector<arma::Col<double>> tdoas;
     //std::vector<arma::Col<double>> doas;
-    std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1>> tdoas;
-    std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1>> doas;
+    std::vector<Eigen::Matrix<float, Eigen::Dynamic, 1>> tdoas;
+    std::vector<Eigen::Matrix<float, Eigen::Dynamic, 1>> doas;
     
 };
 

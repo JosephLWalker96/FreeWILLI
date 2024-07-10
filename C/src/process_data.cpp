@@ -19,7 +19,7 @@ using TimePoint = std::chrono::system_clock::time_point;
 
 
 
-void ConvertData(vector<double>& dataSegment, vector<uint8_t>& dataBytes, unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE) {
+void ConvertData(vector<float>& dataSegment, vector<uint8_t>& dataBytes, unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE) {
     /**
      * @brief Converts raw data bytes to double values and stores them in the provided data segment.
      * 
@@ -35,14 +35,14 @@ void ConvertData(vector<double>& dataSegment, vector<uint8_t>& dataBytes, unsign
      */
     
      for (size_t i = 0; i < DATA_SIZE; i += 2) {
-        double value = static_cast<double>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
-                       static_cast<double>(dataBytes[i + HEAD_SIZE + 1]);
+        float value = static_cast<float>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
+                       static_cast<float>(dataBytes[i + HEAD_SIZE + 1]);
         value -= 32768.0;
         dataSegment.push_back(value);
     }
 }
 
-DetectionResult ThresholdDetect(Eigen::VectorXd& data, std::vector<TimePoint>& times, const double& threshold, const unsigned int& SAMPLE_RATE) {
+DetectionResult ThresholdDetect(Eigen::VectorXf& data, std::vector<TimePoint>& times, const double& threshold, const unsigned int& SAMPLE_RATE) {
     /**
     * @brief Detects peaks in the input data above a specified threshold.
     *
@@ -59,7 +59,7 @@ DetectionResult ThresholdDetect(Eigen::VectorXd& data, std::vector<TimePoint>& t
     DetectionResult result{};
 
     int peakIndex = 0;
-    double peakAmplitude = data.maxCoeff(&peakIndex);
+    float peakAmplitude = data.maxCoeff(&peakIndex);
 
     if (peakAmplitude >= threshold) {
         result.minPeakIndex = peakIndex;
@@ -165,7 +165,7 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
 
 */
 
-void ProcessSegmentInterleaved(std::vector<double>& data, Eigen::VectorXd& ch1, Eigen::VectorXd& ch2, Eigen::VectorXd& ch3, Eigen::VectorXd& ch4, unsigned int& NUM_CHAN) {
+void ProcessSegmentInterleaved(std::vector<float>& data, Eigen::VectorXf& ch1, Eigen::VectorXf& ch2, Eigen::VectorXf& ch3, Eigen::VectorXf& ch4, unsigned int& NUM_CHAN) {
     /**
     * @brief Processes interleaved data into separate channel. Each channel's data is saved into a corresponding Eigen vector.
     * 

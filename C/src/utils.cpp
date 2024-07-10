@@ -204,7 +204,7 @@ bool WithProbability(double probability){
     double randomValue = dis(gen);
     return randomValue < probability;
 }
-void WritePulseAmplitudes(const vector<double>& clickPeakAmps, const vector<TimePoint>& timestamps, const string& filename) {
+void WritePulseAmplitudes(const vector<float>& clickPeakAmps, const vector<TimePoint>& timestamps, const string& filename) {
     /**
     * @brief Writes pulse amplitudes and corresponding timestamps to a file.
     *
@@ -239,7 +239,7 @@ void WritePulseAmplitudes(const vector<double>& clickPeakAmps, const vector<Time
     }
 }
 
-void WriteArray(const Eigen::VectorXd& array, const std::vector<TimePoint>& timestamps, const std::string& filename) {
+void WriteArray(const Eigen::VectorXf& array, const std::vector<TimePoint>& timestamps, const std::string& filename) {
     /**
     * @brief Writes pulse amplitudes and corresponding timestamps to a file.
     *
