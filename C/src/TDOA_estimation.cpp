@@ -73,7 +73,7 @@ Eigen::VectorXd GCC_PHAT_FFTW_E(Eigen::MatrixXcd& savedFFTs, fftw_plan& ip1, con
                 throw GCC_Value_Error("FFTW crossSpectraMagnitude contains inf value");
             } else if ((crossSpectraMagnitude.array().isNaN()).any()) {
                 throw GCC_Value_Error("FFTW crossSpectraMagnitude contains nan value");
-
+            }
             crossSpectraMagnitudeNorm = crossSpectra.array() / crossSpectraMagnitude.array();
             
             
