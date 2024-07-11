@@ -6,6 +6,7 @@
 //#include <eigen3/Eigen/Dense>
 #include <iostream>
 #include <iomanip> // for output formatting
+#include <ctime>
 
 #include "custom_types.h"
 #include "process_data.h"
@@ -41,6 +42,51 @@ void ConvertData(vector<float>& dataSegment, vector<uint8_t>& dataBytes, unsigne
         dataSegment.push_back(value);
     }
 }
+
+
+void GenerateTimestamps(vector<float>& dataTimes, vector<uint8_t>& dataBytes){
+
+    std::tm timeStruct{};                                     // Initialize a std::tm structure to hold the date and time components
+    timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
+    timeStruct.tm_mon = (int)dataBytes[1] - 1;                // Months are 0-indexed
+    timeStruct.tm_mday = (int)dataBytes[2];
+    timeStruct.tm_hour = (int)dataBytes[3];
+    timeStruct.tm_min = (int)dataBytes[4];
+    timeStruct.tm_sec = (int)dataBytes[5];
+
+    // Calculate microseconds from the given bytes by shifting and combining them
+    int64_t microSec = (static_cast<int64_t>(dataBytes[6]) << 24) +
+             (static_cast<int64_t>(dataBytes[7]) << 16) +
+             (static_cast<int64_t>(dataBytes[8]) << 8) +
+             static_cast<int64_t>(dataBytes[9]);
+                    
+    
+    // Use std::mktime to convert std::tm to std::time_t
+    std::time_t timeResult = std::mktime(&timeStruct);
+
+    // Check if mktime failed
+    if (timeResult == std::time_t(-1)) {
+        throw std::runtime_error("Error: failure in mktime \n");
+    }
+
+    auto currentTime = std::chrono::system_clock::from_time_t(timeResult);  // convert std::time_t to std::chrono::system_clock::time_point
+    currentTime += std::chrono::microseconds(microSec);
+    dataTimes.push_back(currentTime);
+
+    // Calculate the elapsed time in microseconds since the previous time point
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime).count();
+
+                
+
+    // Check if the previous time was set and if the elapsed time is not equal to the expected increment
+    if (previousTimeSet && (elapsedTime != exp.MICRO_INCR)){
+        std::stringstream msg; // compose message to dispatch
+        msg <<  "Error: Time not incremented by " <<  exp.MICRO_INCR << " " << elapsedTime << endl;
+        throw std::runtime_error(msg.str());
+    }
+}
+
+
 
 DetectionResult ThresholdDetect(Eigen::VectorXf& data, std::vector<TimePoint>& times, const double& threshold, const unsigned int& SAMPLE_RATE) {
     /**

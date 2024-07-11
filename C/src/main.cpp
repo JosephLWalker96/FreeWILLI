@@ -61,7 +61,6 @@ RESOURCES:
 #include <sys/socket.h>
 #include <unistd.h>
 #include <iomanip> //put_time
-#include <ctime>
 #include <cstdint>
 
 /*
@@ -257,65 +256,22 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
                 
                 
-                std::tm timeStruct{};                                     // Initialize a std::tm structure to hold the date and time components
-                timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
-                timeStruct.tm_mon = (int)dataBytes[1] - 1;                // Months are 0-indexed
-                timeStruct.tm_mday = (int)dataBytes[2];
-                timeStruct.tm_hour = (int)dataBytes[3];
-                timeStruct.tm_min = (int)dataBytes[4];
-                timeStruct.tm_sec = (int)dataBytes[5];
-
-                // Calculate microseconds from the given bytes by shifting and combining them
-                int64_t microSec = (static_cast<int64_t>(dataBytes[6]) << 24) +
-                         (static_cast<int64_t>(dataBytes[7]) << 16) +
-                         (static_cast<int64_t>(dataBytes[8]) << 8) +
-                         static_cast<int64_t>(dataBytes[9]);
-                                
-                
-                // Use std::mktime to convert std::tm to std::time_t
-                std::time_t timeResult = std::mktime(&timeStruct);
-
-                // Check if mktime failed
-                if (timeResult == std::time_t(-1)) {
-                    throw std::runtime_error("Error: failure in mktime \n");
-                }
-
-                auto currentTime = std::chrono::system_clock::from_time_t(timeResult);  // convert std::time_t to std::chrono::system_clock::time_point
-                currentTime += std::chrono::microseconds(microSec);
-                sess.dataTimes.push_back(currentTime);
-
-                // Calculate the elapsed time in microseconds since the previous time point
-                auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime).count();
-
-
-                /* 
-                 * conduct checks to data here:
-                 *
-                 */
-
-                // Check if the amount of bytes in packet is what is expected
-                if (dataBytes.size() != exp.PACKET_SIZE) {
-                    std::stringstream msg; // compose message to dispatch
-                    msg << "Error: incorrect number of bytes in packet: " <<  "PACKET_SIZE: " << exp.PACKET_SIZE << " dataBytes size: " << dataBytes.size() << endl;
-                    throw std::runtime_error(msg.str());
-                }
-                
-
-                // Check if the previous time was set and if the elapsed time is not equal to the expected increment
-                if (previousTimeSet && (elapsedTime != exp.MICRO_INCR)){
-                    std::stringstream msg; // compose message to dispatch
-                    msg <<  "Error: Time not incremented by " <<  exp.MICRO_INCR << " " << elapsedTime << endl;
-                    throw std::runtime_error(msg.str());
-                }
 
                 // Convert byte data to floats
                 
                 auto startCDTime = std::chrono::steady_clock::now();
                 ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
                 auto endCDTime = std::chrono::steady_clock::now();
-                auto durationCD = endCDTime - startCDTime;
+                std::chrono::duration<double> durationCD = endCDTime - startCDTime;
+                cout << "Convert data: " << durationCD.count() << endl;
                 
                 
+                // Check if the amount of bytes in packet is what is expected
+                if (dataBytes.size() != exp.PACKET_SIZE) {
+                    std::stringstream msg; // compose message to dispatch
+                    msg << "Error: incorrect number of bytes in packet: " <<  "PACKET_SIZE: " << exp.PACKET_SIZE << " dataBytes size: " << dataBytes.size() << endl;
+                    throw std::runtime_error(msg.str());
+                }
                 previousTime = currentTime;
                 previousTimeSet = true;
                 
@@ -365,7 +321,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
             cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
             
             
-            
             auto beforeFFTW = std::chrono::steady_clock::now();
             fftwf_execute(exp.fftCh1);
             fftwf_execute(exp.fftCh2);
@@ -375,20 +330,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
             cout << "Eigen FFTW: " << durationFFTW.count() << endl;
            
-            /*
-            cout << "First 10 values of ch1:" << std::endl;
-            for (int i = 0; i < std::min(channelSize, 10); ++i) {
-                std::cout << ch1(i) << " ";
-            }
-            cout << endl;
-
-            cout << "First 10 values of FFT ch1:" << std::endl;
-            for (int i = 0; i < std::min(channelSize, 10); ++i) {
-                std::cout << savedFFTs_FFTW(i,0) << " ";
-            }
-            cout << endl;
-            */
-
             auto beforeGCCW = std::chrono::steady_clock::now();
             Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.inverseFFT, exp.interp, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
@@ -463,7 +404,19 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 
 int main(int argc, char *argv[]) {
-    
+    #ifdef EIGEN_VECTORIZE
+    std::cout << "Vectorization is enabled" << std::endl;
+    #else
+    std::cout << "Vectorization is not enabled" << std::endl;
+    #endif
+
+    #ifdef EIGEN_VECTORIZE_SSE
+    std::cout << "SSE vectorization is enabled" << std::endl;
+    #endif
+
+    #ifdef EIGEN_VECTORIZE_AVX
+    std::cout << "AVX vectorization is enabled" << std::endl;
+    #endif
     // Declare a listening 'Session'
     Session sess;
     Experiment exp;
