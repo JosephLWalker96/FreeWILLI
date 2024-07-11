@@ -13,8 +13,8 @@ using TimePoint = std::chrono::system_clock::time_point;
 
 
 template <typename T>
-Eigen::VectorXd toEigenVector(const std::vector<T>& vec) {
-    Eigen::VectorXd eigenVec(vec.size());
+Eigen::VectorXf toEigenVector(const std::vector<T>& vec) {
+    Eigen::VectorXf eigenVec(vec.size());
     for (size_t i = 0; i < vec.size(); ++i) {
         eigenVec(i) = vec[i];
     }
@@ -48,42 +48,42 @@ TEST(GCCPHAT, InvalidValues) {
 
 TEST(DOA_EstimateVerticalArray, ValidDataMidRegion) {
     // Call the function under test
-    std::vector<double> chanSpacing = {1, 2, 3, 1, 2, 1};
-    Eigen::VectorXd TDOAs(6);
+    std::vector<float> chanSpacing = {1.0f, 2.0f, 3.0f, 1.0f, 2.0f, 1.0f};
+    Eigen::VectorXf TDOAs(6);
     
     for (int i = 0; i < chanSpacing.size(); i++) {
-        TDOAs(i) = chanSpacing[i] * 0.0001;
+        TDOAs(i) = chanSpacing[i] * 0.0001f;
     }
     Eigen::VectorXd DOAs(6);
-    DOAs << 81.37309, 81.37309, 81.37309, 81.37309, 81.37309, 81.37309; // Ground truth
-    Eigen::VectorXd DOAs_neg(6);
-    DOAs_neg << 98.6269, 98.6269, 98.6269, 98.6269, 98.6269, 98.6269; // Ground truth
+    DOAs << 81.37309f, 81.37309f, 81.37309f, 81.37309f, 81.37309f, 81.37309f; // Ground truth
+    Eigen::VectorXf DOAs_neg(6);
+    DOAs_neg << 98.6269f, 98.6269f, 98.6269f, 98.6269f, 98.6269f, 98.6269f; // Ground truth
 
-    Eigen::VectorXd DOAs_est_pos = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
+    Eigen::VectorXf DOAs_est_pos = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
     TDOAs = -1 * TDOAs;
-    Eigen::VectorXd DOAs_est_neg = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
+    Eigen::VectorXf DOAs_est_neg = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
   
     // Assert that the converted data matches the expectation
     for (int i = 0; i < DOAs.size(); i++) {
-        EXPECT_NEAR(DOAs(i), DOAs_est_pos(i), 0.0001); // Check if channels differ after filtering
-        EXPECT_NEAR(DOAs_neg(i), DOAs_est_neg(i), 0.0001); // Check if channels differ after filtering
+        EXPECT_NEAR(DOAs(i), DOAs_est_pos(i), 0.01f); // Check if channels differ after filtering
+        EXPECT_NEAR(DOAs_neg(i), DOAs_est_neg(i), 0.01f); // Check if channels differ after filtering
     }
 }
 
 TEST(DOA_EstimateVerticalArray, ValidDataBoundaries) {
     // Call the function under test
-    vector<double> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
-    Eigen::VectorXd TDOAs(chanSpacing.size());
+    vector<float> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
+    Eigen::VectorXf TDOAs(chanSpacing.size());
     
     for (int i = 0; i < chanSpacing.size(); i++) {
-        TDOAs(i) = chanSpacing[i] * 0.00066666;
+        TDOAs(i) = chanSpacing[i] * 0.00066666f;
     }
-    Eigen::VectorXd DOAs(6);
+    Eigen::VectorXf DOAs(6);
     DOAs << 0, 0, 0, 0, 0, 0; // Ground truth
 
-    Eigen::VectorXd DOAs_est_pos = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
+    Eigen::VectorXf DOAs_est_pos = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
     TDOAs = -1 * TDOAs;
-    Eigen::VectorXd DOAs_est_neg = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
+    Eigen::VectorXf DOAs_est_neg = DOA_EstimateVerticalArray(TDOAs, 1500.0, chanSpacing);
   
     // Assert that the converted data matches the expectation
     for (int i = 0; i < DOAs.size(); i++) {

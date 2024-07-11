@@ -10,6 +10,7 @@
 
 #include "custom_types.h"
 #include "process_data.h"
+#include "utils.h"
 
 using std::cout;
 using std::endl;
@@ -44,7 +45,7 @@ void ConvertData(vector<float>& dataSegment, vector<uint8_t>& dataBytes, unsigne
 }
 
 
-void GenerateTimestamps(vector<float>& dataTimes, vector<uint8_t>& dataBytes){
+void GenerateTimestamps(std::vector<TimePoint>& dataTimes, vector<uint8_t>& dataBytes,unsigned int MICRO_INCR, bool& previousTimeSet, std::chrono::time_point<std::chrono::system_clock>& previousTime, string& detectionOutputFile, string& tdoaOutputFile, string& doaOutputFile) {
 
     std::tm timeStruct{};                                     // Initialize a std::tm structure to hold the date and time components
     timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
@@ -79,10 +80,23 @@ void GenerateTimestamps(vector<float>& dataTimes, vector<uint8_t>& dataBytes){
                 
 
     // Check if the previous time was set and if the elapsed time is not equal to the expected increment
-    if (previousTimeSet && (elapsedTime != exp.MICRO_INCR)){
+    if (previousTimeSet && (elapsedTime != MICRO_INCR)){
         std::stringstream msg; // compose message to dispatch
-        msg <<  "Error: Time not incremented by " <<  exp.MICRO_INCR << " " << elapsedTime << endl;
+        msg <<  "Error: Time not incremented by " <<  MICRO_INCR << " " << elapsedTime << endl;
         throw std::runtime_error(msg.str());
+    }
+
+
+    previousTime = currentTime;
+    previousTimeSet = true;
+    
+    if ((detectionOutputFile).empty()){
+        string feature = "detection";
+        InitiateOutputFile(detectionOutputFile, timeStruct, microSec, feature);
+        feature = "tdoa";
+        InitiateOutputFile(tdoaOutputFile, timeStruct, microSec, feature);
+        feature = "doa";
+        InitiateOutputFile(doaOutputFile, timeStruct, microSec, feature);
     }
 }
 

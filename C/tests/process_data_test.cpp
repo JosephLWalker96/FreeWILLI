@@ -15,8 +15,8 @@ using TimePoint = std::chrono::system_clock::time_point;
 
 
 // Helper function to create sample data and timestamps
-std::pair<Eigen::VectorXd, std::vector<TimePoint>> CreateTestData(int size, double peakValue, int peakIndex) {
-  Eigen::VectorXd data(size);
+std::pair<Eigen::VectorXf, std::vector<TimePoint>> CreateTestData(int size, double peakValue, int peakIndex) {
+  Eigen::VectorXf data(size);
   data.setZero();
   data(peakIndex) = peakValue;
 
@@ -32,10 +32,10 @@ TEST(ConvertDataTest, ValidData) {
   std::vector<uint8_t> dataBytes = {0x80, 0x04,0x80, 0x0d,0x80, 0x0e}; // Sample data bytes (modify as needed)
   unsigned int DATA_SIZE = dataBytes.size();
   unsigned int HEAD_SIZE = 0;
-  std::vector<double> expectedResult = {4.0,13.0,14.0}; // Expected converted value (modify as needed)
+  std::vector<float> expectedResult = {4.0,13.0,14.0}; // Expected converted value (modify as needed)
 
   // Create an empty vector to store the converted data
-  std::vector<double> dataSegment;
+  std::vector<float> dataSegment;
 
   // Call the function under test
   ConvertData(dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE);
@@ -100,7 +100,7 @@ TEST(ThresholdDetectTest, NoPeak) {
   double threshold = 0.5;
   int dataSize = 100;
   auto testData = CreateTestData(dataSize, 0.2, 50); // Peak value below threshold
-  Eigen::VectorXd& data = testData.first;
+  Eigen::VectorXf& data = testData.first;
   std::vector<TimePoint>& times = testData.second;
 
   // Call ThresholdDetect
@@ -120,7 +120,7 @@ TEST(ThresholdDetectTest, SinglePeak) {
   double peakValue = 0.8;
   int peakIndex = 30;
   auto testData = CreateTestData(dataSize, peakValue, peakIndex);
-  Eigen::VectorXd& data = testData.first;
+  Eigen::VectorXf& data = testData.first;
   std::vector<TimePoint>& times = testData.second;
 
   // Call ThresholdDetect
@@ -130,7 +130,7 @@ TEST(ThresholdDetectTest, SinglePeak) {
   EXPECT_EQ(result.minPeakIndex, peakIndex);
   EXPECT_EQ(result.maxPeakIndex, peakIndex);
   EXPECT_EQ(result.peakAmplitude.size(), 1);
-  EXPECT_DOUBLE_EQ(result.peakAmplitude[0], peakValue);
+  EXPECT_FLOAT_EQ(result.peakAmplitude[0], peakValue);
 
   // Verify peak time is within expected range (adjust tolerance based on your TimePoint implementation)
   // auto expectedPeakTime = times[peakIndex] + std::chrono::microseconds((long)(peakIndex * 1e6) / SAMPLE_RATE);
@@ -144,10 +144,10 @@ TEST(ThresholdDetectTest, Infinity) {
   double peakValue = 0.8;
   int peakIndex = 30;
   auto testData = CreateTestData(dataSize, peakValue, peakIndex);
-  Eigen::VectorXd& data = testData.first;
+  Eigen::VectorXf& data = testData.first;
   std::vector<TimePoint>& times = testData.second;
 
-  data(peakIndex) = std::numeric_limits<double>::infinity();
+  data(peakIndex) = std::numeric_limits<float>::infinity();
 
   // Call ThresholdDetect
   DetectionResult result = ThresholdDetect(data, times, threshold, 100000);
@@ -156,7 +156,7 @@ TEST(ThresholdDetectTest, Infinity) {
   EXPECT_EQ(result.minPeakIndex, peakIndex);
   EXPECT_EQ(result.maxPeakIndex, peakIndex);
   EXPECT_EQ(result.peakAmplitude.size(), 1);
-  EXPECT_DOUBLE_EQ(result.peakAmplitude[0], std::numeric_limits<double>::infinity());
+  EXPECT_DOUBLE_EQ(result.peakAmplitude[0], std::numeric_limits<float>::infinity());
 
   // Verify peak time is within expected range (adjust tolerance based on your TimePoint implementation)
   // auto expectedPeakTime = times[peakIndex] + std::chrono::microseconds((long)(peakIndex * 1e6) / SAMPLE_RATE);

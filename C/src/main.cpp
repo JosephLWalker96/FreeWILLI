@@ -63,17 +63,6 @@ RESOURCES:
 #include <iomanip> //put_time
 #include <cstdint>
 
-/*
-#include <sigpack.h>
-#include <fftw/fftw.h>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Core>
-*/
-
-//#include <eigen3/Eigen/Dense>
-//#include <liquid/liquid.h>
-//#include <fftw3.h>
-
 #include "process_data.h"
 #include "TDOA_estimation.h"
 #include "utils.h"
@@ -138,18 +127,14 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
             if (packetCounter % printInterval == 0) {
                 endPacketTime = std::chrono::steady_clock::now();
                 durationPacketTime = endPacketTime - startPacketTime;
-                
                 std::stringstream msg; // compose message to dispatch
                 msg << "Num packets received is " <<  packetCounter << " " << durationPacketTime.count() / printInterval  
                     << " " << queueSize << " " << packetCounter - queueSize << " " << detectionCounter << endl;
-                
                 cout << msg.str(); // using one instance of "<<" makes the operation atomic
-                
                 startPacketTime = std::chrono::steady_clock::now();
             }
 
             if (queueSize > 1000) { // check if buffer has grown to an unacceptable size 
-                cout << "Buffer overflowing!! \n";
                 throw std::runtime_error("Buffer overflowing \n");
             }
                 
@@ -185,7 +170,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
     try {
         int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; // the number of samples per channel within a dataSegment
-        
 
         // Read filter weights from file 
         vector<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
@@ -215,7 +199,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
         // Container for pulling bytes from buffer (dataBuffer)
         vector<uint8_t> dataBytes;
 
-
         // FFT without sigpack
         exp.fftCh1 = fftwf_plan_dft_r2c_1d(channelSize, ch1.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(0).data()), FFTW_ESTIMATE);
         exp.fftCh2 = fftwf_plan_dft_r2c_1d(channelSize, ch2.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(1).data()), FFTW_ESTIMATE);
@@ -227,7 +210,6 @@ void DataProcessor(Session& sess, Experiment& exp) {
         exp.firFilterCh2 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
         exp.firFilterCh3 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
         exp.firFilterCh4 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        
         
         while (!sess.errorOccurred) {
             
@@ -254,39 +236,27 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 }
 
                 sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
-                
-                
 
                 // Convert byte data to floats
-                
                 auto startCDTime = std::chrono::steady_clock::now();
                 ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
                 auto endCDTime = std::chrono::steady_clock::now();
                 std::chrono::duration<double> durationCD = endCDTime - startCDTime;
-                cout << "Convert data: " << durationCD.count() << endl;
+                //cout << "Convert data: " << durationCD.count() << endl;
                 
-                
+                auto startTimestamps = std::chrono::steady_clock::now();
+                GenerateTimestamps(sess.dataTimes, dataBytes, exp.MICRO_INCR, previousTimeSet, previousTime , exp.detectionOutputFile, exp.tdoaOutputFile, exp.doaOutputFile);
+                auto endTimestamps = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationGenerate = endTimestamps - startTimestamps;
+                //cout << "durationGenerate: " << durationGenerate.count() << endl;
+
                 // Check if the amount of bytes in packet is what is expected
                 if (dataBytes.size() != exp.PACKET_SIZE) {
                     std::stringstream msg; // compose message to dispatch
                     msg << "Error: incorrect number of bytes in packet: " <<  "PACKET_SIZE: " << exp.PACKET_SIZE << " dataBytes size: " << dataBytes.size() << endl;
                     throw std::runtime_error(msg.str());
                 }
-                previousTime = currentTime;
-                previousTimeSet = true;
-                
-                if ((exp.detectionOutputFile).empty()){
-                    string feature = "detection";
-                    InitiateOutputFile(exp.detectionOutputFile, timeStruct, microSec, feature);
-                    feature = "tdoa";
-                    InitiateOutputFile(exp.tdoaOutputFile, timeStruct, microSec, feature);
-                    feature = "doa";
-                    InitiateOutputFile(exp.doaOutputFile, timeStruct, microSec, feature);
-                }
 
-                auto endLoop = std::chrono::steady_clock::now();
-                auto durationLoop = endLoop - startLoop;
-                //cout << "Loop duration: " << durationLoop.count() << endl;
             }
 
             /*
@@ -308,10 +278,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             detectionCounter++;
             
-
             // Liquid FIR filter
             auto beforeLFilter = std::chrono::steady_clock::now();
-            //FilterWithLiquidFIR(ch1, ch2, ch3, ch4, exp.firFilterCh1, exp.firFilterCh2, exp.firFilterCh3, exp.firFilterCh4);
             ApplyLiquidFIR(ch1, exp.firFilterCh1);
             ApplyLiquidFIR(ch2, exp.firFilterCh2);
             ApplyLiquidFIR(ch3, exp.firFilterCh3);
@@ -338,25 +306,25 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
 
             Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
-            cout << "DOA_FFTs: " << DOAs.transpose() << endl;
+            //cout << "DOA_FFTs: " << DOAs.transpose() << endl;
             
             auto beforeW = std::chrono::steady_clock::now();
             WritePulseAmplitudes(detResult.peakAmplitude, detResult.peakTimes, exp.detectionOutputFile);
             auto afterW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationW = afterW - beforeW;
-            cout << "Write: " << durationW.count() << endl;
+            //cout << "Write: " << durationW.count() << endl;
 
             auto beforeW1 = std::chrono::steady_clock::now();
             WriteArray(resultMatrix, detResult.peakTimes, exp.tdoaOutputFile);
             auto afterW1 = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationW1 = afterW1 - beforeW1;
-            cout << "Write1: " << durationW1.count() << endl;
+            //cout << "Write1: " << durationW1.count() << endl;
 
             auto beforeW2 = std::chrono::steady_clock::now();
             WriteArray(DOAs, detResult.peakTimes, exp.doaOutputFile);
             auto afterW2 = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationW2 = afterW2 - beforeW2;
-            cout << "Write:2 " << durationW2.count() << endl;
+            //cout << "Write:2 " << durationW2.count() << endl;
 
         }
     } 
@@ -366,14 +334,12 @@ void DataProcessor(Session& sess, Experiment& exp) {
         msg << e.what() << endl;
         cerr << msg.str();
         
-        /*        
         try {
            WriteDataToCerr(sess.dataTimes, sess.dataBytesSaved);
         }
         catch (...) {
             cerr << "failed to write data to cerr \n";
         }
-        */
         sess.errorOccurred = true;
     }
     catch (const std::ios_base::failure& e) {
@@ -385,11 +351,9 @@ void DataProcessor(Session& sess, Experiment& exp) {
     catch (const std::exception& e ) {
         cerr << "Error occured in data processor thread: \n";
 
-        
         std::stringstream msg; // compose message to dispatch
         msg << e.what() << endl;
         cerr << msg.str();
-
 
         try {
            WriteDataToCerr(sess.dataTimes, sess.dataBytesSaved);
