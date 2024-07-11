@@ -286,7 +286,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             ApplyLiquidFIR(ch4, exp.firFilterCh4);
             auto afterLFilter = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationLFilter = afterLFilter - beforeLFilter;
-            cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
+            //cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
             
             
             auto beforeFFTW = std::chrono::steady_clock::now();
@@ -296,13 +296,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
             fftwf_execute(exp.fftCh4);
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
-            cout << "Eigen FFTW: " << durationFFTW.count() << endl;
+            //cout << "Eigen FFTW: " << durationFFTW.count() << endl;
            
             auto beforeGCCW = std::chrono::steady_clock::now();
             Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.inverseFFT, exp.interp, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            cout << "Eigen C GCC: " << durationGCCW.count() << endl;
+            //cout << "Eigen C GCC: " << durationGCCW.count() << endl;
             
 
             Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
@@ -346,7 +346,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
         std::stringstream msg; // compose message to dispatch
         msg << e.what() << endl;
         cerr << msg.str();
-        std::exit(EXIT_FAILURE);
+        std::exit(1);
     }
     catch (const std::exception& e ) {
         cerr << "Error occured in data processor thread: \n";
@@ -368,19 +368,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 
 int main(int argc, char *argv[]) {
-    #ifdef EIGEN_VECTORIZE
-    std::cout << "Vectorization is enabled" << std::endl;
-    #else
-    std::cout << "Vectorization is not enabled" << std::endl;
-    #endif
-
-    #ifdef EIGEN_VECTORIZE_SSE
-    std::cout << "SSE vectorization is enabled" << std::endl;
-    #endif
-
-    #ifdef EIGEN_VECTORIZE_AVX
-    std::cout << "AVX vectorization is enabled" << std::endl;
-    #endif
+    
     // Declare a listening 'Session'
     Session sess;
     Experiment exp;
@@ -395,31 +383,16 @@ int main(int argc, char *argv[]) {
     int firmwareVersion = std::stoi(argv[3]);
     exp.energyDetThresh = std::stod(argv[4]);
 
-
     cout << "Listening to IP address " << sess.UDP_IP.c_str() << " and port " << sess.UDP_PORT << endl;
 
     //import variables according to firmware version specified
     cout << "Firmware version: " << firmwareVersion << endl;
-    if (firmwareVersion == 1550) {
-        const string path = "config_files/1550_config.txt";
-        if (ProcessFile(exp, path)) {
-            cout  << "Error: Unable to open config file: " << path  << endl;
-            return EXIT_FAILURE;
-        }
-        exp.ProcessFncPtr = ProcessSegmentInterleaved;
+    const string path = "config_files/" + std::to_string(firmwareVersion) + "_config.txt";
+    if (ProcessFile(exp, path)) {
+        cout  << "Error: Unable to open config file: " << path  << endl;
+        std::exit(1);
     }
-    else if (firmwareVersion == 1240) {
-        const string path = "config_files/1240_config.txt";
-        if (ProcessFile(exp, path)) {
-            cout  << "Error: Unable to open config file: " << path  << endl;
-            return EXIT_FAILURE;
-        }
-        exp.ProcessFncPtr = ProcessSegmentInterleaved;
-    }
-    else {
-        cerr << "ERROR: Unknown firmware version" << endl;
-        return EXIT_FAILURE;
-    }
+    exp.ProcessFncPtr = ProcessSegmentInterleaved;
     
     exp.NUM_PACKS_DETECT = (int)(exp.TIME_WINDOW * 100000 / exp.SAMPS_PER_CHANNEL);
     exp.DATA_SEGMENT_LENGTH = exp.NUM_PACKS_DETECT * exp.SAMPS_PER_CHANNEL * exp.NUM_CHAN; 
@@ -431,7 +404,6 @@ int main(int argc, char *argv[]) {
     cout << "Time between packets:   " << exp.MICRO_INCR              << endl;
     cout << "Number of channels:     " << exp.NUM_CHAN                << endl;
     cout << "Data bytes per channel: " << exp.DATA_BYTES_PER_CHANNEL  << endl;
-    cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
 
 
