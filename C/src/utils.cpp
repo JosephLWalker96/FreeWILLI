@@ -231,16 +231,16 @@ void WritePulseAmplitudes(const vector<float>& clickPeakAmps, const vector<TimeP
             outfile << time_since_epoch.count() << std::setw(20) << clickPeakAmps[i] << endl;
         }
 
-        outfile.close();
     } 
     else {
         std::stringstream msg; // compose message to dispatch
         msg << "Error: Could not open file " << filename << endl;
         cerr << msg.str();
     }
+    outfile.close();
 }
 
-void WriteArray(const Eigen::VectorXf& array, const std::vector<TimePoint>& timestamps, const std::string& filename) {
+void WriteArray(const std::vector<Eigen::VectorXf>& array, const std::vector<TimePoint>& timestamps, const std::string& filename) {
     /**
     * @brief Writes pulse amplitudes and corresponding timestamps to a file.
     *
@@ -260,20 +260,24 @@ void WriteArray(const Eigen::VectorXf& array, const std::vector<TimePoint>& time
         */
         
         // Write data rows
-        auto time_point = timestamps[0];
-        auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
-        outfile << time_since_epoch.count() << std::setw(20);
-        for (int i = 0; i < array.size(); ++i) {
-            outfile << array[i] << " ";
+        
+        for (int row = 0; row < array.size(); row++){
+            auto time_point = timestamps[row];
+            auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
+            
+            outfile << time_since_epoch.count() << std::setw(20);
+            for (int i = 0; i < array[row].size(); ++i) {
+                outfile << array[row][i] << " ";
+            }
+            outfile << std::endl;
         }
-        outfile << std::endl;
 
-        outfile.close();
     } else {
         std::stringstream msg; // compose message to dispatch
         msg << "Error: Could not open file " << filename << std::endl;
         std::cerr << msg.str();
     }
+    outfile.close();
 }
 
 void WriteDataToCerr(vector<TimePoint>& dataTimes, vector<vector<uint8_t>>& dataBytesSaved){

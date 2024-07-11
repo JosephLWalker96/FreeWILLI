@@ -109,8 +109,7 @@ TEST(ThresholdDetectTest, NoPeak) {
   // Verify no peak detected
   EXPECT_EQ(result.minPeakIndex, -1);
   EXPECT_EQ(result.maxPeakIndex, -1);
-  EXPECT_TRUE(result.peakAmplitude.empty());
-  EXPECT_TRUE(result.peakTimes.empty());
+  EXPECT_EQ(result.peakAmplitude, 0);
 }
 
 TEST(ThresholdDetectTest, SinglePeak) {
@@ -129,8 +128,7 @@ TEST(ThresholdDetectTest, SinglePeak) {
   // Verify peak information is correct
   EXPECT_EQ(result.minPeakIndex, peakIndex);
   EXPECT_EQ(result.maxPeakIndex, peakIndex);
-  EXPECT_EQ(result.peakAmplitude.size(), 1);
-  EXPECT_FLOAT_EQ(result.peakAmplitude[0], peakValue);
+  EXPECT_FLOAT_EQ(result.peakAmplitude, peakValue);
 
   // Verify peak time is within expected range (adjust tolerance based on your TimePoint implementation)
   // auto expectedPeakTime = times[peakIndex] + std::chrono::microseconds((long)(peakIndex * 1e6) / SAMPLE_RATE);
@@ -155,8 +153,7 @@ TEST(ThresholdDetectTest, Infinity) {
   // Verify peak information is correct
   EXPECT_EQ(result.minPeakIndex, peakIndex);
   EXPECT_EQ(result.maxPeakIndex, peakIndex);
-  EXPECT_EQ(result.peakAmplitude.size(), 1);
-  EXPECT_DOUBLE_EQ(result.peakAmplitude[0], std::numeric_limits<float>::infinity());
+  EXPECT_DOUBLE_EQ(result.peakAmplitude, std::numeric_limits<float>::infinity());
 
   // Verify peak time is within expected range (adjust tolerance based on your TimePoint implementation)
   // auto expectedPeakTime = times[peakIndex] + std::chrono::microseconds((long)(peakIndex * 1e6) / SAMPLE_RATE);

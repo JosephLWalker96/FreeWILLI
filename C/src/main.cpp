@@ -210,6 +210,11 @@ void DataProcessor(Session& sess, Experiment& exp) {
         exp.firFilterCh2 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
         exp.firFilterCh3 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
         exp.firFilterCh4 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+
+        // set the frequency of file writes
+        const std::chrono::milliseconds FLUSH_INTERVAL(1000);
+        const size_t BUFFER_SIZE_THRESHOLD = 1000; // Adjust as needed
+        auto lastFlushTime = std::chrono::steady_clock::now();
         
         while (!sess.errorOccurred) {
             
@@ -308,24 +313,41 @@ void DataProcessor(Session& sess, Experiment& exp) {
             Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
             //cout << "DOA_FFTs: " << DOAs.transpose() << endl;
             
-            auto beforeW = std::chrono::steady_clock::now();
-            WritePulseAmplitudes(detResult.peakAmplitude, detResult.peakTimes, exp.detectionOutputFile);
-            auto afterW = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationW = afterW - beforeW;
-            //cout << "Write: " << durationW.count() << endl;
 
-            auto beforeW1 = std::chrono::steady_clock::now();
-            WriteArray(resultMatrix, detResult.peakTimes, exp.tdoaOutputFile);
-            auto afterW1 = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationW1 = afterW1 - beforeW1;
-            //cout << "Write1: " << durationW1.count() << endl;
+            sess.peakAmplitudeBuffer.push_back(detResult.peakAmplitude);
+            sess.peakTimesBuffer.push_back(detResult.peakTimes);
+            sess.resultMatrixBuffer.push_back(resultMatrix);
+            sess.DOAsBuffer.push_back(DOAs);
 
-            auto beforeW2 = std::chrono::steady_clock::now();
-            WriteArray(DOAs, detResult.peakTimes, exp.doaOutputFile);
-            auto afterW2 = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationW2 = afterW2 - beforeW2;
-            //cout << "Write:2 " << durationW2.count() << endl;
+            auto currentTime = std::chrono::steady_clock::now();
+            if (sess.peakAmplitudeBuffer.size() >= BUFFER_SIZE_THRESHOLD) {//|| currentTime - lastFlushTime >= FLUSH_INTERVAL) {
+                cout << "Flushing buffers of length: " << sess.peakAmplitudeBuffer.size() << endl;
 
+                auto beforeW = std::chrono::steady_clock::now();
+                WritePulseAmplitudes(sess.peakAmplitudeBuffer, sess.peakTimesBuffer, exp.detectionOutputFile);
+                auto afterW = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationW = afterW - beforeW;
+                cout << "Write: " << durationW.count() << endl;
+
+                auto beforeW1 = std::chrono::steady_clock::now();
+                WriteArray(sess.resultMatrixBuffer, sess.peakTimesBuffer, exp.tdoaOutputFile);
+                auto afterW1 = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationW1 = afterW1 - beforeW1;
+                cout << "Write1: " << durationW1.count() << endl;
+
+                auto beforeW2 = std::chrono::steady_clock::now();
+                WriteArray(sess.DOAsBuffer, sess.peakTimesBuffer, exp.doaOutputFile);
+                auto afterW2 = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationW2 = afterW2 - beforeW2;
+                cout << "Write:2 " << durationW2.count() << endl;
+                
+                lastFlushTime = currentTime;
+                sess.peakAmplitudeBuffer.clear();
+                sess.peakTimesBuffer.clear();
+                sess.resultMatrixBuffer.clear();
+                sess.DOAsBuffer.clear();
+            
+            }
         }
     } 
     catch (const GCC_Value_Error& e) {

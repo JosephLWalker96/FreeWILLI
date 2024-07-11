@@ -15,6 +15,7 @@
 
 using std::vector;
 using std::string;
+using TimePoint = std::chrono::system_clock::time_point;
 
 class GCC_Value_Error : public std::runtime_error {
 public:
@@ -76,6 +77,11 @@ struct Session {
     vector<std::chrono::system_clock::time_point> dataTimes;
     std::mutex dataBufferLock;                       // For thread-safe buffer access
     
+    vector<float>           peakAmplitudeBuffer;
+    vector<TimePoint>       peakTimesBuffer;
+    vector<Eigen::VectorXf> resultMatrixBuffer;
+    vector<Eigen::VectorXf> DOAsBuffer;
+    
     string UDP_IP;             // IP address of data logger or simulator
 };
 
@@ -83,10 +89,10 @@ struct Session {
 struct DetectionResult {
     int minPeakIndex = -1;
     int maxPeakIndex = -1;
-    std::vector<std::chrono::system_clock::time_point> peakTimes;
-    std::vector<float> peakAmplitude;
+    std::chrono::system_clock::time_point peakTimes;
+    float peakAmplitude;
     
-    std::vector<Eigen::Matrix<float, Eigen::Dynamic, 1>> tdoas;
-    std::vector<Eigen::Matrix<float, Eigen::Dynamic, 1>> doas;
+    //std::vector<Eigen::Matrix<float, Eigen::Dynamic, 1>> tdoas;
+    //std::vector<Eigen::Matrix<float, Eigen::Dynamic, 1>> doas;
 };
 

@@ -124,10 +124,10 @@ DetectionResult ThresholdDetect(Eigen::VectorXf& data, std::vector<TimePoint>& t
     if (peakAmplitude >= threshold) {
         result.minPeakIndex = peakIndex;
         result.maxPeakIndex = peakIndex;
-        result.peakAmplitude.push_back(peakAmplitude);
+        result.peakAmplitude = peakAmplitude;
         unsigned int microseconds = peakIndex * (1e6 / SAMPLE_RATE);
         auto maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
-        result.peakTimes.push_back(maxPeakTime);
+        result.peakTimes = maxPeakTime;
     }
     return result;
 }
