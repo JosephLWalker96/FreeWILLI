@@ -355,7 +355,11 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
             // Liquid FIR filter
             auto beforeLFilter = std::chrono::steady_clock::now();
-            FilterWithLiquidFIR(ch1, ch2, ch3, ch4, exp.firFilterCh1, exp.firFilterCh2, exp.firFilterCh3, exp.firFilterCh4);
+            //FilterWithLiquidFIR(ch1, ch2, ch3, ch4, exp.firFilterCh1, exp.firFilterCh2, exp.firFilterCh3, exp.firFilterCh4);
+            ApplyLiquidFIR(ch1, exp.firFilterCh1);
+            ApplyLiquidFIR(ch2, exp.firFilterCh2);
+            ApplyLiquidFIR(ch3, exp.firFilterCh3);
+            ApplyLiquidFIR(ch4, exp.firFilterCh4);
             auto afterLFilter = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationLFilter = afterLFilter - beforeLFilter;
             cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
