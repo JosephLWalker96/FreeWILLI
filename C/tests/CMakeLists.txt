@@ -16,8 +16,6 @@ FetchContent_MakeAvailable(googletest)
 add_executable(UnitTests filters_test.cpp process_data_test.cpp TDOA_estimation_test.cpp utils_test.cpp)
 
 # Finding and linking external libraries
-find_package(Armadillo REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
-
 find_package(LAPACK REQUIRED)
 
 find_library(LIQUID_LIBRARIES NAMES liquid REQUIRED)

@@ -1,6 +1,4 @@
 #include "filters.h"
-#include <cmath>
-#include <cstdlib>
 
 void FilterWithLiquidFIR(Eigen::VectorXf& ch1, Eigen::VectorXf& ch2, Eigen::VectorXf& ch3, Eigen::VectorXf& ch4, 
                          firfilt_rrrf& firFilterCh1, firfilt_rrrf& firFilterCh2, firfilt_rrrf& firFilterCh3, firfilt_rrrf& firFilterCh4) {

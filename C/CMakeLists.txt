@@ -5,6 +5,10 @@ project(HarpListen VERSION 1.0)
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 
+#####add_subdirectory(${PROJECT_SOURCE_DIR}/libs/sigpack)
+add_subdirectory(${PROJECT_SOURCE_DIR}/src)
+set(TEST_ON_RASPBERRY_PI_ZERO FALSE)
+
 # Add a check for empty CMAKE_SYSTEM_NAME
 if (NOT CMAKE_SYSTEM_NAME)
     message(FATAL_ERROR "CMAKE_SYSTEM_NAME is not set. Please check your CMake configuration.")
@@ -41,20 +45,23 @@ endif()
 
 if(MACOSX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=apple-m1 -O3 -flto=auto")
+    add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 elseif(UBUNTU)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -O3 -flto=auto")
+    add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 elseif(RASPBERRY_PI_4)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -O3 -flto=auto")
+    add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 elseif(RASPBERRY_PI_ZERO)
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=cortex-a53 -O3 -flto=auto")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -O3 -flto=auto")
+    if(TEST_ON_RASPBERRY_PI_ZERO FALSE)
+        add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
+    endif ()
 else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -O3 -flto=auto")
+    add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 endif()
 
 # Print the compile flags
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
-
-#####add_subdirectory(${PROJECT_SOURCE_DIR}/libs/sigpack)
-add_subdirectory(${PROJECT_SOURCE_DIR}/src)
-add_subdirectory(${PROJECT_SOURCE_DIR}/tests)

@@ -1,17 +1,7 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <queue>
-#include <chrono>
-#include <mutex>
-#include <atomic>
+#include "pch.h"
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <eigen3/Eigen/Dense>
-#include <liquid/liquid.h>
-#include <fftw3.h>
 
 using std::vector;
 using std::string;

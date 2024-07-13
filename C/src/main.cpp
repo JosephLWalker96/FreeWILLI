@@ -42,31 +42,28 @@ RESOURCES:
 */
 
 #include "custom_types.h"
-
-#include <cstddef>
 #include <iostream>
 #include <cstring>
-#include <cstdio>
 #include <ostream>
 #include <string>
-#include <fstream>
-#include <mutex>
 #include <thread>
 #include <vector>
-#include <chrono>
 #include <atomic>
 #include <stdexcept>
-#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <unistd.h>
-#include <iomanip> //put_time
 #include <cstdint>
-
 #include "process_data.h"
 #include "TDOA_estimation.h"
 #include "utils.h"
 #include "filters.h"
+
+
+//#include "pch.h"
+//#include "process_data.h"
+//#include "TDOA_estimation.h"
+//#include "utils.h"
+//#include "filters.h"
 
 using std::cout;
 using std::cin;

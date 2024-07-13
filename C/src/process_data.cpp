@@ -1,16 +1,4 @@
-#include <vector>
-#include <cmath>
-#include <cstdlib>
-#include <fstream>
-#include <chrono>
-//#include <eigen3/Eigen/Dense>
-#include <iostream>
-#include <iomanip> // for output formatting
-#include <ctime>
-
-#include "custom_types.h"
 #include "process_data.h"
-#include "utils.h"
 
 using std::cout;
 using std::endl;

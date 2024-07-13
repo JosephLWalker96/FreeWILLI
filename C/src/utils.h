@@ -6,10 +6,13 @@ This file contains all function prototypes for utils.cpp
 
 #pragma once
 
+//#include "pch.h"
 #include "custom_types.h"
-#include <iostream>
-#include <string>
 #include <random>
+#include <sstream>
+#include <fstream>
+#include <iomanip>
+#include <unistd.h>
 
 using std::string;
 using std::vector;
