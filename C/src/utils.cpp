@@ -8,6 +8,7 @@
 #include <random>
 #include <iomanip> //std::setw
 #include "utils.h"
+#include <unistd.h>
 //#include <eigen3/Eigen/Dense>
 
 using std::cerr;
