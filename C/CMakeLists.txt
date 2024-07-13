@@ -63,5 +63,17 @@ else()
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 endif()
 
+# Set a default configuration for MAKEFLAGS if using Unix Makefiles
+if(CMAKE_GENERATOR STREQUAL "Unix Makefiles")
+    set(ENV{MAKEFLAGS} "-j8")
+endif()
+if(CMAKE_GENERATOR STREQUAL "Ninja")
+    add_compile_options(-j8)  # This is generally not needed as Ninja handles this well
+endif()
+# For Microsoft Visual Studio
+if(MSVC)
+    add_compile_options(/MP)
+endif()
+
 # Print the compile flags
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
