@@ -10,7 +10,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <eigen3/Eigen/Dense>
-//#include <liquid/liquid.h>
 #include <fftw3.h>
 
 using std::vector;
@@ -19,7 +18,6 @@ using TimePoint = std::chrono::system_clock::time_point;
 
 class GCC_Value_Error : public std::runtime_error {
 public:
-  // Constructor with a string argument for the error message
   GCC_Value_Error(const std::string& message) : std::runtime_error(message) {}
 };
 
@@ -59,11 +57,6 @@ struct Experiment {
     fftwf_plan fftCh4 = nullptr;
 
     fftwf_plan inverseFFT = nullptr;
-
-    //firfilt_rrrf firFilterCh1 = nullptr; // liquid FIR filter object for channel 1
-    //firfilt_rrrf firFilterCh2 = nullptr;
-    //firfilt_rrrf firFilterCh3 = nullptr;
-    //firfilt_rrrf firFilterCh4 = nullptr;
 };
 
 struct Session {
@@ -91,8 +84,5 @@ struct DetectionResult {
     int maxPeakIndex = -1;
     std::chrono::system_clock::time_point peakTimes;
     float peakAmplitude;
-    
-    //std::vector<Eigen::Matrix<float, Eigen::Dynamic, 1>> tdoas;
-    //std::vector<Eigen::Matrix<float, Eigen::Dynamic, 1>> doas;
 };
 
