@@ -13,15 +13,15 @@ set(INSTALL_GTEST ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 # Create the test executable
-add_executable(UnitTests filters_test.cpp process_data_test.cpp TDOA_estimation_test.cpp utils_test.cpp)
+add_executable(UnitTests process_data_test.cpp TDOA_estimation_test.cpp utils_test.cpp)
 
 # Finding and linking external libraries
-find_package(Armadillo REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
+#find_package(Armadillo REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
 
 find_package(LAPACK REQUIRED)
 
-find_library(LIQUID_LIBRARIES NAMES liquid REQUIRED)
-find_path(LIQUID_INCLUDE_DIRS NAMES liquid.h REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
+#find_library(LIQUID_LIBRARIES NAMES liquid REQUIRED)
+#find_path(LIQUID_INCLUDE_DIRS NAMES liquid.h REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
 
 find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)
 find_path(FFTW_INCLUDE_DIRS NAMES fftw3.h REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
@@ -32,8 +32,6 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 
 # Include directories properly set
 target_include_directories(UnitTests PRIVATE
-  ${ARMADILLO_INCLUDE_DIRS}
-  ${LIQUID_INCLUDE_DIRS}
   ${FFTW_INCLUDE_DIRS}
   ${gtest_SOURCE_DIR}/include  # Only needed if GoogleTest is built from source
 )
@@ -42,9 +40,7 @@ target_include_directories(UnitTests PRIVATE
 target_link_libraries(UnitTests PRIVATE
   gtest_main
   MainLib
-  ${ARMADILLO_LIBRARIES}
   ${LAPACK_LIBRARIES}
-  ${LIQUID_LIBRARIES}
   ${FFTW_LIBRARIES}
   ${BLAS_LIBRARIES}
   Eigen3::Eigen

@@ -1,4 +1,4 @@
-add_library(MainLib STATIC filters.cpp process_data.cpp TDOA_estimation.cpp utils.cpp)
+add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp)
 
 add_executable(HarpListen main.cpp)
 
@@ -26,13 +26,13 @@ message(STATUS "LAPACK include dirs: ${LAPACK_INCLUDE_DIRS}")
 target_link_libraries(HarpListen PRIVATE ${LAPACK_LIBRARIES})
 
 # Liquid
-find_library(LIQUID_LIBRARIES NAMES liquid REQUIRED)
-message(STATUS "LIQUID libraries: ${LIQUID_LIBRARIES}")
-target_link_libraries(HarpListen PRIVATE ${LIQUID_LIBRARIES})
+#find_library(LIQUID_LIBRARIES NAMES liquid REQUIRED)
+#message(STATUS "LIQUID libraries: ${LIQUID_LIBRARIES}")
+#target_link_libraries(HarpListen PRIVATE ${LIQUID_LIBRARIES})
 
-find_path(LIQUID_INCLUDE_DIRS NAMES liquid REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
-message(STATUS "LIQUID include dirs: ${LIQUID_INCLUDE_DIRS}")
-include_directories(HarpListen PRIVATE ${LIQUID_INCLUDE_DIRS})
+#find_path(LIQUID_INCLUDE_DIRS NAMES liquid REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
+#message(STATUS "LIQUID include dirs: ${LIQUID_INCLUDE_DIRS}")
+#include_directories(HarpListen PRIVATE ${LIQUID_INCLUDE_DIRS})
 
 # FFTW3
 find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)

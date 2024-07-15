@@ -66,7 +66,6 @@ RESOURCES:
 #include "process_data.h"
 #include "TDOA_estimation.h"
 #include "utils.h"
-#include "filters.h"
 
 using std::cout;
 using std::cin;
@@ -233,10 +232,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
         exp.fftCh4 = fftwf_plan_dft_r2c_1d(paddedLength, ch4.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(3).data()), FFTW_ESTIMATE);
         
         // Create FIR filter objects
-        exp.firFilterCh1 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        exp.firFilterCh2 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        exp.firFilterCh3 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        exp.firFilterCh4 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        //exp.firFilterCh1 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        //exp.firFilterCh2 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        //exp.firFilterCh3 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
+        //exp.firFilterCh4 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
 
         // set the frequency of file writes
         const std::chrono::milliseconds FLUSH_INTERVAL(1000);
@@ -521,14 +520,14 @@ int main(int argc, char *argv[]) {
         exp.inverseFFT = nullptr;
 
         // Destroy FIR filter objects
-        firfilt_rrrf_destroy(exp.firFilterCh1);
-        firfilt_rrrf_destroy(exp.firFilterCh2);
-        firfilt_rrrf_destroy(exp.firFilterCh3);
-        firfilt_rrrf_destroy(exp.firFilterCh4);
-        exp.firFilterCh1 = nullptr;
-        exp.firFilterCh2 = nullptr;
-        exp.firFilterCh3 = nullptr;
-        exp.firFilterCh4 = nullptr;
+        //firfilt_rrrf_destroy(exp.firFilterCh1);
+        //firfilt_rrrf_destroy(exp.firFilterCh2);
+        //firfilt_rrrf_destroy(exp.firFilterCh3);
+        //firfilt_rrrf_destroy(exp.firFilterCh4);
+        //exp.firFilterCh1 = nullptr;
+        //exp.firFilterCh2 = nullptr;
+        //exp.firFilterCh3 = nullptr;
+        //exp.firFilterCh4 = nullptr;
 
         sess.errorOccurred = false;
     }

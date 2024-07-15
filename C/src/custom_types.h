@@ -10,7 +10,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <eigen3/Eigen/Dense>
-#include <liquid/liquid.h>
+//#include <liquid/liquid.h>
 #include <fftw3.h>
 
 using std::vector;
@@ -60,10 +60,10 @@ struct Experiment {
 
     fftwf_plan inverseFFT = nullptr;
 
-    firfilt_rrrf firFilterCh1 = nullptr; // liquid FIR filter object for channel 1
-    firfilt_rrrf firFilterCh2 = nullptr;
-    firfilt_rrrf firFilterCh3 = nullptr;
-    firfilt_rrrf firFilterCh4 = nullptr;
+    //firfilt_rrrf firFilterCh1 = nullptr; // liquid FIR filter object for channel 1
+    //firfilt_rrrf firFilterCh2 = nullptr;
+    //firfilt_rrrf firFilterCh3 = nullptr;
+    //firfilt_rrrf firFilterCh4 = nullptr;
 };
 
 struct Session {
