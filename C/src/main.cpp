@@ -1,5 +1,4 @@
 /*
-
 DESCRIPTION:
 @file main.cpp
  @brief A program for receiving and processing UDP packets in real-time.
@@ -42,22 +41,25 @@ RESOURCES:
 */
 
 #include "custom_types.h"
+
+/*
 #include <iostream>
 #include <cstring>
 #include <ostream>
 #include <string>
-#include <thread>
 #include <vector>
+#include <thread>
 #include <atomic>
 #include <stdexcept>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <cstdint>
+*/
+
 #include "process_data.h"
 #include "TDOA_estimation.h"
 #include "utils.h"
 #include "filters.h"
-
 
 //#include "pch.h"
 //#include "process_data.h"
@@ -72,7 +74,6 @@ using std::string;
 using std::cerr;
 using std::vector;
 using namespace std::chrono_literals;
-
 
 // Global variables (used for manual testing and logging to console)
 int packetCounter = 0; // this should only be used inside the UDPListener function, as it is not protected by a mutex

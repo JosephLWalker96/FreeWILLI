@@ -6,8 +6,7 @@ This file contains all function prototypes for process_data.cpp
 
 #pragma once
 
-#include "pch.h"
-#include "utils.h"
+#include "custom_types.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 

@@ -1,11 +1,9 @@
 #include "TDOA_estimation.h"
 
-
 using std::cout;
 using std::endl;
 using std::cerr;
 using std::vector;
-
 
 Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFFT, const int& interp, int& channelLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     /**
