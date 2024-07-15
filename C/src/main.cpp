@@ -177,6 +177,9 @@ void DataProcessor(Session& sess, Experiment& exp) {
         // Convert filter coefficients to float
         vector<float> filterWeightsFloat(filterWeights.begin(), filterWeights.end());        
         
+
+
+
         // Declare time checking variables
         bool previousTimeSet = false;
         auto previousTime = std::chrono::time_point<std::chrono::system_clock>::min();
@@ -186,24 +189,48 @@ void DataProcessor(Session& sess, Experiment& exp) {
         // pre-allocate memory for vectors
         sess.dataSegment.reserve(exp.DATA_SEGMENT_LENGTH);
         sess.dataTimes.reserve(exp.NUM_PACKS_DETECT);
-        
-        static Eigen::VectorXf ch1(channelSize);
-        static Eigen::VectorXf ch2(channelSize);
-        static Eigen::VectorXf ch3(channelSize);
-        static Eigen::VectorXf ch4(channelSize);
 
-        int fftOutputSize = (channelSize / 2) + 1;
-        Eigen::MatrixXcf savedFFTs(channelSize, exp.NUM_CHAN); // save the FFT transformed channels
+        int paddedLength = filterWeightsFloat.size() + channelSize - 1;
+        int fftOutputSize = (paddedLength / 2) + 1;
+        cout << "Lengths: " << paddedLength << " " << fftOutputSize << endl;
+
+        static Eigen::VectorXf ch1(paddedLength);
+        static Eigen::VectorXf ch2(paddedLength);
+        static Eigen::VectorXf ch3(paddedLength);
+        static Eigen::VectorXf ch4(paddedLength);
+        
+        Eigen::MatrixXcf savedFFTs(paddedLength, exp.NUM_CHAN); // save the FFT transformed channels
         Eigen::MatrixXcf savedFFTs_FFTW(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
+        
+
+        /* Zero-pad filter weights to the length of the signal                     */
+        std::vector<float> paddedFilterWeights(paddedLength, 0.0);
+        for (int i = 0; i < filterWeightsFloat.size(); ++i) {
+            paddedFilterWeights[i] = filterWeightsFloat[i];
+        }
+        Eigen::VectorXcf filterFreq(fftOutputSize);
+
+        // FFT of filter
+        fftwf_plan fftFilter = fftwf_plan_dft_r2c_1d(paddedLength, paddedFilterWeights.data(), reinterpret_cast<fftwf_complex*>(filterFreq.data()), FFTW_ESTIMATE);
+        fftwf_execute(fftFilter);
+        
+        /*
+        cout << "fftFilter: " <<  filterFreq.size() << endl;
+        for (int i = 0; i < 8; i++){
+            cout << filterFreq[i] << " ";
+        }
+        cout << endl;
+        static Eigen::VectorXf ch1_copy;
+        */
        
         // Container for pulling bytes from buffer (dataBuffer)
         vector<uint8_t> dataBytes;
 
         // FFT without sigpack
-        exp.fftCh1 = fftwf_plan_dft_r2c_1d(channelSize, ch1.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(0).data()), FFTW_ESTIMATE);
-        exp.fftCh2 = fftwf_plan_dft_r2c_1d(channelSize, ch2.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(1).data()), FFTW_ESTIMATE);
-        exp.fftCh3 = fftwf_plan_dft_r2c_1d(channelSize, ch3.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(2).data()), FFTW_ESTIMATE);
-        exp.fftCh4 = fftwf_plan_dft_r2c_1d(channelSize, ch4.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(3).data()), FFTW_ESTIMATE);
+        exp.fftCh1 = fftwf_plan_dft_r2c_1d(paddedLength, ch1.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(0).data()), FFTW_ESTIMATE);
+        exp.fftCh2 = fftwf_plan_dft_r2c_1d(paddedLength, ch2.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(1).data()), FFTW_ESTIMATE);
+        exp.fftCh3 = fftwf_plan_dft_r2c_1d(paddedLength, ch3.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(2).data()), FFTW_ESTIMATE);
+        exp.fftCh4 = fftwf_plan_dft_r2c_1d(paddedLength, ch4.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(3).data()), FFTW_ESTIMATE);
         
         // Create FIR filter objects
         exp.firFilterCh1 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
@@ -282,8 +309,21 @@ void DataProcessor(Session& sess, Experiment& exp) {
              */
             
             detectionCounter++;
-            
+            /* 
+            ch1_copy = ch1;
+            Eigen::VectorXcf ch1_copy_freq(fftOutputSize);
+            fftwf_plan ch1_copy_fft = fftwf_plan_dft_r2c_1d(channelSize, ch1_copy.data(), reinterpret_cast<fftwf_complex*>(ch1_copy_freq.data()), FFTW_ESTIMATE);
+            fftwf_execute(ch1_copy_fft);
+            Eigen::VectorXcf test_this = ch1_copy_freq.array() * filterFreq.array();
+            cout << "test_this: "; 
+            for (int i = 0; i < 8; i++){
+                cout << test_this[i] << " ";
+            }
+            cout << endl;
+            */
+
             // Liquid FIR filter
+            /*
             auto beforeLFilter = std::chrono::steady_clock::now();
             ApplyLiquidFIR(ch1, exp.firFilterCh1);
             ApplyLiquidFIR(ch2, exp.firFilterCh2);
@@ -291,27 +331,48 @@ void DataProcessor(Session& sess, Experiment& exp) {
             ApplyLiquidFIR(ch4, exp.firFilterCh4);
             auto afterLFilter = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationLFilter = afterLFilter - beforeLFilter;
-            //cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
+            cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
+            */
             
-            
-            auto beforeFFTW = std::chrono::steady_clock::now();
+            auto beforeFFTWF = std::chrono::steady_clock::now();
             fftwf_execute(exp.fftCh1);
             fftwf_execute(exp.fftCh2);
             fftwf_execute(exp.fftCh3);
             fftwf_execute(exp.fftCh4);
+            auto afterFFTWF = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationFFTWF = afterFFTWF - beforeFFTWF;
+            cout << "FFT time: " << durationFFTWF.count() << endl;
+           
+            
+            auto beforeFFTW = std::chrono::steady_clock::now();
+            savedFFTs_FFTW.col(0) = savedFFTs_FFTW.col(0).array() * filterFreq.array();
+            savedFFTs_FFTW.col(1) = savedFFTs_FFTW.col(1).array() * filterFreq.array();
+            savedFFTs_FFTW.col(2) = savedFFTs_FFTW.col(2).array() * filterFreq.array();
+            savedFFTs_FFTW.col(3) = savedFFTs_FFTW.col(3).array() * filterFreq.array();
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
+            cout << "FFT filter time: " << durationFFTW.count() << endl;
+            
+
             //cout << "Eigen FFTW: " << durationFFTW.count() << endl;
-           
+            
+            /*
+            cout << "current: "; 
+            for (int i = 0; i < 8; i++){
+                cout << savedFFTs_FFTW(i,0) << " ";
+            }
+            cout << endl;
+            */
+
             auto beforeGCCW = std::chrono::steady_clock::now();
-            Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.inverseFFT, exp.interp, channelSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
             //cout << "Eigen C GCC: " << durationGCCW.count() << endl;
             
 
             Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
-            //cout << "DOA_FFTs: " << DOAs.transpose() << endl;
+            cout << "DOA_FFTs: " << DOAs.transpose() << endl;
             
 
             sess.peakAmplitudeBuffer.push_back(detResult.peakAmplitude);

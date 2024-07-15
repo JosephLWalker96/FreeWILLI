@@ -14,7 +14,7 @@ using std::cerr;
 using std::vector;
 
 
-Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFFT, const int& interp, int& channelLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
+Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFFT, const int& interp, int& paddedLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     /**
     * @brief Computes the Generalized Cross-Correlation with Phase Transform (GCC-PHAT) between pairs of signals.
     *
@@ -29,18 +29,18 @@ Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverse
     */
 
     int fftLength = savedFFTs.rows();
-    //cout << "TDOA check: " << 497 << " " << fftLength;
-    //cout << "TDOA check: " << 992 << " " << channelLength;
+    cout << "TDOA check: " << 512 << " " << fftLength;
+    cout << "TDOA check: " << 1022 << " " << paddedLength;
 
     Eigen::VectorXf tauVector(6); // 4 channels produce 6 unique pairings
     Eigen::VectorXcf SIG1(fftLength);
     Eigen::VectorXcf SIG2(fftLength);
 
     static Eigen::VectorXcf crossSpectraMagnitudeNorm(fftLength);
-    static Eigen::VectorXf crossCorr(channelLength);
+    static Eigen::VectorXf crossCorr(paddedLength);
 
     if (inverseFFT == nullptr) {
-        inverseFFT = fftwf_plan_dft_c2r_1d(channelLength, reinterpret_cast<fftwf_complex*>(crossSpectraMagnitudeNorm.data()), crossCorr.data(), FFTW_ESTIMATE);
+        inverseFFT = fftwf_plan_dft_c2r_1d(paddedLength, reinterpret_cast<fftwf_complex*>(crossSpectraMagnitudeNorm.data()), crossCorr.data(), FFTW_ESTIMATE);
     }
 
     int pairCounter = 0;
@@ -66,7 +66,7 @@ Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverse
             
             fftwf_execute(inverseFFT);
 
-            int maxShift = (interp * (channelLength / 2));
+            int maxShift = (interp * (paddedLength / 2));
             Eigen::VectorXf back = crossCorr.tail(maxShift);
             Eigen::VectorXf front = crossCorr.head(maxShift);
 

@@ -22,6 +22,12 @@ void FilterWithLiquidFIR(Eigen::VectorXf& ch1, Eigen::VectorXf& ch2, Eigen::Vect
     applyFilter(ch2, firFilterCh2);
     applyFilter(ch3, firFilterCh3);
     applyFilter(ch4, firFilterCh4);
+
+    // Reset each filter after use
+    firfilt_rrrf_reset(firFilterCh1);
+    firfilt_rrrf_reset(firFilterCh2);
+    firfilt_rrrf_reset(firFilterCh3);
+    firfilt_rrrf_reset(firFilterCh4);
 }
 /*
 void ApplyLiquidFIR(Eigen::VectorXf& input, firfilt_rrrf& filter) {

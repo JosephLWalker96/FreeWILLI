@@ -230,15 +230,7 @@ void ProcessSegmentInterleaved(std::vector<float>& data, Eigen::VectorXf& ch1, E
     * @brief Processes interleaved data into separate channel. Each channel's data is saved into a corresponding Eigen vector.
     * 
     * @param data A reference to a vector of doubles containing interleaved data from multiple channels.
-    * @param ch1 - ch4 A reference to an Eigen vector to store channels 1-4 data.
     */        
-    
-    // Ensure the Eigen vectors have the correct size
-    size_t channelSize = data.size() / NUM_CHAN;
-    ch1.resize(channelSize);
-    ch2.resize(channelSize);
-    ch3.resize(channelSize);
-    ch4.resize(channelSize);
     
     // Iterate through the data vector and save every NUM_CHANth element into the Eigen vector
     for (size_t i = 0, j = 0; i < data.size(); i += NUM_CHAN, ++j) {
