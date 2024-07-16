@@ -7,67 +7,59 @@ set_target_properties(HarpListen PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
 )
 
-set(THIRD_PARTY_LIBRARIES)
-set(THIRD_PARTY_INCLUDE_DIRS)
+#######target_link_libraries(MainLib PUBLIC SigPack)
+target_link_libraries(HarpListen PRIVATE MainLib)
+
+# Linking external libraries
+
+# Armadillo
+#find_package(Armadillo REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
+#message(STATUS "Armadillo libraries: ${ARMADILLO_LIBRARIES}")
+#message(STATUS "Armadillo include dirs: ${ARMADILLO_INCLUDE_DIRS}")
+#include_directories(${ARMADILLO_INCLUDE_DIRS})
+#target_link_libraries(HarpListen PRIVATE ${ARMADILLO_LIBRARIES})
 
 # LAPACK
 find_package(LAPACK REQUIRED)
-if (LAPACK_LIBRARIES)
-    list(APPEND THIRD_PARTY_LIBRARIES ${LAPACK_LIBRARIES})
-    message(STATUS "LAPACK libraries: ${LAPACK_LIBRARIES}")
-endif ()
-if (LAPACK_INCLUDE_DIRS)
-    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${LAPACK_INCLUDE_DIRS})
-    message(STATUS "LAPACK include dirs: ${LAPACK_INCLUDE_DIRS}")
-endif()
+message(STATUS "LAPACK libraries: ${LAPACK_LIBRARIES}")
+message(STATUS "LAPACK include dirs: ${LAPACK_INCLUDE_DIRS}")
+target_link_libraries(HarpListen PRIVATE ${LAPACK_LIBRARIES})
 
+# Liquid
+find_library(LIQUID_LIBRARIES NAMES liquid REQUIRED)
+message(STATUS "LIQUID libraries: ${LIQUID_LIBRARIES}")
+target_link_libraries(HarpListen PRIVATE ${LIQUID_LIBRARIES})
+
+find_path(LIQUID_INCLUDE_DIRS NAMES liquid REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
+message(STATUS "LIQUID include dirs: ${LIQUID_INCLUDE_DIRS}")
+include_directories(HarpListen PRIVATE ${LIQUID_INCLUDE_DIRS})
 
 # FFTW3
 find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)
 message(STATUS "FFTW libraries: ${FFTW_LIBRARIES}")
-find_path(FFTW_INCLUDE_DIRS NAMES fftw3.h REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
-message(STATUS "FFTW include dirs: ${FFTW_INCLUDE_DIRS}")
-if (FFTW_LIBRARIES)
-    list(APPEND THIRD_PARTY_LIBRARIES ${FFTW_LIBRARIES})
-endif ()
-if (FFTW_INCLUDE_DIRS)
-    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${FFTW_INCLUDE_DIRS})
-endif()
+target_link_libraries(HarpListen PRIVATE ${FFTW_LIBRARIES})
 
 # FFTW3f for single precision
 find_library(FFTWF_LIBRARIES NAMES fftw3f REQUIRED)
-if (FFTWF_LIBRARIES)
-    list(APPEND THIRD_PARTY_LIBRARIES ${FFTWF_LIBRARIES})
-    message(STATUS "FFTWf libraries: ${FFTWF_LIBRARIES}")
-endif ()
-if (FFTWF_INCLUDE_DIRS)
-    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${FFTWF_INCLUDE_DIRS})
-    message(STATUS "FFTWf include dirs: ${FFTWF_INCLUDE_DIRS}")
-endif()
+message(STATUS "FFTWf libraries: ${FFTWF_LIBRARIES}")
+target_link_libraries(HarpListen PRIVATE ${FFTWF_LIBRARIES})
+
+find_path(FFTW_INCLUDE_DIRS NAMES fftw3.h REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
+message(STATUS "FFTW include dirs: ${FFTW_INCLUDE_DIRS}")
+include_directories(HarpListen PRIVATE ${FFTW_INCLUDE_DIRS})
 
 # BLAS
 find_package(BLAS REQUIRED)
-if (BLAS_LIBRARIES)
-    list(APPEND THIRD_PARTY_LIBRARIES ${BLAS_LIBRARIES})
-    message(STATUS "BLAS libraries: ${BLAS_LIBRARIES}")
-endif ()
-if (BLAS_INCLUDE_DIRS)
-    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${BLAS_INCLUDE_DIRS})
-    message(STATUS "BLAS include dirs: ${BLAS_INCLUDE_DIRS}")
-endif()
-
-
+message(STATUS "BLAS libraries: ${BLAS_LIBRARIES}")
+message(STATUS "BLAS include dirs: ${BLAS_INCLUDE_DIRS}")
+target_link_libraries(HarpListen PRIVATE ${BLAS_LIBRARIES})
 
 # Eigen3
 find_package (Eigen3 REQUIRED NO_MODULE)
-if (EIGEN3_LIBRARIES)
-    list(APPEND THIRD_PARTY_LIBRARIES ${EIGEN3_LIBRARIES})
-    message(STATUS "Eigen3 libraries: ${EIGEN3_LIBRARIES}")
-endif ()
-if (EIGEN3_INCLUDE_DIR)
-    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
-    message(STATUS "Eigen3 include dir: ${EIGEN3_INCLUDE_DIR}")
-endif()
+message(STATUS "Eigen3 libraries: ${EIGEN3_LIBRARIES}")
+message(STATUS "Eigen3 include dir: ${EIGEN3_INCLUDE_DIR}")
+target_link_libraries(HarpListen PRIVATE Eigen3::Eigen)
+
 
 target_precompile_headers(HarpListen PRIVATE
     pch.h
