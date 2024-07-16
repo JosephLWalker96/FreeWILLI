@@ -5,7 +5,6 @@ project(HarpListen VERSION 1.0)
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 set(TEST_ON_RASPBERRY_PI_ZERO FALSE)
 
 # Add a check for empty CMAKE_SYSTEM_NAME
@@ -52,7 +51,7 @@ elseif(RASPBERRY_PI_4)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -O3 -flto=auto")
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 elseif(RASPBERRY_PI_ZERO)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=cortex-a53 -O3 -flto=auto")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -O3 -flto=auto")
     if(TEST_ON_RASPBERRY_PI_ZERO)
         add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
     endif ()
@@ -62,4 +61,5 @@ else()
 endif()
 
 # Print the compile flags
-message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "CMAKE_CXX_FLAGS here!!: ${CMAKE_CXX_FLAGS}")
+add_subdirectory(${PROJECT_SOURCE_DIR}/src)

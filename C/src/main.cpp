@@ -44,6 +44,7 @@ RESOURCES:
 #include "process_data.h"
 #include "TDOA_estimation.h"
 #include "utils.h"
+#include "pch.h"
 using std::cout;
 using std::cin;
 using std::endl;
@@ -285,7 +286,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            //cout << "Eigen C GCC: " << durationGCCW.count() << endl;
+            cout << "Eigen C GCC: " << durationGCCW.count() << endl;
             
             Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
             cout << "DOA_FFTs: " << DOAs.transpose() << endl;
@@ -368,24 +369,28 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 int main(int argc, char *argv[]) {
 
+    // Check if Eigen is using BLAS
     #ifdef EIGEN_USE_BLAS
     std::cout << "Eigen is using BLAS for fast computation." << std::endl;
     #else
     std::cout << "Eigen is not using BLAS." << std::endl;
     #endif
 
+    // Check if Eigen is using LAPACKE
     #ifdef EIGEN_USE_LAPACKE
     std::cout << "Eigen is using LAPACKE for fast computation." << std::endl;
     #else
     std::cout << "Eigen is not using LAPACKE." << std::endl;
     #endif
 
+    // Check if Eigen vectorization is enabled
     #ifdef EIGEN_VECTORIZE
     std::cout << "Eigen vectorization is enabled." << std::endl;
     #else
     std::cout << "Eigen vectorization is not enabled." << std::endl;
     #endif
 
+    // Check for specific vectorization types
     #ifdef EIGEN_VECTORIZE_SSE
     std::cout << "Eigen is using SSE vectorization." << std::endl;
     #endif
@@ -402,12 +407,39 @@ int main(int argc, char *argv[]) {
     std::cout << "Eigen is using NEON vectorization." << std::endl;
     #endif
 
+    // Check if Eigen assertions are disabled
     #ifdef EIGEN_NO_DEBUG
     std::cout << "Eigen assertions are disabled (NDEBUG defined)." << std::endl;
     #else
     std::cout << "Eigen assertions are enabled." << std::endl;
     #endif
-    
+
+    // Check for additional Eigen-specific macros
+    #ifdef EIGEN_FAST_MATH
+    std::cout << "Eigen fast math is enabled." << std::endl;
+    #else
+    std::cout << "Eigen fast math is not enabled." << std::endl;
+    #endif
+
+    #ifdef EIGEN_USE_MKL
+    std::cout << "Eigen is using MKL." << std::endl;
+    #else
+    std::cout << "Eigen is not using MKL." << std::endl;
+    #endif
+
+    // Check for compiler optimization level
+    #ifdef __OPTIMIZE__
+    std::cout << "Compiler optimizations are enabled." << std::endl;
+    #else
+    std::cout << "Compiler optimizations are not enabled." << std::endl;
+    #endif
+
+    // Check if the precompiled header is included correctly
+    #ifdef PCH_INCLUDED
+    std::cout << "Precompiled header is included." << std::endl;
+    #else
+    std::cout << "Precompiled header is not included." << std::endl;
+    #endif
     // Declare a listening 'Session'
     Session sess;
     Experiment exp;

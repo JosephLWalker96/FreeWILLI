@@ -25,18 +25,18 @@ message(STATUS "LAPACK libraries: ${LAPACK_LIBRARIES}")
 target_link_libraries(HarpListen PRIVATE ${LAPACK_LIBRARIES})
 
 # Liquid
-find_library(LIQUID_LIBRARIES NAMES liquid REQUIRED)
-message(STATUS "LIQUID libraries: ${LIQUID_LIBRARIES}")
-target_link_libraries(HarpListen PRIVATE ${LIQUID_LIBRARIES})
+#find_library(LIQUID_LIBRARIES NAMES liquid REQUIRED)
+#message(STATUS "LIQUID libraries: ${LIQUID_LIBRARIES}")
+#target_link_libraries(HarpListen PRIVATE ${LIQUID_LIBRARIES})
 
-find_path(LIQUID_INCLUDE_DIRS NAMES liquid REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
-message(STATUS "LIQUID include dirs: ${LIQUID_INCLUDE_DIRS}")
-include_directories(${LIQUID_INCLUDE_DIRS})
+#find_path(LIQUID_INCLUDE_DIRS NAMES liquid REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
+#message(STATUS "LIQUID include dirs: ${LIQUID_INCLUDE_DIRS}")
+#include_directories(${LIQUID_INCLUDE_DIRS})
 
 # FFTW3
-find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)
-message(STATUS "FFTW libraries: ${FFTW_LIBRARIES}")
-target_link_libraries(HarpListen PRIVATE ${FFTW_LIBRARIES})
+#find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)
+#message(STATUS "FFTW libraries: ${FFTW_LIBRARIES}")
+#target_link_libraries(HarpListen PRIVATE ${FFTW_LIBRARIES})
 
 # FFTW3f for single precision
 find_library(FFTWF_LIBRARIES NAMES fftw3f REQUIRED)
