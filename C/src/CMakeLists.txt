@@ -1,17 +1,3 @@
-cmake_minimum_required(VERSION 3.22.1)
-
-project(HarpListen VERSION 1.0)
-
-# Set the C++ standard
-set(CMAKE_CXX_STANDARD 20)
-
-# Ensure AVX vectorization is enabled globally
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(-mavx -mavx2 -mfma)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    add_compile_options(/arch:AVX2)
-endif()
-
 add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp)
 
 add_executable(HarpListen main.cpp)
@@ -20,6 +6,13 @@ add_executable(HarpListen main.cpp)
 set_target_properties(HarpListen PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
 )
+
+# Ensure AVX vectorization is enabled globally
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(-mavx -mavx2 -mfma -O3)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    add_compile_options(/arch:AVX2 /O2)
+endif()
 
 # Link MainLib to HarpListen
 target_link_libraries(HarpListen PRIVATE MainLib)
