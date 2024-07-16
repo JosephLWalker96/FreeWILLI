@@ -367,6 +367,19 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 
 int main(int argc, char *argv[]) {
+
+    #ifdef EIGEN_USE_BLAS
+    std::cout << "Eigen is using BLAS for fast computation." << std::endl;
+    #else
+    std::cout << "Eigen is not using BLAS." << std::endl;
+    #endif
+
+    #ifdef EIGEN_USE_LAPACKE
+    std::cout << "Eigen is using LAPACKE for fast computation." << std::endl;
+    #else
+    std::cout << "Eigen is not using LAPACKE." << std::endl;
+    #endif
+
     
     // Declare a listening 'Session'
     Session sess;
