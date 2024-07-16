@@ -5,13 +5,6 @@ project(HarpListen VERSION 1.0)
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 
-# Ensure AVX vectorization is enabled globally
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(-mavx -mavx2 -mfma -O3)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    add_compile_options(/arch:AVX2 /O2)
-endif()
-
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 set(TEST_ON_RASPBERRY_PI_ZERO FALSE)
 
@@ -48,6 +41,7 @@ else()
     message(FATAL_ERROR "Unsupported operating system or Raspberry Pi model.")
 endif()
 
+# Set architecture-specific compiler flags
 if(MACOSX)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=apple-m1 -O3 -flto=auto")
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
@@ -58,8 +52,7 @@ elseif(RASPBERRY_PI_4)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -O3 -flto=auto")
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 elseif(RASPBERRY_PI_ZERO)
-    #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=cortex-a53 -O3 -flto=auto")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -O3 -flto=auto")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=cortex-a53 -O3 -flto=auto")
     if(TEST_ON_RASPBERRY_PI_ZERO)
         add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
     endif ()
