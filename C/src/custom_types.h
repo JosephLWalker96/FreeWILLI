@@ -1,16 +1,6 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <queue>
-#include <chrono>
-#include <mutex>
-#include <atomic>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <eigen3/Eigen/Dense>
-#include <fftw3.h>
+#include "pch.h"
 
 using std::vector;
 using std::string;

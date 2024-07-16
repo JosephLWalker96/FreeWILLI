@@ -1,14 +1,4 @@
-#include "custom_types.h"
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <fstream>
-#include <queue>
-#include <vector>
-#include <random>
-#include <iomanip> //std::setw
 #include "utils.h"
-//#include <eigen3/Eigen/Dense>
 
 using std::cerr;
 using std::endl;
@@ -31,8 +21,7 @@ void PrintTimes(const vector<TimePoint>& timestamps) {
     for (auto& timestamp : timestamps) {
         std::time_t timeRepresentation = std::chrono::system_clock::to_time_t(timestamp);
         std::tm timeData = *std::localtime(&timeRepresentation); 
-        auto microSeconds = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000; 
-        
+        auto microSeconds = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000;
         std::stringstream msg; // compose message to dispatch
         msg << "Timestamp: "
             << timeData.tm_year + 1900 << '-'
