@@ -1,3 +1,17 @@
+cmake_minimum_required(VERSION 3.22.1)
+
+project(HarpListen VERSION 1.0)
+
+# Set the C++ standard
+set(CMAKE_CXX_STANDARD 20)
+
+# Ensure AVX vectorization is enabled globally
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(-mavx -mavx2 -mfma)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    add_compile_options(/arch:AVX2)
+endif()
+
 add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp)
 
 add_executable(HarpListen main.cpp)
@@ -44,7 +58,7 @@ message(STATUS "BLAS libraries: ${BLAS_LIBRARIES}")
 target_link_libraries(HarpListen PRIVATE ${BLAS_LIBRARIES})
 
 # Eigen3
-find_package (Eigen3 REQUIRED NO_MODULE)
+find_package(Eigen3 REQUIRED NO_MODULE)
 message(STATUS "Eigen3 libraries: ${EIGEN3_LIBRARIES}")
 message(STATUS "Eigen3 include dir: ${EIGEN3_INCLUDE_DIR}")
 target_link_libraries(HarpListen PRIVATE Eigen3::Eigen)
@@ -58,3 +72,6 @@ message(STATUS "Precompiled headers: ${PCH_SOURCES}")
 # Include directories and linking additional libraries
 include_directories(HarpListen PRIVATE ${THIRD_PARTY_INCLUDE_DIRS})
 target_link_libraries(HarpListen PRIVATE ${THIRD_PARTY_LIBRARIES})
+
+# Print the compile flags
+message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")

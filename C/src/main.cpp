@@ -380,6 +380,33 @@ int main(int argc, char *argv[]) {
     std::cout << "Eigen is not using LAPACKE." << std::endl;
     #endif
 
+    #ifdef EIGEN_VECTORIZE
+    std::cout << "Eigen vectorization is enabled." << std::endl;
+    #else
+    std::cout << "Eigen vectorization is not enabled." << std::endl;
+    #endif
+
+    #ifdef EIGEN_VECTORIZE_SSE
+    std::cout << "Eigen is using SSE vectorization." << std::endl;
+    #endif
+
+    #ifdef EIGEN_VECTORIZE_AVX
+    std::cout << "Eigen is using AVX vectorization." << std::endl;
+    #endif
+
+    #ifdef EIGEN_VECTORIZE_AVX512
+    std::cout << "Eigen is using AVX512 vectorization." << std::endl;
+    #endif
+
+    #ifdef EIGEN_VECTORIZE_NEON
+    std::cout << "Eigen is using NEON vectorization." << std::endl;
+    #endif
+
+    #ifdef EIGEN_NO_DEBUG
+    std::cout << "Eigen assertions are disabled (NDEBUG defined)." << std::endl;
+    #else
+    std::cout << "Eigen assertions are enabled." << std::endl;
+    #endif
     
     // Declare a listening 'Session'
     Session sess;
