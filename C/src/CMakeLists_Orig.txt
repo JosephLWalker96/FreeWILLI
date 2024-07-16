@@ -7,12 +7,22 @@ set_target_properties(HarpListen PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
 )
 
-# Link MainLib to HarpListen
+#######target_link_libraries(MainLib PUBLIC SigPack)
 target_link_libraries(HarpListen PRIVATE MainLib)
+
+# Linking external libraries
+
+# Armadillo
+#find_package(Armadillo REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
+#message(STATUS "Armadillo libraries: ${ARMADILLO_LIBRARIES}")
+#message(STATUS "Armadillo include dirs: ${ARMADILLO_INCLUDE_DIRS}")
+#include_directories(${ARMADILLO_INCLUDE_DIRS})
+#target_link_libraries(HarpListen PRIVATE ${ARMADILLO_LIBRARIES})
 
 # LAPACK
 find_package(LAPACK REQUIRED)
 message(STATUS "LAPACK libraries: ${LAPACK_LIBRARIES}")
+message(STATUS "LAPACK include dirs: ${LAPACK_INCLUDE_DIRS}")
 target_link_libraries(HarpListen PRIVATE ${LAPACK_LIBRARIES})
 
 # Liquid
@@ -22,7 +32,7 @@ target_link_libraries(HarpListen PRIVATE ${LIQUID_LIBRARIES})
 
 find_path(LIQUID_INCLUDE_DIRS NAMES liquid REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
 message(STATUS "LIQUID include dirs: ${LIQUID_INCLUDE_DIRS}")
-include_directories(${LIQUID_INCLUDE_DIRS})
+include_directories(HarpListen PRIVATE ${LIQUID_INCLUDE_DIRS})
 
 # FFTW3
 find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)
@@ -36,11 +46,12 @@ target_link_libraries(HarpListen PRIVATE ${FFTWF_LIBRARIES})
 
 find_path(FFTW_INCLUDE_DIRS NAMES fftw3.h REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
 message(STATUS "FFTW include dirs: ${FFTW_INCLUDE_DIRS}")
-include_directories(${FFTW_INCLUDE_DIRS})
+include_directories(HarpListen PRIVATE ${FFTW_INCLUDE_DIRS})
 
 # BLAS
 find_package(BLAS REQUIRED)
 message(STATUS "BLAS libraries: ${BLAS_LIBRARIES}")
+message(STATUS "BLAS include dirs: ${BLAS_INCLUDE_DIRS}")
 target_link_libraries(HarpListen PRIVATE ${BLAS_LIBRARIES})
 
 # Eigen3
@@ -48,13 +59,19 @@ find_package (Eigen3 REQUIRED NO_MODULE)
 message(STATUS "Eigen3 libraries: ${EIGEN3_LIBRARIES}")
 message(STATUS "Eigen3 include dir: ${EIGEN3_INCLUDE_DIR}")
 target_link_libraries(HarpListen PRIVATE Eigen3::Eigen)
-include_directories(${EIGEN3_INCLUDE_DIR})
 
-# Precompiled headers
-target_precompile_headers(HarpListen PRIVATE pch.h)
+
+target_precompile_headers(HarpListen PRIVATE
+    pch.h
+)
+# Debug output to ensure CMake is processing precompile headers command
 get_target_property(PCH_SOURCES HarpListen PRECOMPILE_HEADERS)
 message(STATUS "Precompiled headers: ${PCH_SOURCES}")
 
-# Include directories and linking additional libraries
-include_directories(HarpListen PRIVATE ${THIRD_PARTY_INCLUDE_DIRS})
-target_link_libraries(HarpListen PRIVATE ${THIRD_PARTY_LIBRARIES})
+include_directories(HarpListen PRIVATE
+        ${THIRD_PARTY_INCLUDE_DIRS}
+)
+target_link_libraries(HarpListen PRIVATE
+        MainLib
+        ${THIRD_PARTY_LIBRARIES}
+)
