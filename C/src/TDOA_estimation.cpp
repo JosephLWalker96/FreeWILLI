@@ -20,11 +20,9 @@ Eigen::VectorXf GCC_PHAT_FFTW_E(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverse
     * @return An Eigen vector of doubles containing the computed TDOA estimates for all unique pairs of signals.
     */
 
-    int fftLength = savedFFTs.rows();
-    cout << "TDOA check: " << 512 << " " << fftLength;
-    cout << "TDOA check: " << 1022 << " " << paddedLength;
-
-    Eigen::VectorXf tauVector(6); // 4 channels produce 6 unique pairings
+    int fftLength = savedFFTs.col(0).size();
+    int numTDOAs = NUM_CHAN * (NUM_CHAN - 1) / 2;
+    Eigen::VectorXf tauVector(numTDOAs);
     Eigen::VectorXcf SIG1(fftLength);
     Eigen::VectorXcf SIG2(fftLength);
 
