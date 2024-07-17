@@ -290,7 +290,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            cout << "Eigen C GCC: " << durationGCCW.count() << endl;
+            //cout << "Eigen C GCC: " << durationGCCW.count() << endl;
             
             Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
             //cout << "DOAs: " << DOAs.transpose() << endl;
