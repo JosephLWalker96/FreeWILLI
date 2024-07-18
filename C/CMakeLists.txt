@@ -73,6 +73,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # the following line sets a variable `DEBUG` that
     # can be accessed in all cpp files in the project
     target_compile_definitions(HarpListen PRIVATE DEBUG)
+    target_compile_definitions(UnitTests PRIVATE DEBUG)
 
     # Set the output directory for the executable
     set_property(TARGET HarpListen PROPERTY OUTPUT_NAME HarpListenDebug)
