@@ -15,29 +15,65 @@ FetchContent_MakeAvailable(googletest)
 # Create the test executable
 add_executable(UnitTests process_data_test.cpp TDOA_estimation_test.cpp utils_test.cpp)
 
+set(THIRD_PARTY_LIBRARIES)
+set(THIRD_PARTY_INCLUDE_DIRS)
+
 # Finding and linking external libraries
-
+# FFTW3
 find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)
+message(STATUS "FFTW libraries: ${FFTW_LIBRARIES}")
 find_path(FFTW_INCLUDE_DIRS NAMES fftw3.h REQUIRED PATH_SUFFIXES /opt/homebrew/Cellar/)
+message(STATUS "FFTW include dirs: ${FFTW_INCLUDE_DIRS}")
+if (FFTW_LIBRARIES)
+    list(APPEND THIRD_PARTY_LIBRARIES ${FFTW_LIBRARIES})
+endif ()
+if (FFTW_INCLUDE_DIRS)
+    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${FFTW_INCLUDE_DIRS})
+endif()
 
+# FFTW3f for single precision
+find_library(FFTWF_LIBRARIES NAMES fftw3f REQUIRED)
+if (FFTWF_LIBRARIES)
+    list(APPEND THIRD_PARTY_LIBRARIES ${FFTWF_LIBRARIES})
+    message(STATUS "FFTWf libraries: ${FFTWF_LIBRARIES}")
+endif ()
+if (FFTWF_INCLUDE_DIRS)
+    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${FFTWF_INCLUDE_DIRS})
+    message(STATUS "FFTWf include dirs: ${FFTWF_INCLUDE_DIRS}")
+endif()
+
+# BLAS
 find_package(BLAS REQUIRED)
+if (BLAS_LIBRARIES)
+    list(APPEND THIRD_PARTY_LIBRARIES ${BLAS_LIBRARIES})
+    message(STATUS "BLAS libraries: ${BLAS_LIBRARIES}")
+endif ()
+if (BLAS_INCLUDE_DIRS)
+    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${BLAS_INCLUDE_DIRS})
+    message(STATUS "BLAS include dirs: ${BLAS_INCLUDE_DIRS}")
+endif()
 
-find_package(Eigen3 REQUIRED NO_MODULE)
+# Eigen3
+find_package (Eigen3 REQUIRED NO_MODULE)
+if (EIGEN3_LIBRARIES)
+    list(APPEND THIRD_PARTY_LIBRARIES ${EIGEN3_LIBRARIES})
+    message(STATUS "Eigen3 libraries: ${EIGEN3_LIBRARIES}")
+endif ()
+if (EIGEN3_INCLUDE_DIR)
+    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
+    message(STATUS "Eigen3 include dir: ${EIGEN3_INCLUDE_DIR}")
+endif()
+
 
 # Include directories properly set
 target_include_directories(UnitTests PRIVATE
-  ${FFTW_INCLUDE_DIRS}
-  ${gtest_SOURCE_DIR}/include  # Only needed if GoogleTest is built from source
+        ${THIRD_PARTY_INCLUDE_DIRS}
+        ${gtest_SOURCE_DIR}/include  # Only needed if GoogleTest is built from source
 )
-
-# Linking all libraries
 target_link_libraries(UnitTests PRIVATE
-  gtest_main
-  MainLib
-  ${LAPACK_LIBRARIES}
-  ${FFTW_LIBRARIES}
-  ${BLAS_LIBRARIES}
-  Eigen3::Eigen
+        gtest_main
+        MainLib
+        ${THIRD_PARTY_LIBRARIES}
 )
 
 # Add tests to the testing framework

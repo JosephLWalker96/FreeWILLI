@@ -48,36 +48,39 @@ else()
 endif()
 
 if(MACOSX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=apple-m1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=apple-m1 -Og")
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 elseif(UBUNTU)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -Og")
     #add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 elseif(RASPBERRY_PI_4)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -Og")
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 elseif(RASPBERRY_PI_ZERO)
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=cortex-a53 -O3 -flto=auto")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -Og")
     if(TEST_ON_RASPBERRY_PI_ZERO)
         add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
     endif ()
 else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -O3 -flto=auto")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=native -Ogbu")
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 endif()
 
-# Only enable tests in Debug mode
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(STATUS "Building tests in Debug mode.")
 
     # the following line sets a variable `DEBUG` that
     # can be accessed in all cpp files in the project
-    add_definitions(-DDEBUG)
+    target_compile_definitions(HarpListen PRIVATE DEBUG)
 
     # Set the output directory for the executable
     set_property(TARGET HarpListen PROPERTY OUTPUT_NAME HarpListenDebug)
     set_target_properties(HarpListen PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/debug
+    )
+    set_property(TARGET UnitTests PROPERTY OUTPUT_NAME UnitTestsDebug)
+    set_target_properties(UnitTests PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/debug
     )
     add_compile_options(-g -Wall -Wextra -fsanitize=address -fno-omit-frame-pointer)

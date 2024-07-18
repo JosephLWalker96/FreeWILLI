@@ -407,6 +407,12 @@ int main(int argc, char *argv[]) {
     #else
     std::cout << "Eigen assertions are enabled." << std::endl;
     #endif
+
+    #ifdef DEBUG
+        std::cout << "Running Debug Mode" << std::endl;
+    #else
+        std::cout << "Running Release Mode" << std::endl;
+    #endif
     
     // Declare a listening 'Session'
     Session sess;
