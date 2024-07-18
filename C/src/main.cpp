@@ -1,4 +1,5 @@
 /*
+
 DESCRIPTION:
 @file main.cpp
  @brief A program for receiving and processing UDP packets in real-time.
@@ -44,6 +45,7 @@ RESOURCES:
 #include "process_data.h"
 #include "TDOA_estimation.h"
 #include "utils.h"
+#include "pch.h"
 using std::cout;
 using std::cin;
 using std::endl;
@@ -162,33 +164,36 @@ void DataProcessor(Session& sess, Experiment& exp) {
         int paddedLength = filterWeightsFloat.size() + channelSize - 1;
         int fftOutputSize = (paddedLength / 2) + 1;
 
-        static Eigen::VectorXf ch1(paddedLength);
-        static Eigen::VectorXf ch2(paddedLength);
-        static Eigen::VectorXf ch3(paddedLength);
-        static Eigen::VectorXf ch4(paddedLength);
+        //static Eigen::VectorXf ch1(paddedLength);
+        //static Eigen::VectorXf ch2(paddedLength);
+        //static Eigen::VectorXf ch3(paddedLength);
+        //static Eigen::VectorXf ch4(paddedLength);
         
-        Eigen::MatrixXcf savedFFTs(paddedLength, exp.NUM_CHAN); // save the FFT transformed channels
-        Eigen::MatrixXcf savedFFTs_FFTW(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
+        static Eigen::MatrixXf channelData(paddedLength, exp.NUM_CHAN);
+        static Eigen::MatrixXcf savedFFTs(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
+        //Eigen::MatrixXcf savedFFTs_FFTW(exp.NUM_CHAN, fftOutputSize); // save the FFT transformed channels
         
         /* Zero-pad filter weights to the length of the signal                     */
-        std::vector<float> paddedFilterWeights(paddedLength, 0.0);
-        for (int i = 0; i < filterWeightsFloat.size(); ++i) {
-            paddedFilterWeights[i] = filterWeightsFloat[i];
-        }
+        std::vector<float> paddedFilterWeights(paddedLength, 0.0f);
+        //for (int i = 0; i < filterWeightsFloat.size(); ++i) {
+        //    paddedFilterWeights[i] = filterWeightsFloat[i];
+        //}
+        std::copy(filterWeightsFloat.begin(),filterWeightsFloat.end(),paddedFilterWeights.begin());
 
-        // FFT of filter
+        // Create frequency domain filter
         Eigen::VectorXcf filterFreq(fftOutputSize);
         fftwf_plan fftFilter = fftwf_plan_dft_r2c_1d(paddedLength, paddedFilterWeights.data(), reinterpret_cast<fftwf_complex*>(filterFreq.data()), FFTW_ESTIMATE);
         fftwf_execute(fftFilter);
+        fftwf_destroy_plan(fftFilter);
         
         // Container for pulling bytes from buffer (dataBuffer)
         vector<uint8_t> dataBytes;
 
-        // FFT without sigpack
-        exp.fftCh1 = fftwf_plan_dft_r2c_1d(paddedLength, ch1.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(0).data()), FFTW_ESTIMATE);
-        exp.fftCh2 = fftwf_plan_dft_r2c_1d(paddedLength, ch2.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(1).data()), FFTW_ESTIMATE);
-        exp.fftCh3 = fftwf_plan_dft_r2c_1d(paddedLength, ch3.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(2).data()), FFTW_ESTIMATE);
-        exp.fftCh4 = fftwf_plan_dft_r2c_1d(paddedLength, ch4.data(), reinterpret_cast<fftwf_complex*>(savedFFTs_FFTW.col(3).data()), FFTW_ESTIMATE);
+        // Create FFTW objects for channel data
+        exp.fftForChannels.resize(exp.NUM_CHAN);
+        for (int i = 0; i < exp.NUM_CHAN; i++) {
+            exp.fftForChannels[i] = fftwf_plan_dft_r2c_1d(paddedLength, channelData.col(i).data(), reinterpret_cast<fftwf_complex*>(savedFFTs.col(i).data()), FFTW_ESTIMATE);
+        }
         
         // set the frequency of file writes
         const std::chrono::milliseconds FLUSH_INTERVAL(1000);
@@ -210,7 +215,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 if (queueSize < 1) {
                     sess.dataBufferLock.unlock();
                     //cout << "Sleeping: " << endl;
-                    std::this_thread::sleep_for(200ms);
+                    std::this_thread::sleep_for(80ms);
                     continue;
                 }
                 else {
@@ -248,9 +253,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
              *   now apply energy detector. 
              */
             
-            exp.ProcessFncPtr(sess.dataSegment, ch1, ch2, ch3, ch4, exp.NUM_CHAN);
+            auto beforePtr = std::chrono::steady_clock::now();
+            exp.ProcessFncPtr(sess.dataSegment, channelData, exp.NUM_CHAN);
+            auto afterPtr = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
+
             
-            DetectionResult detResult = ThresholdDetect(ch1, sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
+            DetectionResult detResult = ThresholdDetect(channelData.col(0), sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
 
             if (detResult.maxPeakIndex < 0){  // if no pulse was detected (maxPeakIndex remains -1) stop processing
                 continue;                  // get next dataSegment; return to loop
@@ -263,32 +272,28 @@ void DataProcessor(Session& sess, Experiment& exp) {
             detectionCounter++;
             
             auto beforeFFTWF = std::chrono::steady_clock::now();
-            fftwf_execute(exp.fftCh1);
-            fftwf_execute(exp.fftCh2);
-            fftwf_execute(exp.fftCh3);
-            fftwf_execute(exp.fftCh4);
+            for (auto& plan : exp.fftForChannels) {
+                fftwf_execute(plan);
+            }
             auto afterFFTWF = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTWF = afterFFTWF - beforeFFTWF;
-            cout << "FFT time: " << durationFFTWF.count() << endl;
-           
-            
+
             auto beforeFFTW = std::chrono::steady_clock::now();
-            savedFFTs_FFTW.col(0) = savedFFTs_FFTW.col(0).array() * filterFreq.array();
-            savedFFTs_FFTW.col(1) = savedFFTs_FFTW.col(1).array() * filterFreq.array();
-            savedFFTs_FFTW.col(2) = savedFFTs_FFTW.col(2).array() * filterFreq.array();
-            savedFFTs_FFTW.col(3) = savedFFTs_FFTW.col(3).array() * filterFreq.array();
+            for (int i = 0; i < exp.NUM_CHAN; i++) {
+                savedFFTs.col(i) = savedFFTs.col(i).array() * filterFreq.array();
+            }
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
-            cout << "FFT filter time: " << durationFFTW.count() << endl;
+            //cout << "FFT filter time: " << durationFFTW.count() << endl;
             
             auto beforeGCCW = std::chrono::steady_clock::now();
-            Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs_FFTW, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
             //cout << "Eigen C GCC: " << durationGCCW.count() << endl;
             
             Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
-            cout << "DOA_FFTs: " << DOAs.transpose() << endl;
+            //cout << "DOAs: " << DOAs.transpose() << endl;
            
             // Write to buffers
             sess.peakAmplitudeBuffer.push_back(detResult.peakAmplitude);
@@ -368,24 +373,28 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 int main(int argc, char *argv[]) {
 
+    // Check if Eigen is using BLAS
     #ifdef EIGEN_USE_BLAS
     std::cout << "Eigen is using BLAS for fast computation." << std::endl;
     #else
     std::cout << "Eigen is not using BLAS." << std::endl;
     #endif
 
+    // Check if Eigen is using LAPACKE
     #ifdef EIGEN_USE_LAPACKE
     std::cout << "Eigen is using LAPACKE for fast computation." << std::endl;
     #else
     std::cout << "Eigen is not using LAPACKE." << std::endl;
     #endif
 
+    // Check if Eigen vectorization is enabled
     #ifdef EIGEN_VECTORIZE
     std::cout << "Eigen vectorization is enabled." << std::endl;
     #else
     std::cout << "Eigen vectorization is not enabled." << std::endl;
     #endif
 
+    // Check for specific vectorization types
     #ifdef EIGEN_VECTORIZE_SSE
     std::cout << "Eigen is using SSE vectorization." << std::endl;
     #endif
@@ -402,10 +411,39 @@ int main(int argc, char *argv[]) {
     std::cout << "Eigen is using NEON vectorization." << std::endl;
     #endif
 
+    // Check if Eigen assertions are disabled
     #ifdef EIGEN_NO_DEBUG
     std::cout << "Eigen assertions are disabled (NDEBUG defined)." << std::endl;
     #else
     std::cout << "Eigen assertions are enabled." << std::endl;
+    #endif
+
+
+    // Check for additional Eigen-specific macros
+    #ifdef EIGEN_FAST_MATH
+    std::cout << "Eigen fast math is enabled." << std::endl;
+    #else
+    std::cout << "Eigen fast math is not enabled." << std::endl;
+    #endif
+
+    #ifdef EIGEN_USE_MKL
+    std::cout << "Eigen is using MKL." << std::endl;
+    #else
+    std::cout << "Eigen is not using MKL." << std::endl;
+    #endif
+
+    // Check for compiler optimization level
+    #ifdef __OPTIMIZE__
+    std::cout << "Compiler optimizations are enabled." << std::endl;
+    #else
+    std::cout << "Compiler optimizations are not enabled." << std::endl;
+    #endif
+
+    // Check if the precompiled header is included correctly
+    #ifdef PCH_INCLUDED
+    std::cout << "Precompiled header is included." << std::endl;
+    #else
+    std::cout << "Precompiled header is not included." << std::endl;
     #endif
 
     #ifdef DEBUG
@@ -414,6 +452,7 @@ int main(int argc, char *argv[]) {
         std::cout << "Running Release Mode" << std::endl;
     #endif
     
+
     // Declare a listening 'Session'
     Session sess;
     Experiment exp;
@@ -470,27 +509,13 @@ int main(int argc, char *argv[]) {
         }
         
         // Destroy FFTWF objects
-        fftwf_destroy_plan(exp.fftCh1);
-        fftwf_destroy_plan(exp.fftCh2);
-        fftwf_destroy_plan(exp.fftCh3);
-        fftwf_destroy_plan(exp.fftCh4);
-        exp.fftCh1 = nullptr;
-        exp.fftCh2 = nullptr;
-        exp.fftCh3 = nullptr;
-        exp.fftCh4 = nullptr;
+        for (auto& plan : exp.fftForChannels) {
+            fftwf_destroy_plan(plan);
+            plan = nullptr;
+        }
         
         fftwf_destroy_plan(exp.inverseFFT);
         exp.inverseFFT = nullptr;
-
-        // Destroy FIR filter objects
-        //firfilt_rrrf_destroy(exp.firFilterCh1);
-        //firfilt_rrrf_destroy(exp.firFilterCh2);
-        //firfilt_rrrf_destroy(exp.firFilterCh3);
-        //firfilt_rrrf_destroy(exp.firFilterCh4);
-        //exp.firFilterCh1 = nullptr;
-        //exp.firFilterCh2 = nullptr;
-        //exp.firFilterCh3 = nullptr;
-        //exp.firFilterCh4 = nullptr;
 
         sess.errorOccurred = false;
     }

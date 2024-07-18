@@ -92,7 +92,7 @@ void GenerateTimestamps(std::vector<TimePoint>& dataTimes, vector<uint8_t>& data
 
 
 
-DetectionResult ThresholdDetect(Eigen::VectorXf& data, std::vector<TimePoint>& times, const double& threshold, const unsigned int& SAMPLE_RATE) {
+DetectionResult ThresholdDetect(const Eigen::VectorXf& data, const std::vector<TimePoint>& times, const double& threshold, const unsigned int& SAMPLE_RATE) {
     /**
     * @brief Detects peaks in the input data above a specified threshold.
     *
@@ -214,19 +214,25 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
 }
 
 */
-
-void ProcessSegmentInterleaved(std::vector<float>& data, Eigen::VectorXf& ch1, Eigen::VectorXf& ch2, Eigen::VectorXf& ch3, Eigen::VectorXf& ch4, unsigned int& NUM_CHAN) {
+void ProcessSegmentInterleaved(std::vector<float>& data, Eigen::MatrixXf& channels, unsigned int NUM_CHAN) {
     /**
-    * @brief Processes interleaved data into separate channel. Each channel's data is saved into a corresponding Eigen vector.
+    * @brief Processes interleaved data into separate channels. Each channel's data is saved into a corresponding Eigen matrix.
     * 
-    * @param data A reference to a vector of doubles containing interleaved data from multiple channels.
-    */        
+    * @param data A reference to a vector of floats containing interleaved data from multiple channels.
+    * @param channels A reference to an Eigen matrix to hold the separate channel data. Each row corresponds to a channel.
+    * @param NUM_CHAN The number of channels.
+    */
     
-    // Iterate through the data vector and save every NUM_CHANth element into the Eigen vector
-    for (size_t i = 0, j = 0; i < data.size(); i += NUM_CHAN, ++j) {
-        ch1(j) = data[i];
-        ch2(j) = data[i+1];
-        ch3(j) = data[i+2];
-        ch4(j) = data[i+3];
+    // Calculate the number of samples per channel
+    size_t numSamples = data.size() / NUM_CHAN;
+    
+    // Ensure the channels matrix has the correct dimensions
+    //channels.resize(numSamples, NUM_CHAN);
+
+    // Iterate through the data vector and save every NUM_CHANth element into the corresponding row of the channels matrix
+    for (unsigned int ch = 0; ch < NUM_CHAN; ++ch) {
+        for (size_t i = 0; i < numSamples; ++i) {
+            channels(i, ch) = data[i * NUM_CHAN + ch];
+        }
     }
 }

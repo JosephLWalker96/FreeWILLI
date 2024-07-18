@@ -38,13 +38,10 @@ struct Experiment {
     
     vector<float> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
     
-    void(*ProcessFncPtr)(std::vector<float>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, Eigen::Matrix<float, Eigen::Dynamic, 1>&, unsigned int&) = nullptr;
+    void(*ProcessFncPtr)(std::vector<float>&, Eigen::MatrixXf&, unsigned int)= nullptr;
 
     // Define FFTWF plans during runtime 
-    fftwf_plan fftCh1 = nullptr; // fftwf object that points to channel 1
-    fftwf_plan fftCh2 = nullptr;
-    fftwf_plan fftCh3 = nullptr;
-    fftwf_plan fftCh4 = nullptr;
+    vector<fftwf_plan> fftForChannels; // fftwf object that points to channel 1
 
     fftwf_plan inverseFFT = nullptr;
 };
