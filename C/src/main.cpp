@@ -418,6 +418,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Eigen assertions are enabled." << std::endl;
     #endif
 
+
     // Check for additional Eigen-specific macros
     #ifdef EIGEN_FAST_MATH
     std::cout << "Eigen fast math is enabled." << std::endl;
@@ -444,6 +445,14 @@ int main(int argc, char *argv[]) {
     #else
     std::cout << "Precompiled header is not included." << std::endl;
     #endif
+
+    #ifdef DEBUG
+        std::cout << "Running Debug Mode" << std::endl;
+    #else
+        std::cout << "Running Release Mode" << std::endl;
+    #endif
+    
+
     // Declare a listening 'Session'
     Session sess;
     Experiment exp;
