@@ -2,11 +2,6 @@ add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp)
 
 add_executable(HarpListen main.cpp)
 
-# Set the output directory for the executable
-set_target_properties(HarpListen PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
-)
-
 # Ensure AVX vectorization is enabled globally
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-mavx -mavx2 -mfma -O3)
