@@ -148,6 +148,33 @@ else()
     set(ENABLE_BENCHMARK TRUE)
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(-Og -g -Wall -Wextra -fsanitize=address)
+else ()
+    # Enable Optimization flags
+    add_compile_options(-O3 -flto=auto)
+    # Vectorization
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm|aarch64")
+            message(STATUS "ARM processor does not support AVX vectorization.")
+            if(MACOSX)
+                message(STATUS "Apple M-series chip detected")
+                add_compile_options(-march=arm64)
+                # add_compile_options(--fast-math) # may mess up the results
+            else ()
+                message(STATUS "Non-M-series ARM chip detected: enabling neon vectorization")
+                add_compile_options(-mfpu=neon)
+            endif ()
+
+        else()
+            message(STATUS "x86 chip detected: enabling AVX vectorization.")
+            add_compile_options(-mavx -mavx2 -mfma -O3)
+        endif()
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        add_compile_options(/arch:AVX2 /O2)
+    endif()
+endif ()
+
 # Add the source directory
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 # Add the test and benchmark directories
@@ -209,36 +236,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
                 RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/debug
         )
     endif ()
-    add_compile_options(-Og -g -Wall -Wextra -fsanitize=address -fno-omit-frame-pointer)
+#    add_compile_options(-Og -g -Wall -Wextra -fsanitize=address)
 else ()
     message(STATUS "Building tests in Release mode.")
     # Set the output directory for the executable
     set_target_properties(HarpListen PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
     )
-
-    # Enable Optimization flags
-    add_compile_options(-O3 -flto=auto)
-    # Vectorization
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm|aarch64")
-            message(STATUS "ARM processor does not support AVX vectorization.")
-            if(MACOSX)
-                message(STATUS "Apple M-series chip detected")
-                add_compile_options(-march=arm64)
-                # add_compile_options(--fast-math) # may mess up the results
-            else ()
-                message(STATUS "Non-M-series ARM chip detected: enabling neon vectorization")
-                add_compile_options(-mfpu=neon)
-            endif ()
-
-        else()
-            message(STATUS "x86 chip detected: enabling AVX vectorization.")
-            add_compile_options(-mavx -mavx2 -mfma -O3)
-        endif()
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-        add_compile_options(/arch:AVX2 /O2)
-    endif()
 endif ()
 
 # Print the compile flags
