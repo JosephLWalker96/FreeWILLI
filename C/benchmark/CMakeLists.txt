@@ -1,4 +1,3 @@
-project(Benchmark)
 add_executable(Benchmark
         HelloBenchmark.cpp
         process_data_benchmark.cpp
