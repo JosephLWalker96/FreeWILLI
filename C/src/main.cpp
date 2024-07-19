@@ -145,8 +145,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
      */
 
     try {
-        int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; // the number of samples per channel within a dataSegment
 
+        // the number of samples per channel within a dataSegment
+        int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; 
+        
         // Read filter weights from file 
         vector<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
         
@@ -164,10 +166,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
         int paddedLength = filterWeightsFloat.size() + channelSize - 1;
         int fftOutputSize = (paddedLength / 2) + 1;
         cout << "Padded size: " << paddedLength << endl;
-
+        
+        // Matrices for (transformed) channel data
         static Eigen::MatrixXf channelData(paddedLength, exp.NUM_CHAN);
         static Eigen::MatrixXcf savedFFTs(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
-        //Eigen::MatrixXcf savedFFTs_FFTW(exp.NUM_CHAN, fftOutputSize); // save the FFT transformed channels
         
         /* Zero-pad filter weights to the length of the signal                     */
         std::vector<float> paddedFilterWeights(paddedLength, 0.0f);
