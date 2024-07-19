@@ -197,14 +197,18 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set_target_properties(HarpListen PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/debug
     )
-    set_property(TARGET UnitTests PROPERTY OUTPUT_NAME UnitTestsDebug)
-    set_target_properties(UnitTests PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/debug
-    )
-    set_property(TARGET Benchmark PROPERTY OUTPUT_NAME BenchmarkDebug)
-    set_target_properties(Benchmark PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/debug
-    )
+    if (ENABLE_TEST)
+        set_property(TARGET UnitTests PROPERTY OUTPUT_NAME UnitTestsDebug)
+        set_target_properties(UnitTests PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/debug
+        )
+    endif ()
+    if (ENABLE_BENCHMARK)
+        set_property(TARGET Benchmark PROPERTY OUTPUT_NAME BenchmarkDebug)
+        set_target_properties(Benchmark PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/debug
+        )
+    endif ()
     add_compile_options(-g -Wall -Wextra -fsanitize=address -fno-omit-frame-pointer)
 else ()
     message(STATUS "Building tests in Release mode.")
