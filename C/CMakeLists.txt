@@ -246,4 +246,15 @@ else ()
 endif ()
 
 # Print the compile flags
-message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+get_target_property(target_options HarpListen COMPILE_OPTIONS)
+message(STATUS "Compile options for HarpListen: ${target_options}")
+
+if (ENABLE_TEST)
+    get_target_property(target_options UnitTests COMPILE_OPTIONS)
+    message(STATUS "Compile options for UnitTests: ${target_options}")
+endif ()
+
+if(ENABLE_BENCHMARK)
+    get_target_property(target_options Benchmark COMPILE_OPTIONS)
+    message(STATUS "Compile options for Benchmark: ${target_options}")
+endif ()
