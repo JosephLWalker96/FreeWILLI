@@ -1,3 +1,9 @@
 [submodule "C/third_party/googletest"]
 	path = C/third_party/googletest
 	url = https://github.com/google/googletest.git
+[submodule "C/libs/googletest"]
+	path = C/libs/googletest
+	url = https://github.com/google/googletest.git
+[submodule "C/libs/benchmark"]
+	path = C/libs/benchmark
+	url = https://github.com/google/benchmark.git

@@ -149,7 +149,8 @@ else()
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_options(-Og -g -Wall -Wextra -fsanitize=address)
+#    add_compile_options(-Og -g -Wall -Wextra -fsanitize=address)
+    add_compile_options(-Og -g -Wall -Wextra)
 else ()
     # Enable Optimization flags
     add_compile_options(-O3 -flto=auto)
@@ -159,7 +160,7 @@ else ()
             message(STATUS "ARM processor does not support AVX vectorization.")
             if(MACOSX)
                 message(STATUS "Apple M-series chip detected")
-                add_compile_options(-march=arm64)
+#                add_compile_options(-march=arm64)
                 # add_compile_options(--fast-math) # may mess up the results
             else ()
                 message(STATUS "Non-M-series ARM chip detected: enabling neon vectorization")
@@ -179,33 +180,20 @@ endif ()
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 # Add the test and benchmark directories
 if (ENABLE_TEST)
-    message(STATUS "GoogleTest not found; Fetch now")
-    include(FetchContent)
-    FetchContent_Declare(
-            googletest
-            GIT_REPOSITORY https://github.com/google/googletest.git
-            GIT_TAG release-1.10.0  # Specify the release you need
-    )
     # Set the build options to skip Google Mock
     set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
     set(INSTALL_GMOCK OFF CACHE BOOL "" FORCE)
     set(BUILD_GTEST ON CACHE BOOL "" FORCE)
     set(INSTALL_GTEST ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
+    # current googletest version is on release-1.10.0
+    add_subdirectory(${PROJECT_SOURCE_DIR}/libs/googletest)
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
 endif()
 #set(ENABLE_BENCHMARK FALSE)
 if(ENABLE_BENCHMARK)
-    include(FetchContent)
     set(BENCHMARK_ENABLE_TESTING off)
-    FetchContent_Declare(
-            benchmark
-            GIT_REPOSITORY https://github.com/google/benchmark.git
-            GIT_TAG v1.8.5 # the newest version up to July 18th, 2024
-            CMAKE_ARGS -DGOOGLETEST_PATH=${gtest_SOURCE_DIR}/
-    )
-    FetchContent_MakeAvailable(benchmark)
-    # Specify Google Test path for Google Benchmark
+    # current benchmark version is on v1.8.5
+    add_subdirectory(${PROJECT_SOURCE_DIR}/libs/benchmark)
     add_subdirectory(${PROJECT_SOURCE_DIR}/benchmark)
 endif()
 

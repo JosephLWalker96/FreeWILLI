@@ -6,6 +6,7 @@ add_executable(Benchmark
 # Include directories properly set
 target_include_directories(Benchmark PRIVATE
         ${THIRD_PARTY_INCLUDE_DIRS}
+        "${benchmark_SOURCE_DIR}/include"
 )
 target_link_libraries(Benchmark PRIVATE
         benchmark::benchmark
