@@ -149,8 +149,8 @@ else()
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-#    add_compile_options(-Og -g -Wall -Wextra -fsanitize=address)
-    add_compile_options(-Og -g -Wall -Wextra)
+    add_compile_options(-Og -g -Wall -Wextra -fsanitize=address)
+#    add_compile_options(-Og -g -Wall -Wextra)
 else ()
     # Enable Optimization flags
     add_compile_options(-O3 -flto=auto)
