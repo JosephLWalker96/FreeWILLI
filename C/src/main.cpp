@@ -272,6 +272,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             }
             auto afterFFTWF = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTWF = afterFFTWF - beforeFFTWF;
+            cout << "FFT time: " << durationFFTWF.count() << endl;
 
             auto beforeFFTW = std::chrono::steady_clock::now();
             for (int i = 0; i < exp.NUM_CHAN; i++) {
@@ -279,13 +280,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
             }
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
-            //cout << "FFT filter time: " << durationFFTW.count() << endl;
+            cout << "FFT filter time: " << durationFFTW.count() << endl;
             
             auto beforeGCCW = std::chrono::steady_clock::now();
             Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            //cout << "Eigen C GCC: " << durationGCCW.count() << endl;
+            cout << "GCC time: " << durationGCCW.count() << endl;
             
             Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
             cout << "DOAs: " << DOAs.transpose() << endl;
