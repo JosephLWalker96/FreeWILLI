@@ -6,7 +6,7 @@
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-static void BM_ConvertData(benchmark::State& state) {
+static void BM_ConvertDataSmall(benchmark::State& state) {
     std::vector<uint8_t> dataBytes = {0x80, 0x04,0x80, 0x0d,0x80, 0x0e}; // Sample data bytes (modify as needed)
     unsigned int DATA_SIZE = dataBytes.size();
     unsigned int HEAD_SIZE = 0;
@@ -19,4 +19,44 @@ static void BM_ConvertData(benchmark::State& state) {
         ConvertData(dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE);
 }
 
+static void BM_ConvertData(benchmark::State& state) {
+    std::vector<uint8_t> dataBytes = std::vector<uint8_t>(496, 0); // Sample data bytes (modify as needed)
+    for (unsigned char & i : dataBytes) {
+        i = (uint8_t) (rand() % 256);
+    }
+
+    unsigned int DATA_SIZE = dataBytes.size();
+    unsigned int HEAD_SIZE = 12;
+
+    // Create an empty vector to store the converted data
+    std::vector<float> dataSegment;
+    for (auto _ : state)
+        ConvertData(dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE);
+}
+
+static void BM_ConvertDataSimulation(benchmark::State& state) {
+    // init and randomize
+    auto receivedData = std::vector<uint8_t>(3968, 0);
+    for (unsigned char & i : receivedData) {
+        i = (uint8_t) (rand() % 256);
+    }
+    unsigned int DATA_SIZE = 496;
+    unsigned int HEAD_SIZE = 12;
+
+    for (auto _ : state) {
+        vector<float> dataSegment;
+        for (unsigned int i = 0; i < receivedData.size(); i += DATA_SIZE) {
+            auto dataBytes = std::vector<uint8_t>(receivedData.begin() + i, receivedData.begin() + i + 496);
+            ConvertData(
+                    dataSegment,
+                    dataBytes,
+                    reinterpret_cast<unsigned int &>(DATA_SIZE),
+                    reinterpret_cast<unsigned int &>(HEAD_SIZE)
+            );
+        }
+    }
+}
+
+BENCHMARK(BM_ConvertDataSmall);
 BENCHMARK(BM_ConvertData);
+BENCHMARK(BM_ConvertDataSimulation);

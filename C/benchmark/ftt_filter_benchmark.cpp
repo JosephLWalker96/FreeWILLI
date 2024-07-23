@@ -3,7 +3,6 @@
 #include "../src/utils.h"
 #include <eigen3/Eigen/Dense>
 #include "../src/TDOA_estimation.h"
-#include "../src/custom_types.h"
 
 vector<float> filterWeightsFloat = {
         1.74828306e-18,  5.00045521e-04,  3.26087846e-04, -3.51028225e-04,

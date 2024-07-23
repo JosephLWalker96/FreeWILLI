@@ -1,8 +1,9 @@
 add_executable(Benchmark
-        HelloBenchmark.cpp
+#        HelloBenchmark.cpp
         process_data_benchmark.cpp
         TDOA_estimation_test.cpp
-        fftwf_benchmark.cpp
+        ftt_filter_benchmark.cpp
+        simulation_benchmark.cpp
 )
 # Include directories properly set
 target_include_directories(Benchmark PRIVATE
