@@ -42,6 +42,7 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
     }
     auto exp = Experiment();
     int channelSize = (int)(0.01 * 100000);
+    int NUM_CHAN = 4;
     unsigned long paddedLength = simulatedFilterWeightsFloat.size() + channelSize - 1;
     unsigned long fftOutputSize = paddedLength / 2 + 1;
 
@@ -72,11 +73,11 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
                     );
         }
 
-        Eigen::MatrixXf channelData(paddedLength, channelSize);
-        ProcessSegmentInterleaved(dataSegment, channelData, channelSize);
+        Eigen::MatrixXf channelData(paddedLength, NUM_CHAN);
+        ProcessSegmentInterleaved(dataSegment, channelData, NUM_CHAN);
 
-        Eigen::MatrixXcf dataFreq(fftOutputSize, channelSize);
-        for (int i = 0; i < channelSize; i++) {
+        Eigen::MatrixXcf dataFreq(fftOutputSize, NUM_CHAN);
+        for (int i = 0; i < NUM_CHAN; i++) {
             plans.push_back(
                     fftwf_plan_dft_r2c_1d(
                             paddedLength,
@@ -90,7 +91,9 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
             fftwf_execute(plan);
         }
 
-        for (int i = 0; i < channelSize; i++) {
+        for (int i = 0; i < NUM_CHAN; i++) {
+            // Normalize the data to avoid error, increase a little runtime
+            dataFreq.col(i).array() = dataFreq.col(i).array() / dataFreq.col(i).array().abs().maxCoeff();
             dataFreq.col(i) = dataFreq.col(i).array() * filterFreq.array();
         }
 
@@ -102,7 +105,7 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
                 exp.inverseFFT,
                 exp.interp,
                 reinterpret_cast<int &>(paddedLength),
-                reinterpret_cast<unsigned int&> (channelSize),
+                reinterpret_cast<unsigned int&> (NUM_CHAN),
                 exp.SAMPLE_RATE
         );
 
@@ -110,7 +113,7 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
 
         Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(
                 resultMatrix,
-                exp.speedOfSound,
+                1,
                 exp.chanSpacing
                 );
     }
