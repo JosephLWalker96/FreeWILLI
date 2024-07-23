@@ -31,7 +31,7 @@ struct Experiment {
     string tdoaOutputFile      = "";
     string doaOutputFile       = "";
 
-    const string filterWeights = "filters/My_filter.txt";
+    const string filterWeights = "filters/highpass_taps@101_cutoff@20k_window@hamming_fs@100k.txt";
     
     const float speedOfSound = 1500.0;
     float energyDetThresh = 2500.0; // energy detector threshold - 2500.0 is default 

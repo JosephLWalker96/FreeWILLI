@@ -145,8 +145,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
      */
 
     try {
-        int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; // the number of samples per channel within a dataSegment
 
+        // the number of samples per channel within a dataSegment
+        int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; 
+        
         // Read filter weights from file 
         vector<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
         
@@ -163,21 +165,14 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
         int paddedLength = filterWeightsFloat.size() + channelSize - 1;
         int fftOutputSize = (paddedLength / 2) + 1;
-
-        //static Eigen::VectorXf ch1(paddedLength);
-        //static Eigen::VectorXf ch2(paddedLength);
-        //static Eigen::VectorXf ch3(paddedLength);
-        //static Eigen::VectorXf ch4(paddedLength);
+        cout << "Padded size: " << paddedLength << endl;
         
+        // Matrices for (transformed) channel data
         static Eigen::MatrixXf channelData(paddedLength, exp.NUM_CHAN);
         static Eigen::MatrixXcf savedFFTs(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
-        //Eigen::MatrixXcf savedFFTs_FFTW(exp.NUM_CHAN, fftOutputSize); // save the FFT transformed channels
         
         /* Zero-pad filter weights to the length of the signal                     */
         std::vector<float> paddedFilterWeights(paddedLength, 0.0f);
-        //for (int i = 0; i < filterWeightsFloat.size(); ++i) {
-        //    paddedFilterWeights[i] = filterWeightsFloat[i];
-        //}
         std::copy(filterWeightsFloat.begin(),filterWeightsFloat.end(),paddedFilterWeights.begin());
 
         // Create frequency domain filter
@@ -277,6 +272,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             }
             auto afterFFTWF = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTWF = afterFFTWF - beforeFFTWF;
+            cout << "FFT time: " << durationFFTWF.count() << endl;
 
             auto beforeFFTW = std::chrono::steady_clock::now();
             for (int i = 0; i < exp.NUM_CHAN; i++) {
@@ -284,16 +280,16 @@ void DataProcessor(Session& sess, Experiment& exp) {
             }
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
-            //cout << "FFT filter time: " << durationFFTW.count() << endl;
+            cout << "FFT filter time: " << durationFFTW.count() << endl;
             
             auto beforeGCCW = std::chrono::steady_clock::now();
             Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            //cout << "Eigen C GCC: " << durationGCCW.count() << endl;
+            cout << "GCC time: " << durationGCCW.count() << endl;
             
             Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
-            //cout << "DOAs: " << DOAs.transpose() << endl;
+            cout << "DOAs: " << DOAs.transpose() << endl;
            
             // Write to buffers
             sess.peakAmplitudeBuffer.push_back(detResult.peakAmplitude);
@@ -373,86 +369,85 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 int main(int argc, char *argv[]) {
 
-    // Check if Eigen is using BLAS
-    #ifdef EIGEN_USE_BLAS
-    std::cout << "Eigen is using BLAS for fast computation." << std::endl;
-    #else
-    std::cout << "Eigen is not using BLAS." << std::endl;
-    #endif
+//     // Check if Eigen is using BLAS
+//     #ifdef EIGEN_USE_BLAS
+//     std::cout << "Eigen is using BLAS for fast computation." << std::endl;
+//     #else
+//     std::cout << "Eigen is not using BLAS." << std::endl;
+//     #endif
 
-    // Check if Eigen is using LAPACKE
-    #ifdef EIGEN_USE_LAPACKE
-    std::cout << "Eigen is using LAPACKE for fast computation." << std::endl;
-    #else
-    std::cout << "Eigen is not using LAPACKE." << std::endl;
-    #endif
+//     // Check if Eigen is using LAPACKE
+//     #ifdef EIGEN_USE_LAPACKE
+//     std::cout << "Eigen is using LAPACKE for fast computation." << std::endl;
+//     #else
+//     std::cout << "Eigen is not using LAPACKE." << std::endl;
+//     #endif
 
-    // Check if Eigen vectorization is enabled
-    #ifdef EIGEN_VECTORIZE
-    std::cout << "Eigen vectorization is enabled." << std::endl;
-    #else
-    std::cout << "Eigen vectorization is not enabled." << std::endl;
-    #endif
+//     // Check if Eigen vectorization is enabled
+//     #ifdef EIGEN_VECTORIZE
+//     std::cout << "Eigen vectorization is enabled." << std::endl;
+//     #else
+//     std::cout << "Eigen vectorization is not enabled." << std::endl;
+//     #endif
 
-    // Check for specific vectorization types
-    #ifdef EIGEN_VECTORIZE_SSE
-    std::cout << "Eigen is using SSE vectorization." << std::endl;
-    #endif
+//     // Check for specific vectorization types
+//     #ifdef EIGEN_VECTORIZE_SSE
+//     std::cout << "Eigen is using SSE vectorization." << std::endl;
+//     #endif
 
-    #ifdef EIGEN_VECTORIZE_AVX
-    std::cout << "Eigen is using AVX vectorization." << std::endl;
-    #endif
+//     #ifdef EIGEN_VECTORIZE_AVX
+//     std::cout << "Eigen is using AVX vectorization." << std::endl;
+//     #endif
 
-    #ifdef EIGEN_VECTORIZE_AVX512
-    std::cout << "Eigen is using AVX512 vectorization." << std::endl;
-    #endif
+//     #ifdef EIGEN_VECTORIZE_AVX512
+//     std::cout << "Eigen is using AVX512 vectorization." << std::endl;
+//     #endif
 
-    #ifdef EIGEN_VECTORIZE_NEON
-    std::cout << "Eigen is using NEON vectorization." << std::endl;
-    #endif
+//     #ifdef EIGEN_VECTORIZE_NEON
+//     std::cout << "Eigen is using NEON vectorization." << std::endl;
+//     #endif
 
-    // Check if Eigen assertions are disabled
-    #ifdef EIGEN_NO_DEBUG
-    std::cout << "Eigen assertions are disabled (NDEBUG defined)." << std::endl;
-    #else
-    std::cout << "Eigen assertions are enabled." << std::endl;
-    #endif
+//     // Check if Eigen assertions are disabled
+//     #ifdef EIGEN_NO_DEBUG
+//     std::cout << "Eigen assertions are disabled (NDEBUG defined)." << std::endl;
+//     #else
+//     std::cout << "Eigen assertions are enabled." << std::endl;
+//     #endif
 
 
-    // Check for additional Eigen-specific macros
-    #ifdef EIGEN_FAST_MATH
-    std::cout << "Eigen fast math is enabled." << std::endl;
-    #else
-    std::cout << "Eigen fast math is not enabled." << std::endl;
-    #endif
+//     // Check for additional Eigen-specific macros
+//     #ifdef EIGEN_FAST_MATH
+//     std::cout << "Eigen fast math is enabled." << std::endl;
+//     #else
+//     std::cout << "Eigen fast math is not enabled." << std::endl;
+//     #endif
 
-    #ifdef EIGEN_USE_MKL
-    std::cout << "Eigen is using MKL." << std::endl;
-    #else
-    std::cout << "Eigen is not using MKL." << std::endl;
-    #endif
+//     #ifdef EIGEN_USE_MKL
+//     std::cout << "Eigen is using MKL." << std::endl;
+//     #else
+//     std::cout << "Eigen is not using MKL." << std::endl;
+//     #endif
 
-    // Check for compiler optimization level
-    #ifdef __OPTIMIZE__
-    std::cout << "Compiler optimizations are enabled." << std::endl;
-    #else
-    std::cout << "Compiler optimizations are not enabled." << std::endl;
-    #endif
+//     // Check for compiler optimization level
+//     #ifdef __OPTIMIZE__
+//     std::cout << "Compiler optimizations are enabled." << std::endl;
+//     #else
+//     std::cout << "Compiler optimizations are not enabled." << std::endl;
+//     #endif
 
-    // Check if the precompiled header is included correctly
-    #ifdef PCH_INCLUDED
-    std::cout << "Precompiled header is included." << std::endl;
-    #else
-    std::cout << "Precompiled header is not included." << std::endl;
-    #endif
+//     // Check if the precompiled header is included correctly
+//     #ifdef PCH_INCLUDED
+//     std::cout << "Precompiled header is included." << std::endl;
+//     #else
+//     std::cout << "Precompiled header is not included." << std::endl;
+//     #endif
 
-    #ifdef DEBUG
-        std::cout << "Running Debug Mode" << std::endl;
-    #else
-        std::cout << "Running Release Mode" << std::endl;
-    #endif
+//     #ifdef DEBUG
+//         std::cout << "Running Debug Mode" << std::endl;
+//     #else
+//         std::cout << "Running Release Mode" << std::endl;
+//     #endif
     
-
     // Declare a listening 'Session'
     Session sess;
     Experiment exp;
