@@ -91,9 +91,9 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
             fftwf_execute(plan);
         }
 
+        // Normalize the data to avoid error, increase a little runtime
+        dataFreq = dataFreq / (dataFreq.array().abs().maxCoeff()+1e-8);
         for (int i = 0; i < NUM_CHAN; i++) {
-            // Normalize the data to avoid error, increase a little runtime
-            dataFreq.col(i).array() = dataFreq.col(i).array() / dataFreq.col(i).array().abs().maxCoeff();
             dataFreq.col(i) = dataFreq.col(i).array() * filterFreq.array();
         }
 

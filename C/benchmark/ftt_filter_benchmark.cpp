@@ -35,14 +35,15 @@ vector<float> filterWeightsFloat = {
 
 static void BM_FFT(benchmark::State& state) {
         int channelSize = (int)(0.01 * 100000);
+        int NUM_CHAN = 4;
         unsigned long paddedLength = filterWeightsFloat.size() + channelSize - 1;
 
         // randomly generating signal data
-        Eigen::MatrixXf data(paddedLength, channelSize);
+        Eigen::MatrixXf data(paddedLength, NUM_CHAN);
         std::mt19937 generator(0);
         // this generator will generate 1 ramdom number between -1 and 1 at a time
         std::uniform_real_distribution<float> distribution(-1.0, 1.0);
-        for (int i = 0; i < channelSize; i++) {
+        for (int i = 0; i < NUM_CHAN; i++) {
             for (int j = 0; j < paddedLength; j++) {
                 data(j, i) = distribution(generator);
             }
@@ -59,7 +60,7 @@ static void BM_FFT(benchmark::State& state) {
                         (fftwf_complex*)fftwf_malloc(sizeof(fftwf_complex) * paddedLength),
                         FFTW_ESTIMATE
                         ));
-        for (int i = 0; i < channelSize; i++) {
+        for (int i = 0; i < NUM_CHAN; i++) {
             plans.push_back(
                     fftwf_plan_dft_r2c_1d(
                             paddedLength,
@@ -70,7 +71,7 @@ static void BM_FFT(benchmark::State& state) {
         }
 
         for (auto _ : state) {
-            for (int i = 0; i < channelSize+1; i++) {
+            for (int i = 0; i < NUM_CHAN+1; i++) {
                 fftwf_execute(plans[i]);
             }
         }
@@ -79,15 +80,16 @@ static void BM_FFT(benchmark::State& state) {
 
 static void BM_Filter(benchmark::State& state) {
     int channelSize = (int)(0.01 * 100000);
+    int NUM_CHAN = 4;
     unsigned long paddedLength = filterWeightsFloat.size() + channelSize - 1;
     unsigned long fftOutputSize = paddedLength / 2 + 1;
 
     // randomly generating signal data
-    Eigen::MatrixXf data(paddedLength, channelSize);
+    Eigen::MatrixXf data(paddedLength, NUM_CHAN);
     std::mt19937 generator(0);
     // this generator will generate 1 ramdom number between -1 and 1 at a time
     std::uniform_real_distribution<float> distribution(-1.0, 1.0);
-    for (int i = 0; i < channelSize; i++) {
+    for (int i = 0; i < NUM_CHAN; i++) {
         for (int j = 0; j < paddedLength; j++) {
             data(j, i) = distribution(generator);
         }
@@ -106,8 +108,8 @@ static void BM_Filter(benchmark::State& state) {
                     FFTW_ESTIMATE
             ));
 
-    Eigen::MatrixXcf dataFreq(fftOutputSize, channelSize);
-    for (int i = 0; i < channelSize; i++) {
+    Eigen::MatrixXcf dataFreq(fftOutputSize, NUM_CHAN);
+    for (int i = 0; i < NUM_CHAN; i++) {
         plans.push_back(
                 fftwf_plan_dft_r2c_1d(
                         paddedLength,
@@ -117,12 +119,12 @@ static void BM_Filter(benchmark::State& state) {
                 ));
     }
 
-    for (int i = 0; i < channelSize+1; i++) {
+    for (int i = 0; i < NUM_CHAN+1; i++) {
         fftwf_execute(plans[i]);
     }
 
     for (auto _ : state) {
-        for (int i = 0; i < channelSize; i++) {
+        for (int i = 0; i < NUM_CHAN; i++) {
             dataFreq.col(i) = dataFreq.col(i).array() * filterFreq.array();
         }
     }
@@ -174,9 +176,9 @@ static void BM_GCC(benchmark::State& state) {
         fftwf_execute(plan);
     }
 
+    // Normalize the data to avoid error, increase a little runtime
+    dataFreq = dataFreq / (dataFreq.array().abs().maxCoeff()+1e-8);
     for (int i = 0; i < NUM_CHAN; i++) {
-        // Normalize the data to avoid error, increase a little runtime
-        dataFreq.col(i).array() = dataFreq.col(i).array() / dataFreq.col(i).array().abs().maxCoeff();
         dataFreq.col(i) = dataFreq.col(i).array() * filterFreq.array();
     }
 
