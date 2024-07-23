@@ -38,7 +38,7 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
     // init and randomize
     auto receivedData = std::vector<uint8_t>(3968, 0);
     for (unsigned char & i : receivedData) {
-        i = (uint8_t) (rand() % 96); // 128 because 256 will be out of bound for DOAs
+        i = (uint8_t) (rand() % 256); // 128 because 256 will be out of bound for DOAs
     }
     auto exp = Experiment();
     int channelSize = (int)(0.01 * 100000);
@@ -91,11 +91,23 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
             fftwf_execute(plan);
         }
 
-        // Normalize the data to avoid error, increase a little runtime
-        dataFreq = dataFreq / (dataFreq.array().abs().maxCoeff()+1e-8);
         for (int i = 0; i < NUM_CHAN; i++) {
             dataFreq.col(i) = dataFreq.col(i).array() * filterFreq.array();
         }
+
+        // Add a little runtime to replace NaN or Inf with 0
+        dataFreq = dataFreq.unaryExpr([](const std::complex<float>& value) {
+            if (
+                    std::isfinite(value.real()) ||
+                    std::isfinite(value.imag()) ||
+                    std::isnan(value.real()) ||
+                    std::isnan(value.imag())
+                ) {
+                return std::complex<float>(0, 0); // Replace NaN or Inf with 0
+            } else {
+                return value;
+            }
+        });
 
         fftwf_plan inverseFFT = nullptr;
         const unsigned int sampling_rate = 100000;
