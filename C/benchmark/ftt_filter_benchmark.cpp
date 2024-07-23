@@ -176,11 +176,23 @@ static void BM_GCC(benchmark::State& state) {
         fftwf_execute(plan);
     }
 
-    // Normalize the data to avoid error, increase a little runtime
-    dataFreq = dataFreq / (dataFreq.array().abs().maxCoeff()+1e-8);
     for (int i = 0; i < NUM_CHAN; i++) {
         dataFreq.col(i) = dataFreq.col(i).array() * filterFreq.array();
     }
+
+    // Add a little runtime to replace NaN or Inf with 0
+    dataFreq = dataFreq.unaryExpr([](const std::complex<float>& value) {
+        if (
+                std::isfinite(value.real()) ||
+                std::isfinite(value.imag()) ||
+                std::isnan(value.real()) ||
+                std::isnan(value.imag())
+                ) {
+            return std::complex<float>(0, 0); // Replace NaN or Inf with 0
+        } else {
+            return value;
+        }
+    });
 
     fftwf_plan inverseFFT = nullptr;
     const unsigned int sampling_rate = 100000;
