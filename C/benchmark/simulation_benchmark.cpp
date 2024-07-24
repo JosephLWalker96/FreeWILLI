@@ -98,14 +98,14 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
         // Add a little runtime to replace NaN or Inf with 0
         dataFreq = dataFreq.unaryExpr([](const std::complex<float>& value) {
             if (
-                    std::isfinite(value.real()) ||
-                    std::isfinite(value.imag()) ||
+                    !std::isfinite(value.real()) ||
+                    !std::isfinite(value.imag()) ||
                     std::isnan(value.real()) ||
                     std::isnan(value.imag())
                 ) {
                 return std::complex<float>(0, 0); // Replace NaN or Inf with 0
             } else {
-                return value;
+                return value / (float)(1e30); // Normalize
             }
         });
 
