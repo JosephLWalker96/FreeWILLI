@@ -40,7 +40,7 @@ jobs:
       working-directory: ${{github.workspace}}/C/bin
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ./UnitTest
+      run: ./UnitTests
 
   MacOS:
     # The CMake configure and build commands are platform agnostic and should work equally well on Windows or Mac.
@@ -69,4 +69,4 @@ jobs:
         working-directory: ${{github.workspace}}/C/bin
         # Execute tests defined by the CMake configuration.
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-        run: ./UnitTest
+        run: ./UnitTests
