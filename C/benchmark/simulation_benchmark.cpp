@@ -96,7 +96,7 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
         }
 
         // Make sure the following code runtime is not considered in the benchmark
-        benchmark::DoNotOptimize(dataFreq);
+        state.PauseTiming();
         dataFreq = dataFreq.unaryExpr([](const std::complex<float>& value) {
             if (
                     !std::isfinite(value.real()) ||
@@ -109,7 +109,7 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
                 return value / (float)(1e30); // Normalize
             }
         });
-        benchmark::ClobberMemory();
+        state.ResumeTiming();
 
         fftwf_plan inverseFFT = nullptr;
         const unsigned int sampling_rate = 100000;
