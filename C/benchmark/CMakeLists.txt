@@ -4,6 +4,7 @@ add_executable(Benchmark
         TDOA_estimation_test.cpp
         ftt_filter_benchmark.cpp
         simulation_benchmark.cpp
+        threashold_benchmark.cpp
 )
 # Include directories properly set
 target_include_directories(Benchmark PRIVATE
