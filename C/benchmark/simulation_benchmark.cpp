@@ -95,7 +95,8 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
             dataFreq.col(i) = dataFreq.col(i).array() * filterFreq.array();
         }
 
-        // Add a little runtime to replace NaN or Inf with 0
+        // Make sure the following code runtime is not considered in the benchmark
+        benchmark::DoNotOptimize(dataFreq);
         dataFreq = dataFreq.unaryExpr([](const std::complex<float>& value) {
             if (
                     !std::isfinite(value.real()) ||
@@ -108,6 +109,7 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
                 return value / (float)(1e30); // Normalize
             }
         });
+        benchmark::ClobberMemory();
 
         fftwf_plan inverseFFT = nullptr;
         const unsigned int sampling_rate = 100000;

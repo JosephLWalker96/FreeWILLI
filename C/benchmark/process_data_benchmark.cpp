@@ -57,6 +57,20 @@ static void BM_ConvertDataSimulation(benchmark::State& state) {
     }
 }
 
+static void BM_ProcessSegmentInterleaved(benchmark::State& state){
+    unsigned int NUM_CHAN = 4;
+    unsigned int SAMPS_PER_CHANNEL = 124;
+    unsigned int NUM_PACKS_DETECT = 8;
+    unsigned int DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN;
+    std::vector<float>& dataSegment = *new std::vector<float>(DATA_SEGMENT_LENGTH, 0);
+    static Eigen::MatrixXf channelData(1092, 4);
+
+    for (auto _ : state){
+        ProcessSegmentInterleaved(dataSegment, channelData, NUM_CHAN);
+    }
+}
+
 BENCHMARK(BM_ConvertDataSmall);
 BENCHMARK(BM_ConvertData);
 BENCHMARK(BM_ConvertDataSimulation);
+BENCHMARK(BM_ProcessSegmentInterleaved);
