@@ -24,8 +24,8 @@ Eigen::VectorXf GCC_PHAT_FFTW(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFF
     Eigen::VectorXcf SIG1(fftLength);
     Eigen::VectorXcf SIG2(fftLength);
 
-    Eigen::VectorXcf crossSpectraMagnitudeNorm(fftLength);
-    Eigen::VectorXf crossCorr(paddedLength);
+    static Eigen::VectorXcf crossSpectraMagnitudeNorm(fftLength);
+    static Eigen::VectorXf crossCorr(paddedLength);
 
     if (inverseFFT == nullptr) {
         inverseFFT = fftwf_plan_dft_c2r_1d(paddedLength, reinterpret_cast<fftwf_complex*>(crossSpectraMagnitudeNorm.data()), crossCorr.data(), FFTW_ESTIMATE);
