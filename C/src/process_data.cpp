@@ -1,17 +1,12 @@
-//#include "process_data.h"
 #include "utils.h"
-
 
 using std::cout;
 using std::endl;
 using std::cerr;
-using std::vector;
-using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
 
-
-void ConvertData(vector<float>& dataSegment, vector<uint8_t>& dataBytes, unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE) {
+void ConvertData(std::vector<float>& dataSegment, std::span<uint8_t> dataBytes, unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE) {
     /**
      * @brief Converts raw data bytes to double values and stores them in the provided data segment.
      * 
@@ -35,7 +30,7 @@ void ConvertData(vector<float>& dataSegment, vector<uint8_t>& dataBytes, unsigne
 }
 
 
-void GenerateTimestamps(std::vector<TimePoint>& dataTimes, vector<uint8_t>& dataBytes,unsigned int MICRO_INCR, bool& previousTimeSet, std::chrono::time_point<std::chrono::system_clock>& previousTime, string& detectionOutputFile, string& tdoaOutputFile, string& doaOutputFile) {
+void GenerateTimestamps(std::vector<TimePoint>& dataTimes, std::span<uint8_t> dataBytes, unsigned int MICRO_INCR, bool& previousTimeSet, std::chrono::time_point<std::chrono::system_clock>& previousTime, std::string& detectionOutputFile, std::string& tdoaOutputFile, std::string& doaOutputFile) {
 
     std::tm timeStruct{};                                     // Initialize a std::tm structure to hold the date and time components
     timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
@@ -81,7 +76,7 @@ void GenerateTimestamps(std::vector<TimePoint>& dataTimes, vector<uint8_t>& data
     previousTimeSet = true;
     
     if ((detectionOutputFile).empty()){
-        string feature = "detection";
+        std::string feature = "detection";
         InitiateOutputFile(detectionOutputFile, timeStruct, microSec, feature);
         feature = "tdoa";
         InitiateOutputFile(tdoaOutputFile, timeStruct, microSec, feature);
@@ -92,7 +87,7 @@ void GenerateTimestamps(std::vector<TimePoint>& dataTimes, vector<uint8_t>& data
 
 
 
-DetectionResult ThresholdDetect(const Eigen::VectorXf& data, const std::vector<TimePoint>& times, const double& threshold, const unsigned int& SAMPLE_RATE) {
+DetectionResult ThresholdDetect(const Eigen::VectorXf& data, const std::span<TimePoint> times, const double& threshold, const unsigned int& SAMPLE_RATE) {
     /**
     * @brief Detects peaks in the input data above a specified threshold.
     *
@@ -214,11 +209,11 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
 }
 
 */
-void ProcessSegmentInterleaved(std::vector<float>& data, Eigen::MatrixXf& channels, unsigned int NUM_CHAN) {
+void ProcessSegmentInterleaved(std::span<float> data, Eigen::MatrixXf& channels, unsigned int NUM_CHAN) {
     /**
     * @brief Processes interleaved data into separate channels. Each channel's data is saved into a corresponding Eigen matrix.
     * 
-    * @param data A reference to a vector of floats containing interleaved data from multiple channels.
+    * @param data A reference to a container of floats containing interleaved data from multiple channels.
     * @param channels A reference to an Eigen matrix to hold the separate channel data. Each row corresponds to a channel.
     * @param NUM_CHAN The number of channels.
     */
@@ -229,7 +224,7 @@ void ProcessSegmentInterleaved(std::vector<float>& data, Eigen::MatrixXf& channe
     // Ensure the channels matrix has the correct dimensions
     //channels.resize(numSamples, NUM_CHAN);
 
-    // Iterate through the data vector and save every NUM_CHANth element into the corresponding row of the channels matrix
+    // Iterate through the data container and save every NUM_CHANth element into the corresponding row of the channels matrix
     for (unsigned int ch = 0; ch < NUM_CHAN; ++ch) {
         for (size_t i = 0; i < numSamples; ++i) {
             channels(i, ch) = data[i * NUM_CHAN + ch];
