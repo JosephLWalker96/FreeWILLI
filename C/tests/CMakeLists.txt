@@ -21,18 +21,19 @@ gtest_discover_tests(UnitTests)
 set_target_properties(UnitTests PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
 )
-#
-#if (ENABLE_AUTO_TEST)
-#    # Add a custom target that runs the tests every time the project is built
-#    add_custom_target(
-#      run_tests ALL                      # ALL means the target is built every time
-#      COMMAND ${CMAKE_COMMAND} --build . --target UnitTests
-#      COMMAND UnitTests                  # Execute the tests after building
-#      DEPENDS UnitTests                  # Ensures UnitTests is built before running
-#      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-#      COMMENT "Running unit tests..."
-#    )
-#
-#    # This ensures the UnitTests executable is up-to-date before running
-#    add_dependencies(run_tests UnitTests)
-#endif ()
+
+
+if (ENABLE_TEST)
+    # Add a custom target that runs the tests every time the project is built
+    add_custom_target(
+      run_tests ALL                      # ALL means the target is built every time
+      COMMAND ${CMAKE_COMMAND} --build . --target UnitTests
+      COMMAND UnitTests                  # Execute the tests after building
+      DEPENDS UnitTests                  # Ensures UnitTests is built before running
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "Running unit tests..."
+    )
+
+    # This ensures the UnitTests executable is up-to-date before running
+    add_dependencies(run_tests UnitTests)
+endif ()
