@@ -5,6 +5,7 @@
 #include "../src/process_data.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
+using namespace std;
 
 static void BM_ConvertDataSmall(benchmark::State& state) {
     std::vector<uint8_t> dataBytes = {0x80, 0x04,0x80, 0x0d,0x80, 0x0e}; // Sample data bytes (modify as needed)

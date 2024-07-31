@@ -4,6 +4,7 @@
 #include "../src/TDOA_estimation.h"
 #include "../src/utils.h"
 #include "../src/pch.h"
+using namespace std;
 
 vector<float> simulatedFilterWeightsFloat = {
         1.74828306e-18,  5.00045521e-04,  3.26087846e-04, -3.51028225e-04,
@@ -114,7 +115,7 @@ static void BM_DataProcessSimulation(benchmark::State& state) {
         fftwf_plan inverseFFT = nullptr;
         const unsigned int sampling_rate = 100000;
         int interp = 1;
-        auto resultMatrix = GCC_PHAT_FFTW_E(
+        auto resultMatrix = GCC_PHAT_FFTW(
                 dataFreq,
                 exp.inverseFFT,
                 exp.interp,

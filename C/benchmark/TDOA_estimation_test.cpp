@@ -1,8 +1,8 @@
 #include <benchmark/benchmark.h>
 #include <string>
 #include <vector>
-
 #include "../src/TDOA_estimation.h"
+using namespace std;
 
 using TimePoint = std::chrono::system_clock::time_point;
 

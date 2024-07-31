@@ -2,6 +2,7 @@
 #include "../src/process_data.h"
 #include "../src/custom_types.h"
 #include <sys/time.h>
+using namespace std;
 
 static void BM_Threshold(benchmark::State& state) {
     Experiment exp;
