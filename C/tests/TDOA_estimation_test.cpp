@@ -2,6 +2,8 @@
 #include <fstream>
 #include <iostream>
 #include <chrono>
+#include <string>
+#include <vector>
 
 #include "../src/TDOA_estimation.h"
 //#include "utils.h" // Assuming utils.h includes the definition of restartListener
@@ -70,7 +72,7 @@ TEST(DOA_EstimateVerticalArray, ValidDataMidRegion) {
 
 TEST(DOA_EstimateVerticalArray, ValidDataBoundaries) {
     // Call the function under test
-    std::vector<float> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
+    vector<float> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
     Eigen::VectorXf TDOAs(chanSpacing.size());
     
     for (int i = 0; i < chanSpacing.size(); i++) {

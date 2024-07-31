@@ -3,9 +3,11 @@
 using std::cerr;
 using std::endl;
 using std::cout;
+using std::string;
+using std::vector;
 using TimePoint = std::chrono::system_clock::time_point;
 
-void PrintTimes(const std::span<TimePoint> timestamps) {
+void PrintTimes(const vector<TimePoint>& timestamps) {
     /**
     * @brief Prints the timestamps provided in the input vector.
     *
@@ -80,7 +82,7 @@ void RestartListener(Session& sess){
     sess.dataTimes.clear();
 }
 
-bool ProcessFile(Experiment& exp, const std::string& fileName) {
+bool ProcessFile(Experiment& exp, const string fileName) {
     /**
     * @brief Processes a configuration file and initializes global variables accordingly.
     *
@@ -100,7 +102,7 @@ bool ProcessFile(Experiment& exp, const std::string& fileName) {
     return 0;
 }
 
-void InitiateOutputFile(std::string& outputFile, std::tm& timeStruct, int64_t microSec, std::string& feature){
+void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSec, string& feature){
 
     outputFile = "deployment_files/"  + std::to_string(timeStruct.tm_year + 1900) + '-' + std::to_string(timeStruct.tm_mon + 1) + '-' + 
                      std::to_string(timeStruct.tm_mday) + '-' + std::to_string(timeStruct.tm_hour) + '-' + std::to_string(timeStruct.tm_min) + '-' +
@@ -123,7 +125,7 @@ void InitiateOutputFile(std::string& outputFile, std::tm& timeStruct, int64_t mi
     }
 }
 
-std::vector<double> ReadFIRFilterFile(const std::string& fileName) {
+vector<double> ReadFIRFilterFile(const string& fileName) {
      /**
      * @brief Reads a file containing the FIR filter taps and returns the values as an Armadillo column vector.
      *
@@ -141,12 +143,12 @@ std::vector<double> ReadFIRFilterFile(const std::string& fileName) {
         msg << "Error: Unable to open filter file '" << fileName << "'." << endl;
         throw std::ios_base::failure(msg.str());
     }
-    std::string line;
-    std::vector<double> filterValues;
+    string line;
+    vector<double> filterValues;
     while (std::getline(inputFile, line)){
-        std::vector<double> values;
+        vector<double> values;
         std::stringstream stringStream(line);
-        std::string token;
+        string token;
         
         while(std::getline(stringStream,token, ',')){
             try {
@@ -192,8 +194,7 @@ bool WithProbability(double probability){
     double randomValue = dis(gen);
     return randomValue < probability;
 }
-
-void WritePulseAmplitudes(std::span<float> clickPeakAmps, std::span<TimePoint> timestamps, const std::string& filename) {
+void WritePulseAmplitudes(const vector<float>& clickPeakAmps, const vector<TimePoint>& timestamps, const string& filename) {
     /**
     * @brief Writes pulse amplitudes and corresponding timestamps to a file.
     *
@@ -228,7 +229,7 @@ void WritePulseAmplitudes(std::span<float> clickPeakAmps, std::span<TimePoint> t
     outfile.close();
 }
 
-void WriteArray(const std::span<Eigen::VectorXf> array, const std::span<TimePoint> timestamps, const std::string& filename) {
+void WriteArray(const std::vector<Eigen::VectorXf>& array, const std::vector<TimePoint>& timestamps, const std::string& filename) {
     /**
     * @brief Writes pulse amplitudes and corresponding timestamps to a file.
     *
@@ -268,7 +269,7 @@ void WriteArray(const std::span<Eigen::VectorXf> array, const std::span<TimePoin
     outfile.close();
 }
 
-void WriteDataToCerr(std::span<TimePoint> dataTimes, std::vector<std::vector<uint8_t>> dataBytesSaved){
+void WriteDataToCerr(vector<TimePoint>& dataTimes, vector<vector<uint8_t>>& dataBytesSaved){
     std::stringstream msg; // compose message to dispatch
     msg << "Timestmaps of data causing error: \n";
     for (const auto timestamp : dataTimes){
