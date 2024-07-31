@@ -1,0 +1,10 @@
+{
+    "cmake.sourceDirectory": "${workspaceFolder}/C",
+    "cmake.configureOnOpen": true,
+    "files.exclude": {
+        "**/build": true
+    },
+    "search.exclude": {
+        "**/build": true
+    }
+}

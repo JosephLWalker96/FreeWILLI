@@ -1,5 +1,4 @@
 /*
-
 DESCRIPTION:
 @file main.cpp
  @brief A program for receiving and processing UDP packets in real-time.
@@ -49,9 +48,7 @@ RESOURCES:
 using std::cout;
 using std::cin;
 using std::endl;
-using std::string;
 using std::cerr;
-using std::vector;
 using namespace std::chrono_literals;
 
 // Global variables (used for manual testing and logging to console)
@@ -83,7 +80,7 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
         auto startPacketTime = std::chrono::steady_clock::now();
         auto endPacketTime = startPacketTime;
         std::chrono::duration<double> durationPacketTime;     // stores the average amount of time (seconds) between successive UDP packets, averaged over 'printInterval' packets
-        vector<uint8_t> dataBytes(receiveSize);
+        std::vector<uint8_t> dataBytes(receiveSize);
         
         while (!sess.errorOccurred) {
             
@@ -150,10 +147,10 @@ void DataProcessor(Session& sess, Experiment& exp) {
         int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; 
         
         // Read filter weights from file 
-        vector<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
+        std::vector<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
         
         // Convert filter coefficients to float
-        vector<float> filterWeightsFloat(filterWeights.begin(), filterWeights.end());        
+        std::vector<float> filterWeightsFloat(filterWeights.begin(), filterWeights.end());        
         
         // Declare time checking variables
         bool previousTimeSet = false;
@@ -182,7 +179,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
         fftwf_destroy_plan(fftFilter);
         
         // Container for pulling bytes from buffer (dataBuffer)
-        vector<uint8_t> dataBytes;
+        std::vector<uint8_t> dataBytes;
 
         // Create FFTW objects for channel data
         exp.fftForChannels.resize(exp.NUM_CHAN);
@@ -283,7 +280,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             cout << "FFT filter time: " << durationFFTW.count() << endl;
             
             auto beforeGCCW = std::chrono::steady_clock::now();
-            Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW_E(savedFFTs, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW(savedFFTs, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
             cout << "GCC time: " << durationGCCW.count() << endl;
@@ -368,86 +365,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 
 int main(int argc, char *argv[]) {
-
-//     // Check if Eigen is using BLAS
-//     #ifdef EIGEN_USE_BLAS
-//     std::cout << "Eigen is using BLAS for fast computation." << std::endl;
-//     #else
-//     std::cout << "Eigen is not using BLAS." << std::endl;
-//     #endif
-
-//     // Check if Eigen is using LAPACKE
-//     #ifdef EIGEN_USE_LAPACKE
-//     std::cout << "Eigen is using LAPACKE for fast computation." << std::endl;
-//     #else
-//     std::cout << "Eigen is not using LAPACKE." << std::endl;
-//     #endif
-
-//     // Check if Eigen vectorization is enabled
-//     #ifdef EIGEN_VECTORIZE
-//     std::cout << "Eigen vectorization is enabled." << std::endl;
-//     #else
-//     std::cout << "Eigen vectorization is not enabled." << std::endl;
-//     #endif
-
-//     // Check for specific vectorization types
-//     #ifdef EIGEN_VECTORIZE_SSE
-//     std::cout << "Eigen is using SSE vectorization." << std::endl;
-//     #endif
-
-//     #ifdef EIGEN_VECTORIZE_AVX
-//     std::cout << "Eigen is using AVX vectorization." << std::endl;
-//     #endif
-
-//     #ifdef EIGEN_VECTORIZE_AVX512
-//     std::cout << "Eigen is using AVX512 vectorization." << std::endl;
-//     #endif
-
-//     #ifdef EIGEN_VECTORIZE_NEON
-//     std::cout << "Eigen is using NEON vectorization." << std::endl;
-//     #endif
-
-//     // Check if Eigen assertions are disabled
-//     #ifdef EIGEN_NO_DEBUG
-//     std::cout << "Eigen assertions are disabled (NDEBUG defined)." << std::endl;
-//     #else
-//     std::cout << "Eigen assertions are enabled." << std::endl;
-//     #endif
-
-
-//     // Check for additional Eigen-specific macros
-//     #ifdef EIGEN_FAST_MATH
-//     std::cout << "Eigen fast math is enabled." << std::endl;
-//     #else
-//     std::cout << "Eigen fast math is not enabled." << std::endl;
-//     #endif
-
-//     #ifdef EIGEN_USE_MKL
-//     std::cout << "Eigen is using MKL." << std::endl;
-//     #else
-//     std::cout << "Eigen is not using MKL." << std::endl;
-//     #endif
-
-//     // Check for compiler optimization level
-//     #ifdef __OPTIMIZE__
-//     std::cout << "Compiler optimizations are enabled." << std::endl;
-//     #else
-//     std::cout << "Compiler optimizations are not enabled." << std::endl;
-//     #endif
-
-//     // Check if the precompiled header is included correctly
-//     #ifdef PCH_INCLUDED
-//     std::cout << "Precompiled header is included." << std::endl;
-//     #else
-//     std::cout << "Precompiled header is not included." << std::endl;
-//     #endif
-
-//     #ifdef DEBUG
-//         std::cout << "Running Debug Mode" << std::endl;
-//     #else
-//         std::cout << "Running Release Mode" << std::endl;
-//     #endif
     
+    #ifdef DEBUG
+        std::cout << "Running Debug Mode" << std::endl;
+    #else
+        std::cout << "Running Release Mode" << std::endl;
+    #endif
+  
     // Declare a listening 'Session'
     Session sess;
     Experiment exp;
@@ -466,7 +390,7 @@ int main(int argc, char *argv[]) {
 
     //import variables according to firmware version specified
     cout << "Firmware version: " << firmwareVersion << endl;
-    const string path = "config_files/" + std::to_string(firmwareVersion) + "_config.txt";
+    const std::string path = "config_files/" + std::to_string(firmwareVersion) + "_config.txt";
     if (ProcessFile(exp, path)) {
         cout  << "Error: Unable to open config file: " << path  << endl;
         std::exit(1);
