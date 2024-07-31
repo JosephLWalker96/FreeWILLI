@@ -17,6 +17,7 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
+#include <span>
 
 // System Headers
 #include <netinet/in.h>

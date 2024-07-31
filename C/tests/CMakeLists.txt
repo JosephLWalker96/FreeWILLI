@@ -78,6 +78,7 @@ target_link_libraries(UnitTests PRIVATE
 
 # Add tests to the testing framework
 include(GoogleTest)
+enable_testing()
 gtest_discover_tests(UnitTests)
 
 set_target_properties(UnitTests PROPERTIES
