@@ -7,3 +7,6 @@
 [submodule "C/libs/benchmark"]
 	path = C/libs/benchmark
 	url = https://github.com/google/benchmark.git
+[submodule "C/C/libs/FlameGraph"]
+	path = C/C/libs/FlameGraph
+	url = https://github.com/brendangregg/FlameGraph
