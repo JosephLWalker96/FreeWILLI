@@ -10,3 +10,6 @@
 [submodule "C/C/libs/FlameGraph"]
 	path = C/C/libs/FlameGraph
 	url = https://github.com/brendangregg/FlameGraph
+[submodule "C/libs/FlameGraph"]
+	path = C/libs/FlameGraph
+	url = https://github.com/brendangregg/FlameGraph
