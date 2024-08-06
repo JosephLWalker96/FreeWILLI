@@ -134,7 +134,7 @@ def SyntheticClickGenerator(signalLength, clickDuration):
     s[startPosition:startPosition + clickDuration] = (s[startPosition:startPosition + clickDuration] * 1.7) * (np.hamming(clickDuration) + 1)
     return s
 
-def LoadChannelOne(DATA_PATH, DATA_SCALE):
+def LoadChannelOne(DATA_PATH, DATA_SCALE, filePath):
     print("Loading data from file: ",filePath)
     dataMatrix = loadmat(filePath)['DATA'].T
     print("Shape of loaded data: ", dataMatrix.shape)
@@ -175,9 +175,10 @@ def InterleaveData(dataMatrix):
     return dataFlattened, np.where(dataFlattened > 500)[0][0] # return the flattened matrix as well as index of first high amplitude value
 
 
-def StackData(dataMatrix, Num_CHAN, SAMPS_PER_CHANNEL):
-    dataMatrix = dataMatrix.reshape(NUM_CHAN,divisor,SAMPS_PER_CHANNEL)     # divide each each into 'divisor' segments of length SAMPS_PER_CHANNEL
-    return np.hstack(np.hstack(dataMatrix))
+#def StackData(dataMatrix, NUM_CHAN, SAMPS_PER_CHANNEL):
+    # DEPRICATED
+    # dataMatrix = dataMatrix.reshape(NUM_CHAN,divisor,SAMPS_PER_CHANNEL)     # divide each each into 'divisor' segments of length SAMPS_PER_CHANNEL
+    #return np.hstack(np.hstack(dataMatrix))
 
 
 def ScaleData(dataFlattened, scale, toStretch):
