@@ -229,9 +229,9 @@ while(True):
     #sleep(2*MICRO_INCR)
     #time.sleep(1)
     
-    # if flag == 8000 and not args.loop and not args.cos_shift:
-    #     print('Reached flag ',flag,time.time() - absStartTime)
-    #     break
+    if flag == 8000 and not args.loop and not args.cos_shift:
+        print('Reached flag ',flag,time.time() - absStartTime)
+        break
     flag += 1
 
 
