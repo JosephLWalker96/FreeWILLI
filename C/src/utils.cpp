@@ -1,22 +1,11 @@
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <fstream>
-#include <queue>
-#include <vector>
-#include <random>
-#include <iomanip> //std::setw
-#include "custom_types.h"
 #include "utils.h"
 
 using std::cerr;
 using std::endl;
 using std::cout;
-using std::string;
-using std::vector;
 using TimePoint = std::chrono::system_clock::time_point;
 
-void PrintTimes(const vector<TimePoint>& timestamps) {
+void PrintTimes(const std::span<TimePoint> timestamps) {
     /**
     * @brief Prints the timestamps provided in the input vector.
     *
@@ -30,8 +19,7 @@ void PrintTimes(const vector<TimePoint>& timestamps) {
     for (auto& timestamp : timestamps) {
         std::time_t timeRepresentation = std::chrono::system_clock::to_time_t(timestamp);
         std::tm timeData = *std::localtime(&timeRepresentation); 
-        auto microSeconds = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000; 
-        
+        auto microSeconds = std::chrono::duration_cast<std::chrono::microseconds>(timestamp.time_since_epoch()).count() % 1000000;
         std::stringstream msg; // compose message to dispatch
         msg << "Timestamp: "
             << timeData.tm_year + 1900 << '-'
@@ -86,12 +74,13 @@ void RestartListener(Session& sess){
     else if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
         throw std::runtime_error("Error binding socket \n");
     }
+
     ClearQueue(sess.dataBuffer);
     sess.dataSegment.clear();
     sess.dataTimes.clear();
 }
 
-bool ProcessFile(Experiment& exp, const string fileName) {
+bool ProcessFile(Experiment& exp, const std::string& fileName) {
     /**
     * @brief Processes a configuration file and initializes global variables accordingly.
     *
@@ -111,7 +100,7 @@ bool ProcessFile(Experiment& exp, const string fileName) {
     return 0;
 }
 
-void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSec, string& feature){
+void InitiateOutputFile(std::string& outputFile, std::tm& timeStruct, int64_t microSec, std::string& feature){
 
     outputFile = "deployment_files/"  + std::to_string(timeStruct.tm_year + 1900) + '-' + std::to_string(timeStruct.tm_mon + 1) + '-' + 
                      std::to_string(timeStruct.tm_mday) + '-' + std::to_string(timeStruct.tm_hour) + '-' + std::to_string(timeStruct.tm_min) + '-' +
@@ -134,7 +123,7 @@ void InitiateOutputFile(string& outputFile, std::tm& timeStruct, int64_t microSe
     }
 }
 
-arma::Col<double> ReadFIRFilterFile(const string& fileName) {
+std::vector<double> ReadFIRFilterFile(const std::string& fileName) {
      /**
      * @brief Reads a file containing the FIR filter taps and returns the values as an Armadillo column vector.
      *
@@ -152,12 +141,12 @@ arma::Col<double> ReadFIRFilterFile(const string& fileName) {
         msg << "Error: Unable to open filter file '" << fileName << "'." << endl;
         throw std::ios_base::failure(msg.str());
     }
-    string line;
-    vector<double> filterValues;
+    std::string line;
+    std::vector<double> filterValues;
     while (std::getline(inputFile, line)){
-        vector<double> values;
+        std::vector<double> values;
         std::stringstream stringStream(line);
-        string token;
+        std::string token;
         
         while(std::getline(stringStream,token, ',')){
             try {
@@ -171,8 +160,8 @@ arma::Col<double> ReadFIRFilterFile(const string& fileName) {
             }
         }
     }
-    arma::Col<double> filter(filterValues);
-    return filter;
+    //arma::Col<double> filter(filterValues);
+    return filterValues;
 }
 
 void ClearQueue(std::queue<std::vector<uint8_t>>& fullQueue) {
@@ -203,7 +192,8 @@ bool WithProbability(double probability){
     double randomValue = dis(gen);
     return randomValue < probability;
 }
-void WritePulseAmplitudes(const vector<double>& clickPeakAmps, const vector<TimePoint>& timestamps, const string& filename) {
+
+void WritePulseAmplitudes(std::span<float> clickPeakAmps, std::span<TimePoint> timestamps, const std::string& filename) {
     /**
     * @brief Writes pulse amplitudes and corresponding timestamps to a file.
     *
@@ -229,55 +219,56 @@ void WritePulseAmplitudes(const vector<double>& clickPeakAmps, const vector<Time
             outfile << time_since_epoch.count() << std::setw(20) << clickPeakAmps[i] << endl;
         }
 
-        outfile.close();
     } 
     else {
         std::stringstream msg; // compose message to dispatch
         msg << "Error: Could not open file " << filename << endl;
         cerr << msg.str();
     }
+    outfile.close();
 }
 
-
-void WriteArray(const arma::Col<double>& array, const vector<TimePoint>& timestamps, const string& filename) {
+void WriteArray(const std::span<Eigen::VectorXf> array, const std::span<TimePoint> timestamps, const std::string& filename) {
     /**
     * @brief Writes pulse amplitudes and corresponding timestamps to a file.
     *
-    * @param clickPeakAmps A reference to a vector of doubles containing pulse amplitudes.
+    * @param array A reference to an Eigen vector of doubles containing pulse amplitudes.
     * @param timestamps A reference to a vector of TimePoint objects representing the timestamps corresponding to the pulse amplitudes.
     * @param filename A string specifying the output file path or name.
     */
     
-
-    //cout << "clickPeakAmps.size(): " << clickPeakAmps.size() << endl;
     std::ofstream outfile(filename, std::ios::app);
     if (outfile.is_open()) {
-        // Check if vectors have the same size
+        // Check if vectors have the same size (uncomment if needed)
         /*
-        if (clickPeakAmps.size() != timestamps.size()) {
-            cerr << "Error: Click amplitude and timestamp vectors have different sizes." << endl;
+        if (array.size() != timestamps.size()) {
+            std::cerr << "Error: Click amplitude and timestamp vectors have different sizes." << std::endl;
             return;
         }
         */
+        
         // Write data rows
-        auto time_point = timestamps[0];
-        auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
-        outfile << time_since_epoch.count() << std::setw(20);
-        for (size_t i = 0; i < array.n_elem; ++i) {
-            outfile << array[i] << " ";
+        
+        for (int row = 0; row < array.size(); row++){
+            auto time_point = timestamps[row];
+            auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
+            
+            outfile << time_since_epoch.count() << std::setw(20);
+            for (int i = 0; i < array[row].size(); ++i) {
+                outfile << array[row][i] << " ";
+            }
+            outfile << std::endl;
         }
-        outfile << endl;
 
-        outfile.close();
-    } 
-    else {
+    } else {
         std::stringstream msg; // compose message to dispatch
-        msg << "Error: Could not open file " << filename << endl;
-        cerr << msg.str();
+        msg << "Error: Could not open file " << filename << std::endl;
+        std::cerr << msg.str();
     }
+    outfile.close();
 }
 
-void WriteDataToCerr(vector<TimePoint>& dataTimes, vector<vector<uint8_t>>& dataBytesSaved){
+void WriteDataToCerr(std::span<TimePoint> dataTimes, std::vector<std::vector<uint8_t>> dataBytesSaved){
     std::stringstream msg; // compose message to dispatch
     msg << "Timestmaps of data causing error: \n";
     for (const auto timestamp : dataTimes){

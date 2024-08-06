@@ -1,29 +1,11 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <queue>
-#include <chrono>
-#include <mutex>
-#include <atomic>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <armadillo>
+#include "pch.h"
 
-#include <liquid/liquid.h>
-#include <fftw3.h>
-//#define PRINT_DATA_PROCESSOR
-//#define PRINT_PROCESS_SEGMENT
-//#define PRINT_PROCESS_SEGMENT_1240
-//#define PRINT_PROCESS_SEGMENT_1550
-
-using std::vector;
-using std::string;
+using TimePoint = std::chrono::system_clock::time_point;
 
 class GCC_Value_Error : public std::runtime_error {
 public:
-  // Constructor with a string argument for the error message
   GCC_Value_Error(const std::string& message) : std::runtime_error(message) {}
 };
 
@@ -41,54 +23,51 @@ struct Experiment {
     unsigned int MICRO_INCR;                                // time between packets
     const unsigned int SAMPLE_RATE = 1e5;
     const int interp = 1;
-    const double TIME_WINDOW = 0.01;                 // fraction of a second to consider  
-    //const string OUTPUT_FILE = "clicks_data.txt";
-    string detectionOutputFile = ""; // Change to your desired file name
-    string tdoaOutputFile = ""; // Change to your desired file name
-    string doaOutputFile = ""; // Change to your desired file name
-    const string filterWeights = "filters/My_filter.txt";
+    const float TIME_WINDOW = 0.01;                 // fraction of a second to consider  
     
-    const double speedOfSound = 1500.0;
-    double energyDetThresh = 2500.0; // energy detector threshold - 2500.0 is default 
+    std::string detectionOutputFile = ""; // Define at runtime
+    std::string tdoaOutputFile      = "";
+    std::string doaOutputFile       = "";
+
+    const std::string filterWeights = "filters/highpass_taps@101_cutoff@20k_window@hamming_fs@100k.txt";
     
-    arma::Col<int> chanSpacing = {1, 2, 3, 1, 2, 1};
-    void(*ProcessFncPtr)(vector<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, arma::Col<double>&, unsigned int&) = nullptr;
+    const float speedOfSound = 1500.0;
+    float energyDetThresh = 2500.0; // energy detector threshold - 2500.0 is default 
+    
+    std::vector<float> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
+    
+    void(*ProcessFncPtr)(std::span<float>, Eigen::MatrixXf&, unsigned int)= nullptr;
 
-    fftw_plan p1 = nullptr;
-    fftw_plan p2 = nullptr;
-    fftw_plan p3 = nullptr;
-    fftw_plan p4 = nullptr;
+    // Define FFTWF plans during runtime 
+    std::vector<fftwf_plan> fftForChannels; // fftwf object that points to channel 1
 
-    fftw_plan ip1 = nullptr;
-
-    firfilt_rrrf q1 = nullptr;
-    firfilt_rrrf q2 = nullptr;
-    firfilt_rrrf q3 = nullptr;
-    firfilt_rrrf q4 = nullptr;
+    fftwf_plan inverseFFT = nullptr;
 };
 
 struct Session {
-    int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0); // udp socket
-    int UDP_PORT;              // Listening port
-    std::atomic<bool> errorOccurred = false;
+    int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);  // udp socket
+    int UDP_PORT;                                         // Listening port
+    std::atomic<bool> errorOccurred = false;              // set true if error occurs in thread
     
-    std::queue<vector<uint8_t>> dataBuffer;
-    vector<vector<uint8_t>> dataBytesSaved;
-    vector<double> dataSegment;
-    vector<std::chrono::system_clock::time_point> dataTimes;
+    std::queue<std::vector<uint8_t>> dataBuffer;
+    std::vector<std::vector<uint8_t>> dataBytesSaved;
+    std::vector<float> dataSegment;
+    std::vector<std::chrono::system_clock::time_point> dataTimes;
     std::mutex dataBufferLock;                       // For thread-safe buffer access
     
-    string UDP_IP;             // IP address of data logger or simulator
+    std::vector<float>           peakAmplitudeBuffer;
+    std::vector<TimePoint>       peakTimesBuffer;
+    std::vector<Eigen::VectorXf> resultMatrixBuffer;
+    std::vector<Eigen::VectorXf> DOAsBuffer;
+    
+    std::string UDP_IP;             // IP address of data logger or simulator
 };
 
 
 struct DetectionResult {
     int minPeakIndex = -1;
     int maxPeakIndex = -1;
-    std::vector<std::chrono::system_clock::time_point> peakTimes;
-    std::vector<double> peakAmplitude;
-    std::vector<arma::Col<double>> tdoas;
-    std::vector<arma::Col<double>> doas;
-    
+    std::chrono::system_clock::time_point peakTimes;
+    float peakAmplitude;
 };
 

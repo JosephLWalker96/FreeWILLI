@@ -2,8 +2,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-//#include <sigpack.h>
-//#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
 #include "../src/utils.h" // Assuming utils.h includes the definition of restartListener
 #include "../src/custom_types.h"

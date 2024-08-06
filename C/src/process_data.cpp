@@ -1,26 +1,12 @@
-#include <vector>
-#include <cmath>
-#include <cstdlib>
-#include <fstream>
-#include <chrono>
-//#include <eigen3/Eigen/Dense>
-#include <iostream>
-#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
-#include <iomanip> // for output formatting
-
-#include "custom_types.h"
-#include "process_data.h"
+#include "utils.h"
 
 using std::cout;
 using std::endl;
 using std::cerr;
-using std::vector;
-using std::string;
 using TimePoint = std::chrono::system_clock::time_point;
 
 
-
-void ConvertData(vector<double>& dataSegment, vector<uint8_t>& dataBytes, unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE) {
+void ConvertData(std::vector<float>& dataSegment, std::span<uint8_t> dataBytes, unsigned int& DATA_SIZE, unsigned int& HEAD_SIZE) {
     /**
      * @brief Converts raw data bytes to double values and stores them in the provided data segment.
      * 
@@ -36,21 +22,79 @@ void ConvertData(vector<double>& dataSegment, vector<uint8_t>& dataBytes, unsign
      */
     
      for (size_t i = 0; i < DATA_SIZE; i += 2) {
-        double value = static_cast<double>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
-                       static_cast<double>(dataBytes[i + HEAD_SIZE + 1]);
+        float value = static_cast<float>(static_cast<uint16_t>(dataBytes[HEAD_SIZE+i]) << 8) +
+                       static_cast<float>(dataBytes[i + HEAD_SIZE + 1]);
         value -= 32768.0;
         dataSegment.push_back(value);
     }
 }
 
-DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& times, const double& threshold, const unsigned int& SAMPLE_RATE){
+
+void GenerateTimestamps(std::vector<TimePoint>& dataTimes, std::span<uint8_t> dataBytes, unsigned int MICRO_INCR, bool& previousTimeSet, std::chrono::time_point<std::chrono::system_clock>& previousTime, std::string& detectionOutputFile, std::string& tdoaOutputFile, std::string& doaOutputFile) {
+
+    std::tm timeStruct{};                                     // Initialize a std::tm structure to hold the date and time components
+    timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
+    timeStruct.tm_mon = (int)dataBytes[1] - 1;                // Months are 0-indexed
+    timeStruct.tm_mday = (int)dataBytes[2];
+    timeStruct.tm_hour = (int)dataBytes[3];
+    timeStruct.tm_min = (int)dataBytes[4];
+    timeStruct.tm_sec = (int)dataBytes[5];
+
+    // Calculate microseconds from the given bytes by shifting and combining them
+    int64_t microSec = (static_cast<int64_t>(dataBytes[6]) << 24) +
+             (static_cast<int64_t>(dataBytes[7]) << 16) +
+             (static_cast<int64_t>(dataBytes[8]) << 8) +
+             static_cast<int64_t>(dataBytes[9]);
+                    
+    
+    // Use std::mktime to convert std::tm to std::time_t
+    std::time_t timeResult = std::mktime(&timeStruct);
+
+    // Check if mktime failed
+    if (timeResult == std::time_t(-1)) {
+        throw std::runtime_error("Error: failure in mktime \n");
+    }
+
+    auto currentTime = std::chrono::system_clock::from_time_t(timeResult);  // convert std::time_t to std::chrono::system_clock::time_point
+    currentTime += std::chrono::microseconds(microSec);
+    dataTimes.push_back(currentTime);
+
+    // Calculate the elapsed time in microseconds since the previous time point
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime).count();
+
+                
+
+    // Check if the previous time was set and if the elapsed time is not equal to the expected increment
+    if (previousTimeSet && (elapsedTime != MICRO_INCR)){
+        std::stringstream msg; // compose message to dispatch
+        msg <<  "Error: Time not incremented by " <<  MICRO_INCR << " " << elapsedTime << endl;
+        throw std::runtime_error(msg.str());
+    }
+
+
+    previousTime = currentTime;
+    previousTimeSet = true;
+    
+    if ((detectionOutputFile).empty()){
+        std::string feature = "detection";
+        InitiateOutputFile(detectionOutputFile, timeStruct, microSec, feature);
+        feature = "tdoa";
+        InitiateOutputFile(tdoaOutputFile, timeStruct, microSec, feature);
+        feature = "doa";
+        InitiateOutputFile(doaOutputFile, timeStruct, microSec, feature);
+    }
+}
+
+
+
+DetectionResult ThresholdDetect(const Eigen::VectorXf& data, const std::span<TimePoint> times, const double& threshold, const unsigned int& SAMPLE_RATE) {
     /**
     * @brief Detects peaks in the input data above a specified threshold.
     *
     * This function analyzes the input data to detect peaks that exceed the specified threshold.
     * If a peak is found, its index, amplitude, and corresponding time are recorded in a DetectionResult structure.
     *
-    * @param data A reference to an Armadillo column vector containing the input data.
+    * @param data A reference to an Eigen vector containing the input data.
     * @param times A vector of TimePoint objects representing the timestamps corresponding to the input data.
     * @param threshold The threshold value above which peaks are detected.
     *
@@ -59,20 +103,21 @@ DetectionResult ThresholdDetect(arma::Col<double>& data, vector<TimePoint>& time
     
     DetectionResult result{};
 
-    int peakIndex = arma::index_max(data);
-    double peakAmplitude = arma::max(data);
+    int peakIndex = 0;
+    float peakAmplitude = data.maxCoeff(&peakIndex);
 
     if (peakAmplitude >= threshold) {
         result.minPeakIndex = peakIndex;
         result.maxPeakIndex = peakIndex;
-        result.peakAmplitude.push_back(peakAmplitude);
+        result.peakAmplitude = peakAmplitude;
         unsigned int microseconds = peakIndex * (1e6 / SAMPLE_RATE);
         auto maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
-        result.peakTimes.push_back(maxPeakTime);
+        result.peakTimes = maxPeakTime;
     }
     return result;
 }
 
+/*
 void ProcessSegment(arma::Col<double>& data, vector<TimePoint>& times, const string& outputFile) {
     arma::Col<double> dataAbsolute = arma::abs(data);
     
@@ -124,7 +169,9 @@ void ProcessSegment(arma::Col<double>& data, vector<TimePoint>& times, const str
         }
     }
 }
+*/
 
+/*
 void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const string& outputFile, unsigned int& NUM_CHAN, unsigned int& SAMPS_PER_CHANNEL, unsigned int& NUM_PACKS_DETECT) {
     //
     // THIS FUNCTION IS DEPRICATED
@@ -161,20 +208,26 @@ void ProcessSegmentStacked(vector<double>& data, vector<TimePoint>& times, const
     //ProcessSegment(ch1, times, outputFile);  // Use memptr to access raw data
 }
 
-
-void ProcessSegmentInterleaved(vector<double>& data, arma::Col<double>& ch1, arma::Col<double>& ch2, arma::Col<double>& ch3, arma::Col<double>& ch4, unsigned int& NUM_CHAN) {
+*/
+void ProcessSegmentInterleaved(std::span<float> data, Eigen::MatrixXf& channels, unsigned int NUM_CHAN) {
     /**
-    * @brief Processes interleaved data into separate channel. Each channel's data is saved into a corresponding Armadillo column vector.
+    * @brief Processes interleaved data into separate channels. Each channel's data is saved into a corresponding Eigen matrix.
     * 
-    * @param data A reference to a vector of doubles containing interleaved data from multiple channels.
-    * @param ch1 - ch4 A reference to an Armadillo column vector to store channels 1-4 data.
-    */        
+    * @param data A reference to a container of floats containing interleaved data from multiple channels.
+    * @param channels A reference to an Eigen matrix to hold the separate channel data. Each row corresponds to a channel.
+    * @param NUM_CHAN The number of channels.
+    */
     
-    // Iterate through the data vector and save every NUM_CHANth element into the arma::Col
-    for (size_t i = 0, j = 0; i < data.size(); i += NUM_CHAN, ++j) {
-        ch1(j) = data[i];
-        ch2(j) = data[i+1];
-        ch3(j) = data[i+2];
-        ch4(j) = data[i+3];
+    // Calculate the number of samples per channel
+    size_t numSamples = data.size() / NUM_CHAN;
+    
+    // Ensure the channels matrix has the correct dimensions
+    //channels.resize(numSamples, NUM_CHAN);
+
+    // Iterate through the data container and save every NUM_CHANth element into the corresponding row of the channels matrix
+    for (unsigned int ch = 0; ch < NUM_CHAN; ++ch) {
+        for (size_t i = 0; i < numSamples; ++i) {
+            channels(i, ch) = data[i * NUM_CHAN + ch];
+        }
     }
 }

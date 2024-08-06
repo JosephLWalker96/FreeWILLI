@@ -4,7 +4,8 @@
 #include <chrono>
 #include <string>
 //#include <sigpack.h>
-#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
+//#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
+
 
 #include "../src/utils.h" // Assuming utils.h includes the definition of restartListener
 #include "../src/custom_types.h"
@@ -12,10 +13,11 @@
 
 using TimePoint = std::chrono::system_clock::time_point;
 
+
 // Helper function to create sample data and timestamps
-std::pair<arma::Col<double>, std::vector<TimePoint>> CreateTestData(int size, double peakValue, int peakIndex) {
-  arma::Col<double> data(size);
-  data.fill(0.0);
+std::pair<Eigen::VectorXf, std::vector<TimePoint>> CreateTestData(int size, double peakValue, int peakIndex) {
+  Eigen::VectorXf data(size);
+  data.setZero();
   data(peakIndex) = peakValue;
 
   std::vector<TimePoint> timestamps(size);
@@ -30,10 +32,10 @@ TEST(ConvertDataTest, ValidData) {
   std::vector<uint8_t> dataBytes = {0x80, 0x04,0x80, 0x0d,0x80, 0x0e}; // Sample data bytes (modify as needed)
   unsigned int DATA_SIZE = dataBytes.size();
   unsigned int HEAD_SIZE = 0;
-  std::vector<double> expectedResult = {4.0,13.0,14.0}; // Expected converted value (modify as needed)
+  std::vector<float> expectedResult = {4.0,13.0,14.0}; // Expected converted value (modify as needed)
 
   // Create an empty vector to store the converted data
-  std::vector<double> dataSegment;
+  std::vector<float> dataSegment;
 
   // Call the function under test
   ConvertData(dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE);
@@ -41,6 +43,8 @@ TEST(ConvertDataTest, ValidData) {
   // Assert that the converted data matches the expectation
   EXPECT_EQ(dataSegment, expectedResult);
 }
+
+
 
 /*
 TEST(ConvertDataTest, NaNValue) {
@@ -90,14 +94,13 @@ TEST(ConvertDataTest, EmptyData) {
 */
 
 
-
 TEST(ThresholdDetectTest, NoPeak) {
   
   // Create data with no peak above threshold
   double threshold = 0.5;
   int dataSize = 100;
   auto testData = CreateTestData(dataSize, 0.2, 50); // Peak value below threshold
-  arma::Col<double>& data = testData.first;
+  Eigen::VectorXf& data = testData.first;
   std::vector<TimePoint>& times = testData.second;
 
   // Call ThresholdDetect
@@ -106,10 +109,8 @@ TEST(ThresholdDetectTest, NoPeak) {
   // Verify no peak detected
   EXPECT_EQ(result.minPeakIndex, -1);
   EXPECT_EQ(result.maxPeakIndex, -1);
-  EXPECT_TRUE(result.peakAmplitude.empty());
-  EXPECT_TRUE(result.peakTimes.empty());
+  EXPECT_EQ(result.peakAmplitude, 0);
 }
-
 
 TEST(ThresholdDetectTest, SinglePeak) {
   // Create data with a single peak above threshold
@@ -118,7 +119,7 @@ TEST(ThresholdDetectTest, SinglePeak) {
   double peakValue = 0.8;
   int peakIndex = 30;
   auto testData = CreateTestData(dataSize, peakValue, peakIndex);
-  arma::Col<double>& data = testData.first;
+  Eigen::VectorXf& data = testData.first;
   std::vector<TimePoint>& times = testData.second;
 
   // Call ThresholdDetect
@@ -127,13 +128,13 @@ TEST(ThresholdDetectTest, SinglePeak) {
   // Verify peak information is correct
   EXPECT_EQ(result.minPeakIndex, peakIndex);
   EXPECT_EQ(result.maxPeakIndex, peakIndex);
-  EXPECT_EQ(result.peakAmplitude.size(), 1);
-  EXPECT_DOUBLE_EQ(result.peakAmplitude[0], peakValue);
+  EXPECT_FLOAT_EQ(result.peakAmplitude, peakValue);
 
   // Verify peak time is within expected range (adjust tolerance based on your TimePoint implementation)
-  //auto expectedPeakTime = times[peakIndex] + std::chrono::microseconds((long)(peakIndex * 1e6) / SAMPLE_RATE);
-  //EXPECT_LT(std::chrono::duration_cast<std::chrono::microseconds>(result.peakTimes[0] - expectedPeakTime).count(), 100); // Tolerance of 100 microseconds
+  // auto expectedPeakTime = times[peakIndex] + std::chrono::microseconds((long)(peakIndex * 1e6) / SAMPLE_RATE);
+  // EXPECT_LT(std::chrono::duration_cast<std::chrono::microseconds>(result.peakTimes[0] - expectedPeakTime).count(), 100); // Tolerance of 100 microseconds
 }
+
 TEST(ThresholdDetectTest, Infinity) {
   // Create data with a single peak above threshold
   double threshold = 0.5;
@@ -141,10 +142,10 @@ TEST(ThresholdDetectTest, Infinity) {
   double peakValue = 0.8;
   int peakIndex = 30;
   auto testData = CreateTestData(dataSize, peakValue, peakIndex);
-  arma::Col<double>& data = testData.first;
+  Eigen::VectorXf& data = testData.first;
   std::vector<TimePoint>& times = testData.second;
 
-  data(peakIndex) = arma::datum::inf;
+  data(peakIndex) = std::numeric_limits<float>::infinity();
 
   // Call ThresholdDetect
   DetectionResult result = ThresholdDetect(data, times, threshold, 100000);
@@ -152,10 +153,9 @@ TEST(ThresholdDetectTest, Infinity) {
   // Verify peak information is correct
   EXPECT_EQ(result.minPeakIndex, peakIndex);
   EXPECT_EQ(result.maxPeakIndex, peakIndex);
-  EXPECT_EQ(result.peakAmplitude.size(), 1);
-  EXPECT_DOUBLE_EQ(result.peakAmplitude[0], arma::datum::inf);
+  EXPECT_DOUBLE_EQ(result.peakAmplitude, std::numeric_limits<float>::infinity());
 
   // Verify peak time is within expected range (adjust tolerance based on your TimePoint implementation)
-  //auto expectedPeakTime = times[peakIndex] + std::chrono::microseconds((long)(peakIndex * 1e6) / SAMPLE_RATE);
-  //EXPECT_LT(std::chrono::duration_cast<std::chrono::microseconds>(result.peakTimes[0] - expectedPeakTime).count(), 100); // Tolerance of 100 microseconds
+  // auto expectedPeakTime = times[peakIndex] + std::chrono::microseconds((long)(peakIndex * 1e6) / SAMPLE_RATE);
+  // EXPECT_LT(std::chrono::duration_cast<std::chrono::microseconds>(result.peakTimes[0] - expectedPeakTime).count(), 100); // Tolerance of 100 microseconds
 }

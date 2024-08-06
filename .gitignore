@@ -9,4 +9,5 @@ nohup.out
 deployment_files/*
 /C/build/*
 /C/bin/*
+/C/debug/*
 out/

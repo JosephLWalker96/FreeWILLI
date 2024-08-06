@@ -1,5 +1,4 @@
 /*
-
 DESCRIPTION:
 @file main.cpp
  @brief A program for receiving and processing UDP packets in real-time.
@@ -27,7 +26,6 @@ DESCRIPTION:
        It also uses FFTW for fast Fourier transforms and includes error handling to manage runtime exceptions.
 
 
-
 EXAMPLE RUN:
 
 Execute (datalogger simulator):
@@ -42,52 +40,16 @@ RESOURCES:
     download armadillo manually: https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 */
 
-#include <cstddef>
-#include <iostream>
-#include <cstring>
-#include <cstdio>
-#include <ostream>
-#include <string>
-#include <fstream>
-#include <mutex>
-#include <thread>
-#include <vector>
-#include <chrono>
-#include <atomic>
-#include <stdexcept>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <iomanip> //put_time
-#include <ctime>
-#include <cstdint>
-//#include <armadillo> not needed if <sigpack.h> is used
-
-/*
-#include <sigpack.h>
-#include <fftw/fftw.h>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Core>
-*/
-
-#include <liquid/liquid.h>
-#include <fftw3.h>
-
+#include "custom_types.h"
 #include "process_data.h"
 #include "TDOA_estimation.h"
 #include "utils.h"
-#include "custom_types.h"
-#include "filters.h"
-
+#include "pch.h"
 using std::cout;
 using std::cin;
 using std::endl;
-using std::string;
 using std::cerr;
-using std::vector;
 using namespace std::chrono_literals;
-
 
 // Global variables (used for manual testing and logging to console)
 int packetCounter = 0; // this should only be used inside the UDPListener function, as it is not protected by a mutex
@@ -118,8 +80,7 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
         auto startPacketTime = std::chrono::steady_clock::now();
         auto endPacketTime = startPacketTime;
         std::chrono::duration<double> durationPacketTime;     // stores the average amount of time (seconds) between successive UDP packets, averaged over 'printInterval' packets
-        //auto durationPacketTime = std::chrono::duration_cast<std::chrono::microseconds>(endPacketTime - startPacketTime);  
-        vector<uint8_t> dataBytes(receiveSize);
+        std::vector<uint8_t> dataBytes(receiveSize);
         
         while (!sess.errorOccurred) {
             
@@ -139,18 +100,14 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
             if (packetCounter % printInterval == 0) {
                 endPacketTime = std::chrono::steady_clock::now();
                 durationPacketTime = endPacketTime - startPacketTime;
-                
                 std::stringstream msg; // compose message to dispatch
                 msg << "Num packets received is " <<  packetCounter << " " << durationPacketTime.count() / printInterval  
                     << " " << queueSize << " " << packetCounter - queueSize << " " << detectionCounter << endl;
-                
                 cout << msg.str(); // using one instance of "<<" makes the operation atomic
-                
                 startPacketTime = std::chrono::steady_clock::now();
             }
 
             if (queueSize > 1000) { // check if buffer has grown to an unacceptable size 
-                cout << "Buffer overflowing!! \n";
                 throw std::runtime_error("Buffer overflowing \n");
             }
                 
@@ -185,60 +142,55 @@ void DataProcessor(Session& sess, Experiment& exp) {
      */
 
     try {
-        int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; // the number of samples per channel within a dataSegment
-        
 
+        // the number of samples per channel within a dataSegment
+        int channelSize = exp.DATA_SEGMENT_LENGTH / exp.NUM_CHAN; 
+        
         // Read filter weights from file 
-        arma::Col<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
+        std::vector<double> filterWeights = ReadFIRFilterFile(exp.filterWeights);
+        
         // Convert filter coefficients to float
         std::vector<float> filterWeightsFloat(filterWeights.begin(), filterWeights.end());        
-        
-        
-        // Define IIR filter using SigPack library
-        /*
-        sp::IIR_filt<double, double, double> iir_filt;
-        arma::Col<double> b_iir = {0.49580191, -1.9260157, 2.8613285, -1.9260157, 0.49580191};
-        arma::Col<double> a_iir = {1.0, -2.53934052, 2.67821627, -1.31270499, 0.26392123};
-        iir_filt.set_coeffs(b_iir,a_iir);
-        */
-
         
         // Declare time checking variables
         bool previousTimeSet = false;
         auto previousTime = std::chrono::time_point<std::chrono::system_clock>::min();
-        //auto previousTime = std::chrono::system_clock::time_point::min();
-        //std::chrono::microseconds previousTime;
         
         // pre-allocate memory for vectors
         sess.dataSegment.reserve(exp.DATA_SEGMENT_LENGTH);
         sess.dataTimes.reserve(exp.NUM_PACKS_DETECT);
-        
-        // Initialize armadillo containers to be used for storing channel data
-        static arma::Col<double> ch1(channelSize);
-        static arma::Col<double> ch2(channelSize);
-        static arma::Col<double> ch3(channelSize);
-        static arma::Col<double> ch4(channelSize);
 
-        arma::Mat<arma::cx_double> savedFFTs(channelSize, exp.NUM_CHAN); // save the FFT transformed channels
-        int fftOutputSize = (channelSize / 2) + 1;
-        arma::Mat<arma::cx_double> savedFFTs_FFTW(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
-       
+        int paddedLength = filterWeightsFloat.size() + channelSize - 1;
+        int fftOutputSize = (paddedLength / 2) + 1;
+        cout << "Padded size: " << paddedLength << endl;
+        
+        // Matrices for (transformed) channel data
+        static Eigen::MatrixXf channelData(paddedLength, exp.NUM_CHAN);
+        static Eigen::MatrixXcf savedFFTs(fftOutputSize, exp.NUM_CHAN); // save the FFT transformed channels
+        
+        /* Zero-pad filter weights to the length of the signal                     */
+        std::vector<float> paddedFilterWeights(paddedLength, 0.0f);
+        std::copy(filterWeightsFloat.begin(),filterWeightsFloat.end(),paddedFilterWeights.begin());
+
+        // Create frequency domain filter
+        Eigen::VectorXcf filterFreq(fftOutputSize);
+        fftwf_plan fftFilter = fftwf_plan_dft_r2c_1d(paddedLength, paddedFilterWeights.data(), reinterpret_cast<fftwf_complex*>(filterFreq.data()), FFTW_ESTIMATE);
+        fftwf_execute(fftFilter);
+        fftwf_destroy_plan(fftFilter);
+        
         // Container for pulling bytes from buffer (dataBuffer)
-        vector<uint8_t> dataBytes;
+        std::vector<uint8_t> dataBytes;
 
-
-        // FFT without sigpack
-        exp.p1 = fftw_plan_dft_r2c_1d(channelSize, ch1.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(0)), FFTW_ESTIMATE);
-        exp.p2 = fftw_plan_dft_r2c_1d(channelSize, ch2.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(1)), FFTW_ESTIMATE);
-        exp.p3 = fftw_plan_dft_r2c_1d(channelSize, ch3.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(2)), FFTW_ESTIMATE);
-        exp.p4 = fftw_plan_dft_r2c_1d(channelSize, ch4.memptr(), reinterpret_cast<fftw_complex*>(savedFFTs_FFTW.colptr(3)), FFTW_ESTIMATE);
+        // Create FFTW objects for channel data
+        exp.fftForChannels.resize(exp.NUM_CHAN);
+        for (int i = 0; i < exp.NUM_CHAN; i++) {
+            exp.fftForChannels[i] = fftwf_plan_dft_r2c_1d(paddedLength, channelData.col(i).data(), reinterpret_cast<fftwf_complex*>(savedFFTs.col(i).data()), FFTW_ESTIMATE);
+        }
         
-        // Create FIR filter objects
-        exp.q1 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        exp.q2 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        exp.q3 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        exp.q4 = firfilt_rrrf_create(&filterWeightsFloat[0], filterWeightsFloat.size());
-        
+        // set the frequency of file writes
+        const std::chrono::milliseconds FLUSH_INTERVAL(1000);
+        const size_t BUFFER_SIZE_THRESHOLD = 1000; // Adjust as needed
+        auto lastFlushTime = std::chrono::steady_clock::now();
         
         while (!sess.errorOccurred) {
             
@@ -255,7 +207,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 if (queueSize < 1) {
                     sess.dataBufferLock.unlock();
                     //cout << "Sleeping: " << endl;
-                    std::this_thread::sleep_for(200ms);
+                    std::this_thread::sleep_for(80ms);
                     continue;
                 }
                 else {
@@ -265,43 +217,19 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 }
 
                 sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
+
+                // Convert byte data to floats
+                auto startCDTime = std::chrono::steady_clock::now();
+                ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
+                auto endCDTime = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationCD = endCDTime - startCDTime;
+                //cout << "Convert data: " << durationCD.count() << endl;
                 
-                
-                std::tm timeStruct{};                                     // Initialize a std::tm structure to hold the date and time components
-                timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900;     // Offset for year since 2000.. tm_year is years since 1900 
-                timeStruct.tm_mon = (int)dataBytes[1] - 1;                // Months are 0-indexed
-                timeStruct.tm_mday = (int)dataBytes[2];
-                timeStruct.tm_hour = (int)dataBytes[3];
-                timeStruct.tm_min = (int)dataBytes[4];
-                timeStruct.tm_sec = (int)dataBytes[5];
-
-                // Calculate microseconds from the given bytes by shifting and combining them
-                int64_t microSec = (static_cast<int64_t>(dataBytes[6]) << 24) +
-                         (static_cast<int64_t>(dataBytes[7]) << 16) +
-                         (static_cast<int64_t>(dataBytes[8]) << 8) +
-                         static_cast<int64_t>(dataBytes[9]);
-                                
-                
-                // Use std::mktime to convert std::tm to std::time_t
-                std::time_t timeResult = std::mktime(&timeStruct);
-
-                // Check if mktime failed
-                if (timeResult == std::time_t(-1)) {
-                    throw std::runtime_error("Error: failure in mktime \n");
-                }
-
-                auto currentTime = std::chrono::system_clock::from_time_t(timeResult);  // convert std::time_t to std::chrono::system_clock::time_point
-                currentTime += std::chrono::microseconds(microSec);
-                sess.dataTimes.push_back(currentTime);
-
-                // Calculate the elapsed time in microseconds since the previous time point
-                auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime).count();
-
-
-                /* 
-                 * conduct checks to data here:
-                 *
-                 */
+                auto startTimestamps = std::chrono::steady_clock::now();
+                GenerateTimestamps(sess.dataTimes, dataBytes, exp.MICRO_INCR, previousTimeSet, previousTime , exp.detectionOutputFile, exp.tdoaOutputFile, exp.doaOutputFile);
+                auto endTimestamps = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationGenerate = endTimestamps - startTimestamps;
+                //cout << "durationGenerate: " << durationGenerate.count() << endl;
 
                 // Check if the amount of bytes in packet is what is expected
                 if (dataBytes.size() != exp.PACKET_SIZE) {
@@ -309,38 +237,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
                     msg << "Error: incorrect number of bytes in packet: " <<  "PACKET_SIZE: " << exp.PACKET_SIZE << " dataBytes size: " << dataBytes.size() << endl;
                     throw std::runtime_error(msg.str());
                 }
-                
 
-                // Check if the previous time was set and if the elapsed time is not equal to the expected increment
-                if (previousTimeSet && (elapsedTime != exp.MICRO_INCR)){
-                    std::stringstream msg; // compose message to dispatch
-                    msg <<  "Error: Time not incremented by " <<  exp.MICRO_INCR << " " << elapsedTime << endl;
-                    throw std::runtime_error(msg.str());
-                }
-
-                // Convert byte data to doubles
-                
-                auto startCDTime = std::chrono::steady_clock::now();
-                ConvertData(sess.dataSegment, dataBytes, exp.DATA_SIZE, exp.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
-                auto endCDTime = std::chrono::steady_clock::now();
-                auto durationCD = endCDTime - startCDTime;
-                
-                
-                previousTime = currentTime;
-                previousTimeSet = true;
-                
-                if ((exp.detectionOutputFile).empty()){
-                    string feature = "detection";
-                    InitiateOutputFile(exp.detectionOutputFile, timeStruct, microSec, feature);
-                    feature = "tdoa";
-                    InitiateOutputFile(exp.tdoaOutputFile, timeStruct, microSec, feature);
-                    feature = "doa";
-                    InitiateOutputFile(exp.doaOutputFile, timeStruct, microSec, feature);
-                }
-
-                auto endLoop = std::chrono::steady_clock::now();
-                auto durationLoop = endLoop - startLoop;
-                //cout << "Loop duration: " << durationLoop.count() << endl;
             }
 
             /*
@@ -348,9 +245,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
              *   now apply energy detector. 
              */
             
-            exp.ProcessFncPtr(sess.dataSegment, ch1, ch2, ch3, ch4, exp.NUM_CHAN);
+            auto beforePtr = std::chrono::steady_clock::now();
+            exp.ProcessFncPtr(sess.dataSegment, channelData, exp.NUM_CHAN);
+            auto afterPtr = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
+
             
-            DetectionResult detResult = ThresholdDetect(ch1, sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
+            DetectionResult detResult = ThresholdDetect(channelData.col(0), sess.dataTimes, exp.energyDetThresh, exp.SAMPLE_RATE);
 
             if (detResult.maxPeakIndex < 0){  // if no pulse was detected (maxPeakIndex remains -1) stop processing
                 continue;                  // get next dataSegment; return to loop
@@ -362,53 +263,66 @@ void DataProcessor(Session& sess, Experiment& exp) {
             
             detectionCounter++;
             
-            // Sigpack FIR filter
-            /*
-            auto beforeFilter = std::chrono::steady_clock::now();
-            FilterWithFIR(ch1,ch2,ch3,ch4, firFilter);
-            auto afterFilter = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
-            cout << "Sigpack FIR Filter: " << durationFilter.count() << endl;
-            */
+            auto beforeFFTWF = std::chrono::steady_clock::now();
+            for (auto& plan : exp.fftForChannels) {
+                fftwf_execute(plan);
+            }
+            auto afterFFTWF = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationFFTWF = afterFFTWF - beforeFFTWF;
+            cout << "FFT time: " << durationFFTWF.count() << endl;
 
-            // Liquid FIR filter
-            auto beforeLFilter = std::chrono::steady_clock::now();
-            FilterWithLiquidFIR(ch1, ch2, ch3, ch4, exp.q1, exp.q2, exp.q3, exp.q4);
-            auto afterLFilter = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationLFilter = afterLFilter - beforeLFilter;
-            cout << "Liquid FIR Filter: " << durationLFilter.count() << endl;
-
-            
-            
             auto beforeFFTW = std::chrono::steady_clock::now();
-            fftw_execute(exp.p1);
-            fftw_execute(exp.p2);
-            fftw_execute(exp.p3);
-            fftw_execute(exp.p4);
+            for (int i = 0; i < exp.NUM_CHAN; i++) {
+                savedFFTs.col(i) = savedFFTs.col(i).array() * filterFreq.array();
+            }
             auto afterFFTW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
+            cout << "FFT filter time: " << durationFFTW.count() << endl;
             
-             
             auto beforeGCCW = std::chrono::steady_clock::now();
-            arma::Col<double> resultMatrix = GCC_PHAT_FFTW(savedFFTs_FFTW, exp.ip1, exp.interp, fftOutputSize, exp.NUM_CHAN, exp.SAMPLE_RATE);
+            Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW(savedFFTs, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            cout << "GCCW time: " << durationGCCW.count() << endl;
+            cout << "GCC time: " << durationGCCW.count() << endl;
             
+            Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
+            cout << "DOAs: " << DOAs.transpose() << endl;
+           
+            // Write to buffers
+            sess.peakAmplitudeBuffer.push_back(detResult.peakAmplitude);
+            sess.peakTimesBuffer.push_back(detResult.peakTimes);
+            sess.resultMatrixBuffer.push_back(resultMatrix);
+            sess.DOAsBuffer.push_back(DOAs);
 
-            //Eigen::MatrixXd resultMatrix = GCC_PHAT_Eigen(dataE, exp.interp); // need to create dataE matrix 
-            //auto afterGCC = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationGCC = afterGCC - beforeGCC;
-            //cout << "C GCC: " << durationGCC.count() << endl;
-            //cout << resultMatrix.t() << endl;
+            auto currentTime = std::chrono::steady_clock::now();
+            if (sess.peakAmplitudeBuffer.size() >= BUFFER_SIZE_THRESHOLD) {//|| currentTime - lastFlushTime >= FLUSH_INTERVAL) {
+                cout << "Flushing buffers of length: " << sess.peakAmplitudeBuffer.size() << endl;
 
-            arma::Col<double> DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
-            cout << "DOA_FFTs: " << DOAs.t() << endl;
+                auto beforeW = std::chrono::steady_clock::now();
+                WritePulseAmplitudes(sess.peakAmplitudeBuffer, sess.peakTimesBuffer, exp.detectionOutputFile);
+                auto afterW = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationW = afterW - beforeW;
+                cout << "Write: " << durationW.count() << endl;
+
+                auto beforeW1 = std::chrono::steady_clock::now();
+                WriteArray(sess.resultMatrixBuffer, sess.peakTimesBuffer, exp.tdoaOutputFile);
+                auto afterW1 = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationW1 = afterW1 - beforeW1;
+                cout << "Write1: " << durationW1.count() << endl;
+
+                auto beforeW2 = std::chrono::steady_clock::now();
+                WriteArray(sess.DOAsBuffer, sess.peakTimesBuffer, exp.doaOutputFile);
+                auto afterW2 = std::chrono::steady_clock::now();
+                std::chrono::duration<double> durationW2 = afterW2 - beforeW2;
+                cout << "Write:2 " << durationW2.count() << endl;
+                
+                lastFlushTime = currentTime;
+                sess.peakAmplitudeBuffer.clear();
+                sess.peakTimesBuffer.clear();
+                sess.resultMatrixBuffer.clear();
+                sess.DOAsBuffer.clear();
             
-            WritePulseAmplitudes(detResult.peakAmplitude, detResult.peakTimes, exp.detectionOutputFile);
-            WriteArray(resultMatrix, detResult.peakTimes, exp.tdoaOutputFile);
-            WriteArray(DOAs, detResult.peakTimes, exp.doaOutputFile);
-
+            }
         }
     } 
     catch (const GCC_Value_Error& e) {
@@ -417,30 +331,26 @@ void DataProcessor(Session& sess, Experiment& exp) {
         msg << e.what() << endl;
         cerr << msg.str();
         
-        /*        
         try {
            WriteDataToCerr(sess.dataTimes, sess.dataBytesSaved);
         }
         catch (...) {
             cerr << "failed to write data to cerr \n";
         }
-        */
         sess.errorOccurred = true;
     }
     catch (const std::ios_base::failure& e) {
         std::stringstream msg; // compose message to dispatch
         msg << e.what() << endl;
         cerr << msg.str();
-        std::exit(EXIT_FAILURE);
+        std::exit(1);
     }
     catch (const std::exception& e ) {
         cerr << "Error occured in data processor thread: \n";
 
-        
         std::stringstream msg; // compose message to dispatch
         msg << e.what() << endl;
         cerr << msg.str();
-
 
         try {
            WriteDataToCerr(sess.dataTimes, sess.dataBytesSaved);
@@ -455,9 +365,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
 
 
 int main(int argc, char *argv[]) {
-    arma::arma_version ver;
-    cout << "ARMA version: "<< ver.as_string() << endl;
     
+    #ifdef DEBUG
+        std::cout << "Running Debug Mode" << std::endl;
+    #else
+        std::cout << "Running Release Mode" << std::endl;
+    #endif
+  
     // Declare a listening 'Session'
     Session sess;
     Experiment exp;
@@ -472,31 +386,16 @@ int main(int argc, char *argv[]) {
     int firmwareVersion = std::stoi(argv[3]);
     exp.energyDetThresh = std::stod(argv[4]);
 
-
     cout << "Listening to IP address " << sess.UDP_IP.c_str() << " and port " << sess.UDP_PORT << endl;
 
     //import variables according to firmware version specified
     cout << "Firmware version: " << firmwareVersion << endl;
-    if (firmwareVersion == 1550) {
-        const string path = "config_files/1550_config.txt";
-        if (ProcessFile(exp, path)) {
-            cout  << "Error: Unable to open config file: " << path  << endl;
-            return EXIT_FAILURE;
-        }
-        exp.ProcessFncPtr = ProcessSegmentInterleaved;
+    const std::string path = "config_files/" + std::to_string(firmwareVersion) + "_config.txt";
+    if (ProcessFile(exp, path)) {
+        cout  << "Error: Unable to open config file: " << path  << endl;
+        std::exit(1);
     }
-    else if (firmwareVersion == 1240) {
-        const string path = "config_files/1240_config.txt";
-        if (ProcessFile(exp, path)) {
-            cout  << "Error: Unable to open config file: " << path  << endl;
-            return EXIT_FAILURE;
-        }
-        exp.ProcessFncPtr = ProcessSegmentInterleaved;
-    }
-    else {
-        cerr << "ERROR: Unknown firmware version" << endl;
-        return EXIT_FAILURE;
-    }
+    exp.ProcessFncPtr = ProcessSegmentInterleaved;
     
     exp.NUM_PACKS_DETECT = (int)(exp.TIME_WINDOW * 100000 / exp.SAMPS_PER_CHANNEL);
     exp.DATA_SEGMENT_LENGTH = exp.NUM_PACKS_DETECT * exp.SAMPS_PER_CHANNEL * exp.NUM_CHAN; 
@@ -504,13 +403,12 @@ int main(int argc, char *argv[]) {
     cout << "HEAD_SIZE: "              << exp.HEAD_SIZE               << endl; 
     cout << "SAMPS_PER_CHAN: "         << exp.SAMPS_PER_CHANNEL       << endl;
     cout << "BYTES_PER_SAMP: "         << exp.BYTES_PER_SAMP          << endl;
-    cout << "Bytes per packet:       " << exp.REQUIRED_BYTES         << endl;
-    cout << "Time between packets:   " << exp.MICRO_INCR             << endl;
-    cout << "Number of channels:     " << exp.NUM_CHAN               << endl;
-    cout << "Data bytes per channel: " << exp.DATA_BYTES_PER_CHANNEL << endl;
+    cout << "Bytes per packet:       " << exp.REQUIRED_BYTES          << endl;
+    cout << "Time between packets:   " << exp.MICRO_INCR              << endl;
+    cout << "Number of channels:     " << exp.NUM_CHAN                << endl;
+    cout << "Data bytes per channel: " << exp.DATA_BYTES_PER_CHANNEL  << endl;
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
 
-    
 
     while (true) {
         
@@ -529,27 +427,14 @@ int main(int argc, char *argv[]) {
             cout << "Unknown problem occurred" << endl;
         }
         
-        // Destroy FFT objects
-        fftw_destroy_plan(exp.p1);
-        fftw_destroy_plan(exp.p2);
-        fftw_destroy_plan(exp.p3);
-        fftw_destroy_plan(exp.p4);
-        exp.p1 = nullptr;
-        exp.p2 = nullptr;
-        exp.p3 = nullptr;
-        exp.p4 = nullptr;
-        fftw_destroy_plan(exp.ip1);
-        exp.ip1 = nullptr;
-
-        // Destroy FIR filter objects
-        firfilt_rrrf_destroy(exp.q1);
-        firfilt_rrrf_destroy(exp.q2);
-        firfilt_rrrf_destroy(exp.q3);
-        firfilt_rrrf_destroy(exp.q4);
-        exp.q1 = nullptr;
-        exp.q2 = nullptr;
-        exp.q3 = nullptr;
-        exp.q4 = nullptr;
+        // Destroy FFTWF objects
+        for (auto& plan : exp.fftForChannels) {
+            fftwf_destroy_plan(plan);
+            plan = nullptr;
+        }
+        
+        fftwf_destroy_plan(exp.inverseFFT);
+        exp.inverseFFT = nullptr;
 
         sess.errorOccurred = false;
     }

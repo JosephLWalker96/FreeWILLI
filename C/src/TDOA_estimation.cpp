@@ -1,185 +1,112 @@
-#include <vector>
-#include <cmath>
-#include <cstdlib>
-#include <chrono>
-#include <iostream>
-#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
-
-#include "custom_types.h"
 #include "TDOA_estimation.h"
-#include "utils.h"
-
-#include <fftw3.h>
 
 using std::cout;
 using std::endl;
 using std::cerr;
-using std::vector;
 
-
-
-
-arma::Col<double> GCC_PHAT_FFTW(arma::Mat<arma::cx_double>& savedFFTs, fftw_plan& ip1, const int& interp, int& fftLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
+Eigen::VectorXf GCC_PHAT_FFTW(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFFT, const int& interp, int& paddedLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     /**
-    * @brief Computes the Generalized Cross-Correlation with Phase Transform (GcrossCorr-PHAT) between pairs of signals.
+    * @brief Computes the Generalized Cross-Correlation with Phase Transform (GCC-PHAT) between pairs of signals.
     *
-    * @param data A reference to an Armadillo matrix containing the input signals. Each column represents a signal.
+    * @param savedFFTs A reference to an Eigen matrix containing the input signals. Each column represents a signal.
+    * @param ip1 An FFTW plan for inverse FFT computations.
     * @param interp An integer specifying the interpolation factor used in the computation.
-    * @param fftw An instance of the FFTW object from SigPack library used for Fast Fourier Transform (FFT) computations.
     * @param fftLength An integer specifying the length of the FFT.
+    * @param NUM_CHAN An unsigned integer specifying the number of channels.
+    * @param SAMPLE_RATE An unsigned integer specifying the sample rate.
     *
-    * @return A column vector of doubles containing the computed TDOA estimates for all unique pairs of signals.
+    * @return An Eigen vector of doubles containing the computed TDOA estimates for all unique pairs of signals.
     */
-    
-    //arma::Mat<double> tau_matrix(NUM_CHAN, NUM_CHAN, arma::fill::zeros);
 
-    //int n = data.col(0).n_elem + data.col(1).n_elem;
-  //
-    arma::Col<double> tauVector(6); // 4 channels produces 6 unique pairings
-    arma::Col<arma::cx_double> SIG1(fftLength);
-    arma::Col<arma::cx_double> SIG2(fftLength);
+    int fftLength = savedFFTs.col(0).size();
+    int numTDOAs = NUM_CHAN * (NUM_CHAN - 1) / 2;
+    Eigen::VectorXf tauVector(numTDOAs);
+    Eigen::VectorXcf SIG1(fftLength);
+    Eigen::VectorXcf SIG2(fftLength);
 
-    // IFFT input and output
-    //cout << "before static " << endl;
-    //static fftw_plan ip1 = nullptr;
-    //cout << "after static " << endl;
-    static arma::cx_vec crossSpectraMagnitudeNorm(497);
-    static arma::vec crossCorr(992);
-    
-    // Get a pointer to the data of crossSpectraMagnitudeNorm for FFTW
-    //std::complex<double>* dataPtr = crossSpectraMagnitudeNorm.memptr();
+    static Eigen::VectorXcf crossSpectraMagnitudeNorm(fftLength);
+    static Eigen::VectorXf crossCorr(paddedLength);
 
-    // Create the plan once if it doesn't exist
-    //cout << "before if == nullptr " << endl;
-    if (ip1 == nullptr) {
-        ip1 = fftw_plan_dft_c2r_1d(992, reinterpret_cast<fftw_complex*>(crossSpectraMagnitudeNorm.memptr()), crossCorr.memptr(), FFTW_ESTIMATE);
+    if (inverseFFT == nullptr) {
+        inverseFFT = fftwf_plan_dft_c2r_1d(paddedLength, reinterpret_cast<fftwf_complex*>(crossSpectraMagnitudeNorm.data()), crossCorr.data(), FFTW_ESTIMATE);
     }
-    //cout << "after if == nullptr " << endl;
 
     int pairCounter = 0;
-    for (int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++ ){
-        for (int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
-            
-            
-            // Uncomment lines bellow for manual testing
-            //sig2(2) =0;
-            //sig2(2) = arma::datum::nan; 
-            //sig2(2) = arma::datum::inf;
-            
-            
+    for (unsigned int sig1_ind = 0; sig1_ind < (NUM_CHAN - 1); sig1_ind++) {
+        for (unsigned int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
             SIG1 = savedFFTs.col(sig1_ind);
             SIG2 = savedFFTs.col(sig2_ind);
-            /*
-            cout << "SIG1:";
-            for (int i = 0; i < 5; i++){
-                cout << SIG1(i) << " ";
-            }
-            cout << endl;
+
+            Eigen::VectorXcf crossSpectra = SIG1.array() * SIG2.conjugate().array();
+            Eigen::VectorXf crossSpectraMagnitude = crossSpectra.cwiseAbs();
             
-            cout << "SIG2:";
-            for (int i = 0; i < 5; i++){
-                cout << SIG2(i) << " ";
+            if ((crossSpectraMagnitude.array() == 0).any()) {
+                crossSpectraMagnitude = crossSpectraMagnitude.unaryExpr([](float x) { return x == 0 ? 1.0f : x; });
             }
-            cout << endl;
-            */
 
-
-            arma::cx_vec crossSpectra = SIG1 % arma::conj(SIG2);
-            arma::vec crossSpectraMagnitude = arma::abs(crossSpectra);
+            if ((crossSpectraMagnitude.array().isInf()).any()) {
+                throw GCC_Value_Error("FFTW crossSpectraMagnitude contains inf value");
+            } else if ((crossSpectraMagnitude.array().isNaN()).any()) {
+                throw GCC_Value_Error("FFTW crossSpectraMagnitude contains nan value");
+            }
+            crossSpectraMagnitudeNorm = crossSpectra.array() / crossSpectraMagnitude.array();
             
-            /*
-            cout << "crossSpectraMagnitude:";
-            for (int i = 0; i < 5; i++){
-                cout << crossSpectraMagnitude(fftLength - (i+1)) << " ";
-            }
-            cout << endl;
-            */
-
-            // Uncomment lines bellow for testing
-            //R_abs(2) =0;
-            //R_abs(2) = arma::datum::nan; 
-            //R_abs(2) = arma::datum::inf;
-
-            if  (crossSpectraMagnitude.has_inf()) [[unlikely]]{
-                throw GCC_Value_Error("FFTW R_abs contains inf value");
-            }
-            else if (crossSpectraMagnitude.has_nan()) [[unlikely]] {
-                throw GCC_Value_Error("FFTW R_abs contains nan value");
-            }
-            else if (arma::any(crossSpectraMagnitude == 0)) [[unlikely]] {
-                throw GCC_Value_Error("FFTW R_abs contains 0 value");
-            }
-
-            crossSpectraMagnitudeNorm = crossSpectra / crossSpectraMagnitude;
-            //cout << "Hello before ifft" << endl;
-            fftw_execute(ip1);
-            //cout << "Hello after ifft" << endl;
-            //arma::vec crossCorr = fftw.ifft(crossSpectraMagnitudeNorm);
             
-            //int maxShift = interp * fftLength / 2;
-            int maxShift = (interp * (992 / 2));
-            //if (fftLength % 2 != 0) {
-            //    maxShift = interp * ((992 - 1) / 2);
-            //}
-            //cout << "Max shift: " << maxShift << endl;
-            //cout << "Hello before subvec" << endl;
-            //crossCorr /= 992;
-            arma::vec back = crossCorr.subvec(crossCorr.n_elem - maxShift, crossCorr.n_elem- 1);
-            arma::vec front = crossCorr.subvec(0, maxShift);
-            //cout << "Hello after subvec" << endl;
+            fftwf_execute(inverseFFT);
+
+            int maxShift = (interp * (paddedLength / 2));
+            Eigen::VectorXf back = crossCorr.tail(maxShift);
+            Eigen::VectorXf front = crossCorr.head(maxShift);
+
+            Eigen::VectorXf crossCorrInverted(maxShift * 2);
+            crossCorrInverted << back, front;
+
+            Eigen::Index maxIndex;
+            crossCorrInverted.maxCoeff(&maxIndex);
             
-            arma::vec crossCorrInverted = arma::join_cols(back,front);
-
-            double shift = (double)arma::index_max(crossCorrInverted) - maxShift;
-            double timeDelta = shift / (interp * SAMPLE_RATE );
-
-            //tau_matrix(sig2_ind, sig1_ind) = tau;
+            double shift = static_cast<double>(maxIndex) - maxShift;
+            double timeDelta = shift / (interp * SAMPLE_RATE);
             tauVector(pairCounter) = timeDelta;
             pairCounter++;
         }
     }
-    //cout << "returning from GCC FFTW" << endl;
     return tauVector;
 }
 
 
-
-arma::Col<double> DOA_EstimateVerticalArray(arma::Col<double>& TDOAs, const double& soundSpeed, arma::Col<int>& chanSpacing){
+Eigen::VectorXf DOA_EstimateVerticalArray(Eigen::VectorXf& TDOAs, const double& soundSpeed, std::span<float> chanSpacing) {
     /**
     * @brief Estimates the vertical direction of arrival (DOA) using time difference of arrivals (TDOAs) 
     * between microphone channels in an array.
     * 
-    * @param TDOAs (arma::Col<double>): Array of time difference of arrivals (TDOAs) between microphone pairs.
+    * @param TDOAs (Eigen::VectorXd): Array of time difference of arrivals (TDOAs) between microphone pairs.
     * @param soundSpeed (double): Speed of sound in the medium, in meters per second.
-    * @param chanSpacing (arma::Col<double>): Array of vertical separation between pairwise microphone channels, in meters.
+    * @param chanSpacing (Eigen::VectorXi): Array of vertical separation between pairwise microphone channels, in meters.
     * 
-    * @return arma::Col<double> Array containing the estimated vertical DOA angles in degrees.
+    * @return Eigen::VectorXd Array containing the estimated vertical DOA angles in degrees.
     */
     
-    arma::Col<double> vals = (TDOAs * soundSpeed)  / chanSpacing;             //calculate the distance differences and normalize
+    Eigen::VectorXf vals = (TDOAs * soundSpeed).array(); // calculate the distance differences and normalize
     
-    double max = arma::max(arma::abs(vals));
-    if (max > 1){
-        cerr << "Out of bounds values: " << endl;
-        cerr << vals.t() << endl; 
-        cerr << "TDOAs: " << TDOAs.t() << endl;
-        //throw std::runtime_error("Bad TDOA values encountered!");
-    }
-    
+    // Convert std::vector<double> to Eigen::VectorXd
+    Eigen::VectorXf divisorEigen = Eigen::Map<Eigen::VectorXf>(chanSpacing.data(), chanSpacing.size());
 
-    // The following code is designed to test program behavior in the event of a segmentation fault
-    /*
-    if (WithProbability(0.0005)){
-        cout << "Crashing here!!" << endl;
-        int* ptr = nullptr;
-        *ptr = 42; // Dereference null pointer to cause a crash
+    // Perform element-wise division
+    vals = vals.array() / divisorEigen.array();
+    float max = vals.array().abs().maxCoeff();
+    if (max > 1.0f) {
+        std::cerr << "Out of bounds values: " << std::endl;
+        std::cerr << vals.transpose() << std::endl; 
+        std::cerr << "TDOAs: " << TDOAs.transpose() << std::endl;
+        // throw std::runtime_error("Bad TDOA values encountered!");
     }
-    */
 
-    vals.clamp( -1, 1);                                                       // ensure that values are between -1 and 1 for arcsin
-    return arma::acos(vals) * 180.0 / 3.141592653;                            // convert angle to degrees 
+    // Ensure that values are between -1 and 1 for arcsin
+    vals = vals.array().min(1).max(-1);
+
+    // Convert angle to degrees
+    return vals.array().acos() * 180.0f / 3.1415f;
 }
-
 
 /*
 void ApplyKalman(KF& kalman){
