@@ -2,6 +2,33 @@
 
 #include "pch.h"
 
+#ifdef PICO
+#include "FreeRTOS.h"
+#include "semphr.h"
+
+// Simple lock for PICO W Build
+class FreeRTOSMutex {
+private:
+    SemaphoreHandle_t  xMutex;
+public:
+    FreeRTOSMutex() {
+        xMutex = xSemaphoreCreateMutex();
+    }
+
+    ~FreeRTOSMutex() {
+        vSemaphoreDelete(xMutex);
+    }
+
+    void lock() {
+        xSemaphoreTake(xMutex, portMAX_DELAY);
+    }
+
+    void unlock() {
+        xSemaphoreGive(xMutex);
+    }
+};
+#endif
+
 using TimePoint = std::chrono::system_clock::time_point;
 
 class GCC_Value_Error : public std::runtime_error {
@@ -48,21 +75,24 @@ struct Session {
     int datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);  // udp socket
     int UDP_PORT;                                         // Listening port
     std::atomic<bool> errorOccurred = false;              // set true if error occurs in thread
-    
+
     std::queue<std::vector<uint8_t>> dataBuffer;
     std::vector<std::vector<uint8_t>> dataBytesSaved;
     std::vector<float> dataSegment;
     std::vector<std::chrono::system_clock::time_point> dataTimes;
+#ifdef PICO
+    FreeRTOSMutex dataBufferLock;
+#else
     std::mutex dataBufferLock;                       // For thread-safe buffer access
-    
+#endif
+
     std::vector<float>           peakAmplitudeBuffer;
     std::vector<TimePoint>       peakTimesBuffer;
     std::vector<Eigen::VectorXf> resultMatrixBuffer;
     std::vector<Eigen::VectorXf> DOAsBuffer;
-    
+
     std::string UDP_IP;             // IP address of data logger or simulator
 };
-
 
 struct DetectionResult {
     int minPeakIndex = -1;

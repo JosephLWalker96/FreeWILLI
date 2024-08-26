@@ -13,3 +13,12 @@
 [submodule "C/libs/FlameGraph"]
 	path = C/libs/FlameGraph
 	url = https://github.com/brendangregg/FlameGraph
+[submodule "C/libs/pico-sdk"]
+	path = C/libs/pico-sdk
+	url = https://github.com/raspberrypi/pico-sdk.git
+[submodule "C/libs/eigen"]
+	path = C/libs/eigen
+	url = https://gitlab.com/libeigen/eigen.git
+[submodule "C/libs/FreeRTOS-Kernel"]
+	path = C/libs/FreeRTOS-Kernel
+	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git

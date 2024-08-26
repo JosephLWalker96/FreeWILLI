@@ -34,7 +34,7 @@ void PrintTimes(const std::span<TimePoint> timestamps) {
     }
 }
 
-void RestartListener(Session& sess){
+int RestartListener(Session& sess){
      /**
      * @brief (Re)starts the udp listener. It closes the existing socket connection and creates a new one.
      * Additionally, it clears the buffer (dataBuffer) and the segment to be processed (dataSegment) 
@@ -46,13 +46,23 @@ void RestartListener(Session& sess){
     cout << "restarting listener: \n";
 
     if (close(sess.datagramSocket) == -1) {
+#ifdef PICO
+        std::cerr <<  "Failed to close socket" << std::endl;
+        return 1;
+#else
         throw std::runtime_error("Failed to close socket \n");
+#endif
     }
 
 
     sess.datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if (sess.datagramSocket == -1) {
+#ifdef PICO
+        std::cerr << "Error creating socket" << std::endl;
+        return 1;
+#else
         throw std::runtime_error("Error creating socket \n");
+#endif
     }
 
     struct sockaddr_in serverAddr;
@@ -68,11 +78,21 @@ void RestartListener(Session& sess){
         std::memcpy(message, m1,4);
         std::memcpy(message + 4, m2, 96);
         if (sendto(sess.datagramSocket, message, sizeof(message), 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0){
+#ifdef PICO
+            std::cerr << "Error sending wake-up data packet to data logger" << std::endl;
+            return 1;
+#else
             throw std::runtime_error("Error sending wake-up data packet to data logger \n");
+#endif
         }
     }
     else if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+#ifdef PICO
+        std::cerr << "Error binding socket" << std::endl;
+        return 1;
+#else
         throw std::runtime_error("Error binding socket \n");
+#endif
     }
 
     ClearQueue(sess.dataBuffer);
@@ -100,7 +120,7 @@ bool ProcessFile(Experiment& exp, const std::string& fileName) {
     return 0;
 }
 
-void InitiateOutputFile(std::string& outputFile, std::tm& timeStruct, int64_t microSec, std::string& feature){
+int InitiateOutputFile(std::string& outputFile, std::tm& timeStruct, int64_t microSec, std::string& feature){
 
     outputFile = "deployment_files/"  + std::to_string(timeStruct.tm_year + 1900) + '-' + std::to_string(timeStruct.tm_mon + 1) + '-' + 
                      std::to_string(timeStruct.tm_mday) + '-' + std::to_string(timeStruct.tm_hour) + '-' + std::to_string(timeStruct.tm_min) + '-' +
@@ -109,18 +129,20 @@ void InitiateOutputFile(std::string& outputFile, std::tm& timeStruct, int64_t mi
     std::stringstream msg; // compose message to dispatch
     msg << "created and writting to file: " << outputFile << endl;
     cout << msg.str();
-    
+
+#ifndef PICO
     // Open the file in write mode and clear its contents if it exists, create a new file otherwise
     std::ofstream file(outputFile, std::ofstream::out | std::ofstream::trunc);
     if (file.is_open()) {
         file << "Timestamp (microseconds)" << std::setw(20) << "Peak Amplitude" << endl;
         file.close();
-    } 
+    }
     else {
         std::stringstream throwMsg; // compose message to dispatch
         throwMsg << "Error: Unable to open file for writing: " << outputFile << endl;
         throw std::runtime_error(throwMsg.str());
     }
+#endif
 }
 
 std::vector<double> ReadFIRFilterFile(const std::string& fileName) {
@@ -137,9 +159,14 @@ std::vector<double> ReadFIRFilterFile(const std::string& fileName) {
 
     std::ifstream inputFile(fileName);
     if (!inputFile.is_open()) {
+#ifdef PICO
+        cerr << "Error: Unable to open filter file '" << fileName << "." << endl;
+        return {};
+#else
         std::stringstream msg; // compose message to dispatch
         msg << "Error: Unable to open filter file '" << fileName << "'." << endl;
         throw std::ios_base::failure(msg.str());
+#endif
     }
     std::string line;
     std::vector<double> filterValues;
@@ -149,6 +176,15 @@ std::vector<double> ReadFIRFilterFile(const std::string& fileName) {
         std::string token;
         
         while(std::getline(stringStream,token, ',')){
+#ifdef PICO
+            char* end;
+            double value = std::strtod(token.c_str(), &end);
+            if (*end == '\0') {
+                filterValues.push_back(value);
+            } else {
+                std::cerr << "Invalid numeric value: " << token << std::endl;
+            }
+#else
             try {
                 double value = std::stod(token);
                 filterValues.push_back(value);
@@ -158,6 +194,7 @@ std::vector<double> ReadFIRFilterFile(const std::string& fileName) {
                 errMsg << "Invalid numeric value: " << token << endl;
                 cerr << errMsg.str();
             }
+#endif
         }
     }
     //arma::Col<double> filter(filterValues);
@@ -193,6 +230,7 @@ bool WithProbability(double probability){
     return randomValue < probability;
 }
 
+#ifndef PICO
 void WritePulseAmplitudes(std::span<float> clickPeakAmps, std::span<TimePoint> timestamps, const std::string& filename) {
     /**
     * @brief Writes pulse amplitudes and corresponding timestamps to a file.
@@ -288,3 +326,4 @@ void WriteDataToCerr(std::span<TimePoint> dataTimes, std::vector<std::vector<uin
     msg << endl;
     cerr << msg.str();
 }
+#endif

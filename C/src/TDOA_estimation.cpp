@@ -45,9 +45,17 @@ Eigen::VectorXf GCC_PHAT_FFTW(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFF
             }
 
             if ((crossSpectraMagnitude.array().isInf()).any()) {
+#ifdef PICO
+                cerr  << "FFTW crossSpectraMagnitude contains inf value" << endl;
+#else
                 throw GCC_Value_Error("FFTW crossSpectraMagnitude contains inf value");
+#endif
             } else if ((crossSpectraMagnitude.array().isNaN()).any()) {
+#ifdef PICO
+                cerr  << "FFTW crossSpectraMagnitude contains nan value" << endl;
+#else
                 throw GCC_Value_Error("FFTW crossSpectraMagnitude contains nan value");
+#endif
             }
             crossSpectraMagnitudeNorm = crossSpectra.array() / crossSpectraMagnitude.array();
             

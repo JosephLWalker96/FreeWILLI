@@ -52,7 +52,11 @@ void GenerateTimestamps(std::vector<TimePoint>& dataTimes, std::span<uint8_t> da
 
     // Check if mktime failed
     if (timeResult == std::time_t(-1)) {
+#ifdef PICO
+        std::cerr << "Error: failure in mktime" << std::endl;
+#else
         throw std::runtime_error("Error: failure in mktime \n");
+#endif
     }
 
     auto currentTime = std::chrono::system_clock::from_time_t(timeResult);  // convert std::time_t to std::chrono::system_clock::time_point
@@ -68,13 +72,17 @@ void GenerateTimestamps(std::vector<TimePoint>& dataTimes, std::span<uint8_t> da
     if (previousTimeSet && (elapsedTime != MICRO_INCR)){
         std::stringstream msg; // compose message to dispatch
         msg <<  "Error: Time not incremented by " <<  MICRO_INCR << " " << elapsedTime << endl;
+#ifdef PICO
+        std::cerr << msg.str() << std::endl;
+#else
         throw std::runtime_error(msg.str());
+#endif
     }
 
 
     previousTime = currentTime;
     previousTimeSet = true;
-    
+#ifndef PICO
     if ((detectionOutputFile).empty()){
         std::string feature = "detection";
         InitiateOutputFile(detectionOutputFile, timeStruct, microSec, feature);
@@ -83,6 +91,7 @@ void GenerateTimestamps(std::vector<TimePoint>& dataTimes, std::span<uint8_t> da
         feature = "doa";
         InitiateOutputFile(doaOutputFile, timeStruct, microSec, feature);
     }
+#endif
 }
 
 

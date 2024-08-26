@@ -1,16 +1,42 @@
-add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp)
-
 add_executable(HarpListen main.cpp)
 
 # Precompiled headers
-target_precompile_headers(MainLib PRIVATE pch.h)
-get_target_property(PCH_SOURCES HarpListen PRECOMPILE_HEADERS)
-message(STATUS "Precompiled headers: ${PCH_SOURCES}")
+if (PICO_BUILD)
+    add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp pch.h)
+    include_directories(MainLib PRIVATE
+            ${THIRD_PARTY_INCLUDE_DIRS}
+    )
+    target_link_libraries(MainLib PRIVATE
+            ${THIRD_PARTY_LIBRARIES}
+    )
+    set(PICO "PICO")
+    target_compile_definitions(MainLib PUBLIC PICO)
 
-include_directories(HarpListen PRIVATE
-        ${THIRD_PARTY_INCLUDE_DIRS}
-)
-target_link_libraries(HarpListen PRIVATE
-        MainLib
-        ${THIRD_PARTY_LIBRARIES}
-)
+    get_target_property(PCH_SOURCES HarpListen PRECOMPILE_HEADERS)
+    include_directories(HarpListen PRIVATE
+            ${THIRD_PARTY_INCLUDE_DIRS}
+    )
+    target_link_libraries(HarpListen PRIVATE
+            MainLib
+            ${THIRD_PARTY_LIBRARIES}
+            LWIP_PORT
+    )
+
+    set(PICO "PICO")
+    pico_enable_stdio_usb(HarpListen 1)
+    pico_enable_stdio_uart(HarpListen 0)
+    pico_add_extra_outputs(HarpListen)
+else ()
+    add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp)
+    target_precompile_headers(MainLib PRIVATE pch.h)
+    get_target_property(PCH_SOURCES HarpListen PRECOMPILE_HEADERS)
+    message(STATUS "Precompiled headers: ${PCH_SOURCES}")
+
+    include_directories(HarpListen PRIVATE
+            ${THIRD_PARTY_INCLUDE_DIRS}
+    )
+    target_link_libraries(HarpListen PRIVATE
+            MainLib
+            ${THIRD_PARTY_LIBRARIES}
+    )
+endif ()
