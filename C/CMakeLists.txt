@@ -78,9 +78,6 @@ if (PICO_BUILD)
     list(APPEND THIRD_PARTY_LIBRARIES LWIP_PORT)
     list(APPEND THIRD_PARTY_LIBRARIES FreeRTOS-Kernel-Heap4) # FreeRTOS kernel and dynamic heap
     list(APPEND THIRD_PARTY_LIBRARIES pico_cyw43_arch_lwip_sys_freertos)
-#    list(APPEND THIRD_PARTY_LIBRARIES pico_cyw43_arch_lwip_threadsafe_background)
-#    list(APPEND THIRD_PARTY_LIBRARIES pico_cyw43_arch_lwip_poll)
-    list(APPEND THIRD_PARTY_LIBRARIES  fftw3f)
 
     list(APPEND THIRD_PARTY_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/port/FreeRTOS-Kernel")
 
@@ -91,12 +88,14 @@ if (PICO_BUILD)
     set(PICO "PICO")
     target_compile_definitions(hello_pico PUBLIC PICO)
     target_link_libraries(hello_pico
-            ${THIRD_PARTY_LIBRARIES}
+            pico_stdlib
+#            ${THIRD_PARTY_LIBRARIES}
+            fftw3f
     )
-    include_directories(hello_pico
-            PUBLIC
-            ${THIRD_PARTY_INCLUDE_DIRS}
-    )
+#    include_directories(hello_pico
+#            PUBLIC
+#            ${THIRD_PARTY_INCLUDE_DIRS}
+#    )
     pico_enable_stdio_usb(hello_pico 1)
     pico_enable_stdio_uart(hello_pico 0)
     pico_add_extra_outputs(hello_pico)

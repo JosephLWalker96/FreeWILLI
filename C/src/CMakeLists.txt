@@ -6,8 +6,9 @@ if (PICO_BUILD)
     include_directories(MainLib PRIVATE
             ${THIRD_PARTY_INCLUDE_DIRS}
     )
-    target_link_libraries(MainLib PRIVATE
+    target_link_libraries(MainLib PUBLIC
             ${THIRD_PARTY_LIBRARIES}
+            fftw3f
     )
     set(PICO "PICO")
     target_compile_definitions(MainLib PUBLIC PICO)
@@ -18,7 +19,7 @@ if (PICO_BUILD)
     )
     target_link_libraries(HarpListen PRIVATE
             MainLib
-            ${THIRD_PARTY_LIBRARIES}
+#            ${THIRD_PARTY_LIBRARIES}
             LWIP_PORT
     )
 
