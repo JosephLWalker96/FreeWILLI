@@ -11,16 +11,8 @@ if (CMAKE_TOOLCHAIN_FILE)
 
     project(HarpListen VERSION 1.0 LANGUAGES C CXX ASM)
 
-    SET(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/FreeRTOS-Kernel)
-    include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
-    include_directories(${CMAKE_SOURCE_DIR}/port/FreeRTOS-Kernel)
-
-    include(${CMAKE_SOURCE_DIR}/lwip_import.cmake)
-    include_directories(${CMAKE_SOURCE_DIR}/port/lwip)
-
     pico_sdk_init()
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=cortex-m0plus")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=cortex-m0plus")
+
 else ()
     project(HarpListen VERSION 1.0)
 endif ()
@@ -74,6 +66,11 @@ if (PICO_BUILD)
     add_subdirectory(${CMAKE_SOURCE_DIR}/libs/fftw-3.3.10)
     include_directories(${CMAKE_SOURCE_DIR}/libs/fftw-3.3.10/api)
 
+    SET(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/FreeRTOS-Kernel)
+    include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
+    include_directories(${CMAKE_SOURCE_DIR}/port/FreeRTOS-Kernel)
+    include(${CMAKE_SOURCE_DIR}/lwip_import.cmake)
+    include_directories(${CMAKE_SOURCE_DIR}/port/lwip)
     list(APPEND THIRD_PARTY_LIBRARIES pico_stdlib)
     list(APPEND THIRD_PARTY_LIBRARIES LWIP_PORT)
     list(APPEND THIRD_PARTY_LIBRARIES FreeRTOS-Kernel-Heap4) # FreeRTOS kernel and dynamic heap
@@ -88,14 +85,14 @@ if (PICO_BUILD)
     set(PICO "PICO")
     target_compile_definitions(hello_pico PUBLIC PICO)
     target_link_libraries(hello_pico
-            pico_stdlib
-#            ${THIRD_PARTY_LIBRARIES}
+            ${THIRD_PARTY_LIBRARIES}
+#            pico_stdlib
             fftw3f
     )
-#    include_directories(hello_pico
-#            PUBLIC
-#            ${THIRD_PARTY_INCLUDE_DIRS}
-#    )
+    include_directories(hello_pico
+            PUBLIC
+            ${THIRD_PARTY_INCLUDE_DIRS}
+    )
     pico_enable_stdio_usb(hello_pico 1)
     pico_enable_stdio_uart(hello_pico 0)
     pico_add_extra_outputs(hello_pico)
