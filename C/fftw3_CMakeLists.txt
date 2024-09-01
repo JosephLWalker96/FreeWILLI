@@ -309,7 +309,7 @@ if (BUILD_SHARED_LIBS)
   add_definitions (-DFFTW_DLL)
 endif ()
 
-add_library (fftw3f ${SOURCEFILES})
+add_library (fftw3f STATIC ${SOURCEFILES})
 target_include_directories (fftw3f INTERFACE $<INSTALL_INTERFACE:include>)
 if (MSVC AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Intel"))
   target_compile_definitions (fftw3f PRIVATE /bigobj)

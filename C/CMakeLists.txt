@@ -1,18 +1,16 @@
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.29)
 
-if (CMAKE_TOOLCHAIN_FILE)
+#if (CMAKE_TOOLCHAIN_FILE)
+if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
     message("Compiling for PICO W")
 
-    set(PICO_BUILD True)
     set(PICO_SDK_PATH "${CMAKE_SOURCE_DIR}/libs/pico-sdk")
     set(PICO_BOARD pico_w)
     include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
 
-
     project(HarpListen VERSION 1.0 LANGUAGES C CXX ASM)
-
-    pico_sdk_init()
-
+    # optimize the code
+    add_compile_options(-O3 -Os)
 else ()
     project(HarpListen VERSION 1.0)
 endif ()
@@ -41,7 +39,8 @@ endif()
 set(THIRD_PARTY_LIBRARIES)
 set(THIRD_PARTY_INCLUDE_DIRS)
 
-if (PICO_BUILD)
+if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
+    pico_sdk_init()
     # fftw3 3.3.10 branch does not work as expected, use webget instead
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/libs/fftw-3.3.10")
         execute_process(
@@ -62,9 +61,10 @@ if (PICO_BUILD)
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 
-    include_directories(${CMAKE_SOURCE_DIR}/libs/eigen)
-    add_subdirectory(${CMAKE_SOURCE_DIR}/libs/fftw-3.3.10)
-    include_directories(${CMAKE_SOURCE_DIR}/libs/fftw-3.3.10/api)
+#    add_subdirectory(${CMAKE_SOURCE_DIR}/libs/eigen)
+    include_directories(libs/eigen)
+    add_subdirectory(libs/fftw-3.3.10)
+    include_directories(libs/fftw-3.3.10/api)
 
     SET(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/FreeRTOS-Kernel)
     include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
@@ -85,8 +85,8 @@ if (PICO_BUILD)
     set(PICO "PICO")
     target_compile_definitions(hello_pico PUBLIC PICO)
     target_link_libraries(hello_pico
-            ${THIRD_PARTY_LIBRARIES}
-#            pico_stdlib
+#            ${THIRD_PARTY_LIBRARIES}
+            pico_stdlib
             fftw3f
     )
     include_directories(hello_pico
@@ -98,15 +98,15 @@ if (PICO_BUILD)
     pico_add_extra_outputs(hello_pico)
 else ()
     # LAPACK
-    find_package(LAPACK REQUIRED)
-    if (LAPACK_LIBRARIES)
-        list(APPEND THIRD_PARTY_LIBRARIES ${LAPACK_LIBRARIES})
-        message(STATUS "LAPACK libraries: ${LAPACK_LIBRARIES}")
-    endif ()
-    if (LAPACK_INCLUDE_DIRS)
-        list(APPEND THIRD_PARTY_INCLUDE_DIRS ${LAPACK_INCLUDE_DIRS})
-        message(STATUS "LAPACK include dirs: ${LAPACK_INCLUDE_DIRS}")
-    endif()
+#    find_package(LAPACK REQUIRED)
+#    if (LAPACK_LIBRARIES)
+#        list(APPEND THIRD_PARTY_LIBRARIES ${LAPACK_LIBRARIES})
+#        message(STATUS "LAPACK libraries: ${LAPACK_LIBRARIES}")
+#    endif ()
+#    if (LAPACK_INCLUDE_DIRS)
+#        list(APPEND THIRD_PARTY_INCLUDE_DIRS ${LAPACK_INCLUDE_DIRS})
+#        message(STATUS "LAPACK include dirs: ${LAPACK_INCLUDE_DIRS}")
+#    endif()
 
     # FFTW3
     find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)
@@ -132,15 +132,15 @@ else ()
     endif()
 
     # BLAS
-    find_package(BLAS REQUIRED)
-    if (BLAS_LIBRARIES)
-        list(APPEND THIRD_PARTY_LIBRARIES ${BLAS_LIBRARIES})
-        message(STATUS "BLAS libraries: ${BLAS_LIBRARIES}")
-    endif ()
-    if (BLAS_INCLUDE_DIRS)
-        list(APPEND THIRD_PARTY_INCLUDE_DIRS ${BLAS_INCLUDE_DIRS})
-        message(STATUS "BLAS include dirs: ${BLAS_INCLUDE_DIRS}")
-    endif()
+#    find_package(BLAS REQUIRED)
+#    if (BLAS_LIBRARIES)
+#        list(APPEND THIRD_PARTY_LIBRARIES ${BLAS_LIBRARIES})
+#        message(STATUS "BLAS libraries: ${BLAS_LIBRARIES}")
+#    endif ()
+#    if (BLAS_INCLUDE_DIRS)
+#        list(APPEND THIRD_PARTY_INCLUDE_DIRS ${BLAS_INCLUDE_DIRS})
+#        message(STATUS "BLAS include dirs: ${BLAS_INCLUDE_DIRS}")
+#    endif()
 
     # Eigen3
     find_package (Eigen3 REQUIRED NO_MODULE)

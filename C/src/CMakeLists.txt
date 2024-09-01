@@ -1,7 +1,7 @@
 add_executable(HarpListen main.cpp)
 
 # Precompiled headers
-if (PICO_BUILD)
+if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
     add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp pch.h)
     include_directories(MainLib PRIVATE
             ${THIRD_PARTY_INCLUDE_DIRS}

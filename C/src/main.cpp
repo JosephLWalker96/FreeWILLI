@@ -671,7 +671,17 @@ int main(int argc, char *argv[]) {
     // Declare a listening 'Session'
     Session sess;
     Experiment exp;
-    
+#ifdef PICO
+//    need to be preset for PICO
+    sess.UDP_IP = "127.0.0.1";                                         // IP address of data logger or simulator
+    cout << "IP " << sess.UDP_IP << endl;
+    sess.UDP_PORT = 1045;
+    cout << "Port " << sess.UDP_IP << endl;
+    int firmwareVersion = 1240;
+    cout << "Firmware Version  " << sess.UDP_IP << endl;
+    exp.energyDetThresh = 2500;
+    cout << "Energy Det Thresh  " << sess.UDP_IP << endl;
+#else
     sess.UDP_IP = argv[1];                                         // IP address of data logger or simulator
     if (sess.UDP_IP == "self") {
         sess.UDP_IP = "127.0.0.1";
@@ -681,6 +691,7 @@ int main(int argc, char *argv[]) {
 
     int firmwareVersion = std::stoi(argv[3]);
     exp.energyDetThresh = std::stod(argv[4]);
+#endif
 
     cout << "Listening to IP address " << sess.UDP_IP.c_str() << " and port " << sess.UDP_PORT << endl;
 
@@ -707,7 +718,7 @@ int main(int argc, char *argv[]) {
 
 
     while (true) {
-        
+
         RestartListener(sess);
 
 #ifdef PICO
@@ -725,20 +736,20 @@ int main(int argc, char *argv[]) {
         listenerThread.join();
         processorThread.join();
 #endif
-       
+
         if (sess.errorOccurred) {
             cout << "Restarting threads..." << endl;
         }
         else {
             cout << "Unknown problem occurred" << endl;
         }
-        
+
         // Destroy FFTWF objects
         for (auto& plan : exp.fftForChannels) {
             fftwf_destroy_plan(plan);
             plan = nullptr;
         }
-        
+
         fftwf_destroy_plan(exp.inverseFFT);
         exp.inverseFFT = nullptr;
 
