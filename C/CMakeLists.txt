@@ -61,10 +61,10 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 
-#    add_subdirectory(${CMAKE_SOURCE_DIR}/libs/eigen)
-    include_directories(libs/eigen)
-    add_subdirectory(libs/fftw-3.3.10)
-    include_directories(libs/fftw-3.3.10/api)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/libs/eigen)
+    include_directories(${CMAKE_SOURCE_DIR}/libs/eigen)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/libs/fftw-3.3.10)
+    include_directories(${CMAKE_SOURCE_DIR}/libs/fftw-3.3.10/api)
 
     SET(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/FreeRTOS-Kernel)
     include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
