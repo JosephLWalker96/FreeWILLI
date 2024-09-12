@@ -22,10 +22,11 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
 #            ${THIRD_PARTY_LIBRARIES}
             LWIP_PORT
     )
+    target_compile_definitions(HarpListen PUBLIC PICO)
 
     set(PICO "PICO")
     pico_enable_stdio_usb(HarpListen 1)
-    pico_enable_stdio_uart(HarpListen 0)
+    pico_enable_stdio_uart(HarpListen 1)
     pico_add_extra_outputs(HarpListen)
 else ()
     add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp)

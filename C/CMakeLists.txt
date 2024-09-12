@@ -7,6 +7,7 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
     set(PICO_SDK_PATH "${CMAKE_SOURCE_DIR}/libs/pico-sdk")
     set(PICO_BOARD pico_w)
     include(${PICO_SDK_PATH}/pico_sdk_init.cmake)
+    include(${CMAKE_SOURCE_DIR}/pico_sdk_import.cmake)
 
     project(HarpListen VERSION 1.0 LANGUAGES C CXX ASM)
     # optimize the code
@@ -40,6 +41,11 @@ set(THIRD_PARTY_LIBRARIES)
 set(THIRD_PARTY_INCLUDE_DIRS)
 
 if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
+    SET(FREERTOS_KERNEL_PATH ${CMAKE_SOURCE_DIR}/libs/FreeRTOS-Kernel)
+    include(FreeRTOS_Kernel_import.cmake)
+    include_directories(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040)
+    include_directories(${CMAKE_SOURCE_DIR}/port/FreeRTOS-Kernel)
+
     pico_sdk_init()
     # fftw3 3.3.10 branch does not work as expected, use webget instead
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/libs/fftw-3.3.10")
@@ -66,22 +72,27 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
     add_subdirectory(${CMAKE_SOURCE_DIR}/libs/fftw-3.3.10)
     include_directories(${CMAKE_SOURCE_DIR}/libs/fftw-3.3.10/api)
 
-    SET(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/FreeRTOS-Kernel)
-    include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
-    include_directories(${CMAKE_SOURCE_DIR}/port/FreeRTOS-Kernel)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/libs/CH9121)
+    include_directories(${CMAKE_SOURCE_DIR}/libs/CH9121)
+
     include(${CMAKE_SOURCE_DIR}/lwip_import.cmake)
     include_directories(${CMAKE_SOURCE_DIR}/port/lwip)
+
+    list(APPEND THIRD_PARTY_LIBRARIES pico_cyw43_arch_lwip_sys_freertos)
     list(APPEND THIRD_PARTY_LIBRARIES pico_stdlib)
     list(APPEND THIRD_PARTY_LIBRARIES LWIP_PORT)
     list(APPEND THIRD_PARTY_LIBRARIES FreeRTOS-Kernel-Heap4) # FreeRTOS kernel and dynamic heap
-    list(APPEND THIRD_PARTY_LIBRARIES pico_cyw43_arch_lwip_sys_freertos)
+#    list(APPEND THIRD_PARTY_LIBRARIES pico_cyw43_arch_lwip_threadsafe_background)
 
     list(APPEND THIRD_PARTY_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/port/FreeRTOS-Kernel")
+    list(APPEND THIRD_PARTY_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/port/lwip")
 
 #     Add the source directory
     add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 
-    add_executable(hello_pico pico_test.cpp)
+#   Temporary Test Files
+    # Test fftw compilation on pico
+    add_executable(hello_pico fftw_test.cpp)
     set(PICO "PICO")
     target_compile_definitions(hello_pico PUBLIC PICO)
     target_link_libraries(hello_pico
@@ -96,18 +107,73 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
     pico_enable_stdio_usb(hello_pico 1)
     pico_enable_stdio_uart(hello_pico 0)
     pico_add_extra_outputs(hello_pico)
-else ()
-    # LAPACK
-#    find_package(LAPACK REQUIRED)
-#    if (LAPACK_LIBRARIES)
-#        list(APPEND THIRD_PARTY_LIBRARIES ${LAPACK_LIBRARIES})
-#        message(STATUS "LAPACK libraries: ${LAPACK_LIBRARIES}")
-#    endif ()
-#    if (LAPACK_INCLUDE_DIRS)
-#        list(APPEND THIRD_PARTY_INCLUDE_DIRS ${LAPACK_INCLUDE_DIRS})
-#        message(STATUS "LAPACK include dirs: ${LAPACK_INCLUDE_DIRS}")
-#    endif()
 
+    # Test usb on pico
+#    add_executable(hello_usb usb_test.cpp)
+#    target_link_libraries(hello_usb
+#            pico_stdlib
+#            pico_stdio
+#    )
+#    pico_enable_stdio_usb(hello_usb 1)
+#    pico_add_extra_outputs(hello_usb)
+
+    # Test uart on pico
+#    add_executable(hello_uart uart_test.cpp)
+#    target_link_libraries(hello_uart
+#            pico_stdlib
+#            pico_stdio
+#            hardware_uart
+#            hardware_gpio
+#    )
+#    pico_enable_stdio_uart(hello_uart 1)
+#    pico_add_extra_outputs(hello_uart)
+
+    # Test ethernet on pico
+    add_executable(hello_ethnet ethnet_test.cpp)
+    target_link_libraries(hello_ethnet
+            CH9121
+            pico_stdlib
+            hardware_spi
+    )
+    pico_enable_stdio_usb(hello_ethnet 1)
+    pico_enable_stdio_uart(hello_ethnet 1)
+    pico_add_extra_outputs(hello_ethnet)
+
+    # Test udp on pico over FreeRTOS
+    add_executable(hello_udp udp_test.cpp)
+    target_link_libraries(hello_udp
+            pico_stdlib
+            FreeRTOS-Kernel-Heap4
+            pico_cyw43_arch_lwip_sys_freertos
+            LWIP_PORT
+    )
+    pico_enable_stdio_uart(hello_udp 1)
+    pico_add_extra_outputs(hello_udp)
+
+    # Test simple_server over wifi
+    add_executable(wifi_server simple_server_wifi.cpp)
+    target_compile_definitions(wifi_server PRIVATE
+            WIFI_SSID=\"LeoZ\"
+            WIFI_PASSWORD=\"LZ19990114\"
+            NO_SYS=0            # don't want NO_SYS (generally this would be in your lwipopts.h)
+            LWIP_SOCKET=1       # we need the socket API (generally this would be in your lwipopts.h)
+            PING_USE_SOCKETS=1
+    )
+    target_link_libraries(wifi_server PUBLIC
+            pico_cyw43_arch_lwip_sys_freertos
+            pico_stdlib
+            pico_lwip_freertos
+            FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
+#            ${THIRD_PARTY_LIBRARIES}
+    )
+    target_include_directories(wifi_server PUBLIC
+            ${THIRD_PARTY_INCLUDE_DIRS}
+    )
+    pico_enable_stdio_usb(wifi_server 1)
+    pico_enable_stdio_uart(wifi_server 0)
+    pico_add_extra_outputs(wifi_server)
+
+else ()
     # FFTW3
     find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)
     message(STATUS "FFTW libraries: ${FFTW_LIBRARIES}")
