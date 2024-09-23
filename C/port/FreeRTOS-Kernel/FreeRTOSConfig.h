@@ -60,7 +60,10 @@
 #define configQUEUE_REGISTRY_SIZE               8
 #define configUSE_QUEUE_SETS                    1
 #define configUSE_TIME_SLICING                  1
+
+// this one make sure that every memory allocation in C will be done in FreeRTOS kernel
 #define configUSE_NEWLIB_REENTRANT              0
+
 // todo need this for lwip FreeRTOS sys_arch to compile
 #define configENABLE_BACKWARD_COMPATIBILITY     1
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
@@ -72,8 +75,13 @@
 /* Memory allocation related definitions. */
 #define configSUPPORT_STATIC_ALLOCATION         0
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
-#define configTOTAL_HEAP_SIZE                   (128*1024)
+
+// the more heap size here, the less system heap there will be
+//#define configTOTAL_HEAP_SIZE                   (180*1024)
+#define configTOTAL_HEAP_SIZE                   (40*1024)
+
 #define configAPPLICATION_ALLOCATED_HEAP        0
+
 
 /* Hook function related definitions. */
 #define configCHECK_FOR_STACK_OVERFLOW          2
@@ -143,7 +151,9 @@ to exclude the API function. */
 #define INCLUDE_xTaskGetHandle                  1
 #define INCLUDE_xTaskResumeFromISR              1
 #define INCLUDE_xQueueGetMutexHolder            1
+#define configUSE_EVENT_GROUPS 1
 
 /* A header file that defines trace macro can be included here. */
+#define INCLUDE_uxTaskGetSystemState 1
 
 #endif /* FREERTOS_CONFIG_H */

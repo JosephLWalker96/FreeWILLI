@@ -13,18 +13,39 @@ private:
 public:
     FreeRTOSMutex() {
         xMutex = xSemaphoreCreateMutex();
+        if (xMutex == NULL) {
+            // Handle error: Mutex creation failed
+            printf("Failed to create lock");
+        }
     }
 
     ~FreeRTOSMutex() {
-        vSemaphoreDelete(xMutex);
+        if (xMutex != NULL){
+            vSemaphoreDelete(xMutex);
+        }
     }
 
     void lock() {
-        xSemaphoreTake(xMutex, portMAX_DELAY);
+        if (xMutex != NULL) {
+            xSemaphoreTake(xMutex, portMAX_DELAY);
+        }
     }
 
     void unlock() {
-        xSemaphoreGive(xMutex);
+        if (xMutex != NULL) {
+            xSemaphoreGive(xMutex);
+        }
+    }
+
+    bool isUnlock() {
+        if (xMutex == NULL) {
+            return false;
+        }
+        bool isUnlocked = xSemaphoreTake(xMutex, 0) == pdTRUE;  // Non-blocking check
+        if (isUnlocked) {
+            xSemaphoreGive(xMutex);  // Release if we acquired it
+        }
+        return isUnlocked;
     }
 };
 #endif

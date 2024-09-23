@@ -2,7 +2,6 @@
 
 using std::cout;
 using std::endl;
-using std::cerr;
 
 Eigen::VectorXf GCC_PHAT_FFTW(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFFT, const int& interp, int& paddedLength, unsigned int& NUM_CHAN, const unsigned int& SAMPLE_RATE) {
     /**
@@ -46,13 +45,13 @@ Eigen::VectorXf GCC_PHAT_FFTW(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFF
 
             if ((crossSpectraMagnitude.array().isInf()).any()) {
 #ifdef PICO
-                cerr  << "FFTW crossSpectraMagnitude contains inf value" << endl;
+                cout  << "FFTW crossSpectraMagnitude contains inf value" << endl;
 #else
                 throw GCC_Value_Error("FFTW crossSpectraMagnitude contains inf value");
 #endif
             } else if ((crossSpectraMagnitude.array().isNaN()).any()) {
 #ifdef PICO
-                cerr  << "FFTW crossSpectraMagnitude contains nan value" << endl;
+                cout  << "FFTW crossSpectraMagnitude contains nan value" << endl;
 #else
                 throw GCC_Value_Error("FFTW crossSpectraMagnitude contains nan value");
 #endif
@@ -103,10 +102,16 @@ Eigen::VectorXf DOA_EstimateVerticalArray(Eigen::VectorXf& TDOAs, const double& 
     vals = vals.array() / divisorEigen.array();
     float max = vals.array().abs().maxCoeff();
     if (max > 1.0f) {
+#ifdef PICO
+        std::cout << "Out of bounds values: " << std::endl;
+        std::cout << vals.transpose() << std::endl;
+        std::cout << "TDOAs: " << TDOAs.transpose() << std::endl;
+#else
         std::cerr << "Out of bounds values: " << std::endl;
         std::cerr << vals.transpose() << std::endl; 
         std::cerr << "TDOAs: " << TDOAs.transpose() << std::endl;
         // throw std::runtime_error("Bad TDOA values encountered!");
+#endif
     }
 
     // Ensure that values are between -1 and 1 for arcsin

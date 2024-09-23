@@ -31,9 +31,14 @@
 
 // System Headers
 #ifdef PICO
+#include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
+#include "pico/lwip_freertos.h"
+#include "FreeRTOS.h"
+#include "task.h"
 #include "lwip/sockets.h"
-#include <unistd.h>
+#include "unistd.h"
+#include "event_groups.h"
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>

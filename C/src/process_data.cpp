@@ -2,7 +2,6 @@
 
 using std::cout;
 using std::endl;
-using std::cerr;
 using TimePoint = std::chrono::system_clock::time_point;
 
 
@@ -53,7 +52,7 @@ void GenerateTimestamps(std::vector<TimePoint>& dataTimes, std::span<uint8_t> da
     // Check if mktime failed
     if (timeResult == std::time_t(-1)) {
 #ifdef PICO
-        std::cerr << "Error: failure in mktime" << std::endl;
+        std::cout << "Error: failure in mktime" << std::endl;
 #else
         throw std::runtime_error("Error: failure in mktime \n");
 #endif
@@ -73,7 +72,7 @@ void GenerateTimestamps(std::vector<TimePoint>& dataTimes, std::span<uint8_t> da
         std::stringstream msg; // compose message to dispatch
         msg <<  "Error: Time not incremented by " <<  MICRO_INCR << " " << elapsedTime << endl;
 #ifdef PICO
-        std::cerr << msg.str() << std::endl;
+        std::cout << msg.str() << std::endl;
 #else
         throw std::runtime_error(msg.str());
 #endif

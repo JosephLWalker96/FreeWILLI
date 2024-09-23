@@ -11,7 +11,8 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
 
     project(HarpListen VERSION 1.0 LANGUAGES C CXX ASM)
     # optimize the code
-    add_compile_options(-O3 -Os)
+#    add_compile_options(-O3 -Os)
+    add_compile_options(-Os)
 else ()
     project(HarpListen VERSION 1.0)
 endif ()
@@ -80,9 +81,9 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
 
     list(APPEND THIRD_PARTY_LIBRARIES pico_cyw43_arch_lwip_sys_freertos)
     list(APPEND THIRD_PARTY_LIBRARIES pico_stdlib)
-    list(APPEND THIRD_PARTY_LIBRARIES LWIP_PORT)
+    list(APPEND THIRD_PARTY_LIBRARIES pico_lwip_freertos)
     list(APPEND THIRD_PARTY_LIBRARIES FreeRTOS-Kernel-Heap4) # FreeRTOS kernel and dynamic heap
-#    list(APPEND THIRD_PARTY_LIBRARIES pico_cyw43_arch_lwip_threadsafe_background)
+#    list(APPEND THIRD_PARTY_LIBRARIES LWIP_PORT)
 
     list(APPEND THIRD_PARTY_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/port/FreeRTOS-Kernel")
     list(APPEND THIRD_PARTY_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/port/lwip")
@@ -160,11 +161,11 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
             PING_USE_SOCKETS=1
     )
     target_link_libraries(wifi_server PUBLIC
-            pico_cyw43_arch_lwip_sys_freertos
-            pico_stdlib
-            pico_lwip_freertos
-            FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
-#            ${THIRD_PARTY_LIBRARIES}
+#            pico_cyw43_arch_lwip_sys_freertos
+#            pico_stdlib
+#            pico_lwip_freertos
+#            FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
+            ${THIRD_PARTY_LIBRARIES}
     )
     target_include_directories(wifi_server PUBLIC
             ${THIRD_PARTY_INCLUDE_DIRS}

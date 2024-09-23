@@ -11,7 +11,7 @@
 
 #define LWIP_SOCKET                 1
 #define LWIP_SO_RCVBUF				1
-#define RECV_BUFSIZE_DEFAULT		256
+#define RECV_BUFSIZE_DEFAULT		2048
 
 #define MEM_LIBC_MALLOC             0
 
@@ -84,8 +84,8 @@
 #define DHCP_DEBUG                  LWIP_DBG_OFF
 
 
-#define DEFAULT_TCP_RECVMBOX_SIZE 128
-#define DEFAULT_UDP_RECVMBOX_SIZE 128
+#define DEFAULT_TCP_RECVMBOX_SIZE 1024
+#define DEFAULT_UDP_RECVMBOX_SIZE 1024
 
 
 

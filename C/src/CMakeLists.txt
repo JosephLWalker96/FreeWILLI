@@ -2,7 +2,7 @@ add_executable(HarpListen main.cpp)
 
 # Precompiled headers
 if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
-    add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp pch.h)
+    add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp pch.h custom_types.h)
     include_directories(MainLib PRIVATE
             ${THIRD_PARTY_INCLUDE_DIRS}
     )
@@ -19,7 +19,7 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
     )
     target_link_libraries(HarpListen PRIVATE
             MainLib
-#            ${THIRD_PARTY_LIBRARIES}
+            ${THIRD_PARTY_LIBRARIES}
             LWIP_PORT
     )
     target_compile_definitions(HarpListen PUBLIC PICO)

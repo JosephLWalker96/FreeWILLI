@@ -1,7 +1,7 @@
 #include "utils.h"
 
-using std::cerr;
 using std::endl;
+using std::cerr;
 using std::cout;
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -47,7 +47,7 @@ int RestartListener(Session& sess){
 
     if (close(sess.datagramSocket) == -1) {
 #ifdef PICO
-        std::cerr <<  "Failed to close socket" << std::endl;
+        std::cout <<  "Failed to close socket" << std::endl;
         return 1;
 #else
         throw std::runtime_error("Failed to close socket \n");
@@ -58,7 +58,7 @@ int RestartListener(Session& sess){
     sess.datagramSocket = socket(AF_INET, SOCK_DGRAM, 0);
     if (sess.datagramSocket == -1) {
 #ifdef PICO
-        std::cerr << "Error creating socket" << std::endl;
+        std::cout << "Error creating socket" << std::endl;
         return 1;
 #else
         throw std::runtime_error("Error creating socket \n");
@@ -67,10 +67,25 @@ int RestartListener(Session& sess){
 
     struct sockaddr_in serverAddr;
     serverAddr.sin_family = AF_INET;
+#ifdef PICO
+    serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    serverAddr.sin_port = htons(sess.UDP_PORT);
+    // Print server IP address and port
+    char server_ip[16];
+    ip4addr_ntoa_r(netif_ip4_addr(&cyw43_state.netif[CYW43_ITF_STA]), server_ip, sizeof(server_ip));
+    printf("Listening from ip %s at port %d\n", server_ip,  ntohs(serverAddr.sin_port));
+#else
     serverAddr.sin_addr.s_addr = inet_addr(sess.UDP_IP.c_str());
     serverAddr.sin_port = htons(sess.UDP_PORT);
+#endif
 
     if (sess.UDP_IP == "192.168.100.220"){
+        // REMARK: we must print these 3 lines to have correct comparison above...
+        // It's weird but it somehow works
+        cout<<"Client Addr: "<<sess.UDP_IP<<endl;
+        cout<<"Wake Up Addr: "<<"192.168.100.220"<<endl;
+        cout<<(sess.UDP_IP == "192.168.100.220")<<endl;
+
         cout << "Sending wake up data to IP address to data logger \n";
         const char* m1 = "Open";
         unsigned char m2[96] = {0};
@@ -79,16 +94,16 @@ int RestartListener(Session& sess){
         std::memcpy(message + 4, m2, 96);
         if (sendto(sess.datagramSocket, message, sizeof(message), 0, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0){
 #ifdef PICO
-            std::cerr << "Error sending wake-up data packet to data logger" << std::endl;
+            std::cout << "Error sending wake-up data packet to data logger" << std::endl;
             return 1;
 #else
             throw std::runtime_error("Error sending wake-up data packet to data logger \n");
 #endif
         }
     }
-    else if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+    else if (bind(sess.datagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
 #ifdef PICO
-        std::cerr << "Error binding socket" << std::endl;
+        std::cout << "Error binding socket" << std::endl;
         return 1;
 #else
         throw std::runtime_error("Error binding socket \n");
@@ -98,6 +113,8 @@ int RestartListener(Session& sess){
     ClearQueue(sess.dataBuffer);
     sess.dataSegment.clear();
     sess.dataTimes.clear();
+
+    return 0;
 }
 
 bool ProcessFile(Experiment& exp, const std::string& fileName) {
@@ -160,7 +177,7 @@ std::vector<double> ReadFIRFilterFile(const std::string& fileName) {
     std::ifstream inputFile(fileName);
     if (!inputFile.is_open()) {
 #ifdef PICO
-        cerr << "Error: Unable to open filter file '" << fileName << "." << endl;
+        cout << "Error: Unable to open filter file '" << fileName << "." << endl;
         return {};
 #else
         std::stringstream msg; // compose message to dispatch
@@ -182,7 +199,7 @@ std::vector<double> ReadFIRFilterFile(const std::string& fileName) {
             if (*end == '\0') {
                 filterValues.push_back(value);
             } else {
-                std::cerr << "Invalid numeric value: " << token << std::endl;
+                std::cout << "Invalid numeric value: " << token << std::endl;
             }
 #else
             try {
