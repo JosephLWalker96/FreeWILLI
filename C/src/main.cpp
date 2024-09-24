@@ -60,8 +60,8 @@ bool test = true;
 FreeRTOSMutex listenerMutex;
 FreeRTOSMutex prosessorMutex;
 #define MAIN_TASK_PRIORITY     ( tskIDLE_PRIORITY + 3)
-#define LISTEN_TASK_PRIORITY   ( tskIDLE_PRIORITY + 2)
-#define PROCESS_TASK_PRIORITY    ( tskIDLE_PRIORITY + 2)
+#define LISTEN_TASK_PRIORITY   ( tskIDLE_PRIORITY + 3)
+#define PROCESS_TASK_PRIORITY    ( tskIDLE_PRIORITY + 3)
 #define BLINK_TASK_PRIORITY    ( tskIDLE_PRIORITY + 1 )
 
 #define LISTENER_DONE_BIT (1 << 0)  // Bit 0
@@ -164,7 +164,7 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
 //        printf("Current Free Heap: %u bytes, Minimum Ever Free Heap: %u bytes\n",
 //               currentFreeHeap, minFreeHeap);
 //        printf("Current task stack high water mark: %u words\n", uxTaskGetStackHighWaterMark(NULL));
-        vTaskDelay(pdMS_TO_TICKS(10));
+//        vTaskDelay(pdMS_TO_TICKS(10));
     }
 
     if (sess.errorOccurred) {
@@ -825,46 +825,6 @@ static int scan_result(void *env, const cyw43_ev_scan_result_t *result) {
 }
 
 void MainTask(__unused void* pvParameters){
-    // Initialize the Wi-Fi driver
-    if (cyw43_arch_init()) {
-        while (true)
-            printf("Failed to initialize Wi-Fi driver\n");
-    }
-
-    cyw43_arch_enable_sta_mode();
-
-//    const char* ssid = "SpectrumSetup-D8";
-//    const char* password = "urbanfarmer157";
-//    const char* ssid = "LeoZ";
-//    const char* password = "LZ19990114";
-//    const char* ssid = "3187D";
-//    const char* password = "inputrain524";
-    const char* ssid = "SSH";
-    const char* password = "19990114";
-
-
-    while (cyw43_arch_wifi_connect_timeout_ms(ssid, password, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("scanning wifi.\n");
-        cyw43_wifi_scan_options_t scan_options = {0};
-        cyw43_wifi_scan(&cyw43_state, &scan_options, nullptr,
-            [](void *env, const cyw43_ev_scan_result_t *result)->int{
-                if (result) {
-                    printf("ssid: %-32s rssi: %4d chan: %3d mac: %02x:%02x:%02x:%02x:%02x:%02x sec: %u\n",
-                           result->ssid, result->rssi, result->channel,
-                           result->bssid[0], result->bssid[1], result->bssid[2], result->bssid[3], result->bssid[4], result->bssid[5],
-                           result->auth_mode);
-                }
-                return 0;
-            }
-        );
-        printf("failed to connect.\n");
-        printf("try again. \n");
-    }
-    printf("Connected to Wi-Fi!\n");
-
-    int link_status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
-    printf("Link status: %d\n", link_status);
-
 //    size_t currentFreeHeap = xPortGetFreeHeapSize();
 //    size_t minFreeHeap = xPortGetMinimumEverFreeHeapSize();
 //    printf("Current Free Heap: %u bytes, Minimum Ever Free Heap: %u bytes\n",
@@ -924,11 +884,15 @@ void MainTask(__unused void* pvParameters){
     cout << "Packet Size: " << exp.PACKET_SIZE << endl;
     cout << "Detecting over a time window of " << exp.TIME_WINDOW << " seconds, using " << exp.NUM_PACKS_DETECT <<  " packets" << endl;
 
-    auto blinkRslt = xTaskCreate(BlinkTask, "BlinkTask", configMINIMAL_STACK_SIZE, nullptr, BLINK_TASK_PRIORITY, nullptr);
+    TaskHandle_t blinkHandle;
+    auto blinkRslt = xTaskCreate(BlinkTask, "BlinkTask", configMINIMAL_STACK_SIZE, nullptr, BLINK_TASK_PRIORITY, &blinkHandle);
     if (blinkRslt != pdPASS) {
         printf("Error creating BlinkTask: %ld\n",  blinkRslt);
         for(;;); // Loop forever to halt the system
     }
+
+    // set the task to run on core 0
+    vTaskCoreAffinitySet(blinkHandle, ( 1 << 0 ));
 
 //    auto memoryMinitorRslt = xTaskCreate(vMemoryMonitorTask, "MemoryMonitorTask", configMINIMAL_STACK_SIZE, NULL, BLINK_TASK_PRIORITY,
 //                                         nullptr);
@@ -943,17 +907,24 @@ void MainTask(__unused void* pvParameters){
         std::tuple<Session *, unsigned int> listenerParams = std::make_tuple(&sess, exp.PACKET_SIZE);
         std::tuple<Session *, Experiment *> processorParams = std::make_tuple(&sess, &exp);
 
-        auto listenRslt = xTaskCreate(UdpListenerTask, "UdpListenerTask", 2048, &listenerParams, LISTEN_TASK_PRIORITY, nullptr);
+        TaskHandle_t listenHandle;
+        auto listenRslt = xTaskCreate(UdpListenerTask, "UdpListenerTask", 2048, &listenerParams, LISTEN_TASK_PRIORITY, &listenHandle);
         if (listenRslt != pdPASS) {
             printf("Error creating ListenTask: %ld\n", listenRslt);
             for(;;); // Loop forever to halt the system
         }
+        // set the listen task to run on core 1 (core 1 only do listen)
+        vTaskCoreAffinitySet(listenHandle, (1<<1));
 
-        auto processRslt = xTaskCreate(DataProcessorTask, "DataProcessorTask", 2048, &processorParams, PROCESS_TASK_PRIORITY, nullptr);
+        TaskHandle_t processHandle;
+        auto processRslt = xTaskCreate(DataProcessorTask, "DataProcessorTask", 2048, &processorParams, PROCESS_TASK_PRIORITY, &processHandle);
         if (processRslt != pdPASS){
             printf("Error creating ListenTask: %ld\n", processRslt);
             for(;;); // Loop forever to halt the system
         }
+        // set the data processor to run on core 0
+        vTaskCoreAffinitySet(processHandle, (1<<0));
+
 
         // tasks join
         EventBits_t uxBits = xEventGroupWaitBits(
@@ -968,8 +939,8 @@ void MainTask(__unused void* pvParameters){
         if (
 //            (uxBits & (LISTENER_DONE_BIT | PROCESSOR_DONE_BIT)) ==
 //            (LISTENER_DONE_BIT | PROCESSOR_DONE_BIT)
-            (uxBits & LISTENER_DONE_BIT )== LISTENER_DONE_BIT
-        ) {
+                (uxBits & LISTENER_DONE_BIT )== LISTENER_DONE_BIT
+                ) {
             printf("All worker tasks have completed. Main task continues.\n");
         }
 
@@ -993,20 +964,56 @@ void MainTask(__unused void* pvParameters){
         sess.errorOccurred = false;
     }
 }
-#endif
 
-#ifdef PICO
-int main() {
-    stdio_init_all();
+void WiFiInitTask(void *pvParameters){
+    // Initialize the Wi-Fi driver
+    if (cyw43_arch_init()) {
+        while (true)
+            printf("Failed to initialize Wi-Fi driver\n");
+    }
 
-    TaskHandle_t task;
+    cyw43_arch_enable_sta_mode();
+
+//    const char* ssid = "SpectrumSetup-D8";
+//    const char* password = "urbanfarmer157";
+//    const char* ssid = "LeoZ";
+//    const char* password = "LZ19990114";
+//    const char* ssid = "3187D";
+//    const char* password = "inputrain524";
+    const char* ssid = "SSH";
+    const char* password = "19990114";
+
+
+    while (cyw43_arch_wifi_connect_timeout_ms(ssid, password, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
+        printf("scanning wifi.\n");
+        cyw43_wifi_scan_options_t scan_options = {0};
+        cyw43_wifi_scan(&cyw43_state, &scan_options, nullptr,
+                        [](void *env, const cyw43_ev_scan_result_t *result)->int{
+                            if (result) {
+                                printf("ssid: %-32s rssi: %4d chan: %3d mac: %02x:%02x:%02x:%02x:%02x:%02x sec: %u\n",
+                                       result->ssid, result->rssi, result->channel,
+                                       result->bssid[0], result->bssid[1], result->bssid[2], result->bssid[3], result->bssid[4], result->bssid[5],
+                                       result->auth_mode);
+                            }
+                            return 0;
+                        }
+        );
+        printf("failed to connect.\n");
+        printf("try again. \n");
+    }
+    printf("Connected to Wi-Fi!\n");
+
+    int link_status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
+    printf("Link status: %d\n", link_status);
+
+    TaskHandle_t mainHandle;
     auto main_rslt = xTaskCreate(
             MainTask,
             "MainThread",
             1024, // this is the size for the stack, and in words (for pico, 4 byte a word)
             NULL,
             MAIN_TASK_PRIORITY,
-            &task
+            &mainHandle
     );
     if (main_rslt != pdPASS) {
         printf("Error creating main task: %d\n", main_rslt);
@@ -1014,6 +1021,33 @@ int main() {
         printf("main task created successfully\n");
     }
 
+    // assign main task to core 0
+    vTaskCoreAffinitySet(mainHandle, ( 1 << 0 ));
+    vTaskDelete(NULL);
+}
+#endif
+
+#ifdef PICO
+int main() {
+    stdio_init_all();
+
+    TaskHandle_t initHandle;
+    auto init_rslt = xTaskCreate(
+            WiFiInitTask,
+            "WiFiInit",
+            1024, // this is the size for the stack, and in words (for pico, 4 byte a word)
+            NULL,
+            MAIN_TASK_PRIORITY,
+            &initHandle
+    );
+    if (init_rslt != pdPASS) {
+        printf("Error creating wifi task: %d\n", init_rslt);
+    } else {
+        printf("wifi init task created successfully\n");
+    }
+
+    // assign main task to core 0
+    vTaskCoreAffinitySet(initHandle, ( 1 << 0 ));
     vTaskStartScheduler();
 }
 #else

@@ -82,6 +82,7 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
     list(APPEND THIRD_PARTY_LIBRARIES pico_cyw43_arch_lwip_sys_freertos)
     list(APPEND THIRD_PARTY_LIBRARIES pico_stdlib)
     list(APPEND THIRD_PARTY_LIBRARIES pico_lwip_freertos)
+    list(APPEND THIRD_PARTY_LIBRARIES FreeRTOS-Kernel)
     list(APPEND THIRD_PARTY_LIBRARIES FreeRTOS-Kernel-Heap4) # FreeRTOS kernel and dynamic heap
 #    list(APPEND THIRD_PARTY_LIBRARIES LWIP_PORT)
 
@@ -173,6 +174,22 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
     pico_enable_stdio_usb(wifi_server 1)
     pico_enable_stdio_uart(wifi_server 0)
     pico_add_extra_outputs(wifi_server)
+
+    # Test multicore
+    add_executable(multicore multicore.cpp)
+    target_link_libraries(multicore PUBLIC
+            #            pico_cyw43_arch_lwip_sys_freertos
+            #            pico_stdlib
+            #            pico_lwip_freertos
+            #            FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
+            ${THIRD_PARTY_LIBRARIES}
+    )
+    target_include_directories(multicore PUBLIC
+            ${THIRD_PARTY_INCLUDE_DIRS}
+    )
+    pico_enable_stdio_usb(multicore 1)
+    pico_enable_stdio_uart(multicore 0)
+    pico_add_extra_outputs(multicore)
 
 else ()
     # FFTW3
