@@ -57,6 +57,7 @@ int detectionCounter = 0;
 bool test = true;
 
 #ifdef PICO
+SemaphoreHandle_t deviceInitSemaphore; // For signaling Wi-Fi init completion
 FreeRTOSMutex listenerMutex;
 FreeRTOSMutex prosessorMutex;
 #define MAIN_TASK_PRIORITY     ( tskIDLE_PRIORITY + 3)
@@ -152,7 +153,10 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
                 startPacketTime = std::chrono::steady_clock::now();
             }
 
-            if (queueSize > 1000) { // check if buffer has grown to an unacceptable size
+            if (queueSize == 30)
+                break;
+
+            if (queueSize > 50) { // check if buffer has grown to an unacceptable size
                 std::cerr << "Buffer overflowing" << std::endl;
                 sess.errorOccurred = true;
                 break;
@@ -335,6 +339,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 sess.dataBufferLock.unlock();
                 //cout << "Sleeping: " << endl;
                // std::this_thread::sleep_for(80ms);
+//                while (true)
+//                    printf("%d\n", exp.DATA_SEGMENT_LENGTH);
                 vTaskDelay(pdMS_TO_TICKS(10));
                 continue;
             }
@@ -344,7 +350,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
                 sess.dataBufferLock.unlock();
             }
 
-            sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
+//            sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
 
             // Convert byte data to floats
             auto startCDTime = std::chrono::steady_clock::now();
@@ -427,68 +433,59 @@ void DataProcessor(Session& sess, Experiment& exp) {
             cout << "Flushing buffers of length: " << sess.peakAmplitudeBuffer.size() << endl;
 
             auto beforeW = std::chrono::steady_clock::now();
-#ifdef PICO
-                // print data rows
-                for (size_t i = 0; i < sess.peakAmplitudeBuffer.size(); ++i) {
-                    auto time_point = sess.peakTimesBuffer[i];
-                    auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
-                    cout << time_since_epoch.count() << std::setw(20) << sess.peakAmplitudeBuffer[i] << endl;
-                }
-#else
-                WritePulseAmplitudes(sess.peakAmplitudeBuffer, sess.peakTimesBuffer, exp.detectionOutputFile);
-#endif
-                auto afterW = std::chrono::steady_clock::now();
-                std::chrono::duration<double> durationW = afterW - beforeW;
-                cout << "Write: " << durationW.count() << endl;
-
-                auto beforeW1 = std::chrono::steady_clock::now();
-#ifdef PICO
-                cout << "tdoa out" <<endl;
-                for (int row = 0; row < sess.resultMatrixBuffer.size(); row++){
-                    auto time_point = sess.peakTimesBuffer[row];
-                    auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
-
-                    cout << time_since_epoch.count() << std::setw(20);
-                    for (int i = 0; i < sess.resultMatrixBuffer[row].size(); ++i) {
-                        cout << sess.resultMatrixBuffer[row][i] << " ";
-                    }
-                    cout << std::endl;
-                }
-#else
-                WriteArray(sess.resultMatrixBuffer, sess.peakTimesBuffer, exp.tdoaOutputFile);
-#endif
-                auto afterW1 = std::chrono::steady_clock::now();
-                std::chrono::duration<double> durationW1 = afterW1 - beforeW1;
-                cout << "Write1: " << durationW1.count() << endl;
-
-                auto beforeW2 = std::chrono::steady_clock::now();
-#ifdef PICO
-                cout << "doa out" <<endl;
-                for (int row = 0; row < sess.DOAsBuffer.size(); row++){
-                    auto time_point = sess.peakTimesBuffer[row];
-                    auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
-
-                    cout << time_since_epoch.count() << std::setw(20);
-                    for (int i = 0; i < sess.DOAsBuffer[row].size(); ++i) {
-                        cout << sess.DOAsBuffer[row][i] << " ";
-                    }
-                    cout << std::endl;
-                }
-#else
-                WriteArray(sess.DOAsBuffer, sess.peakTimesBuffer, exp.doaOutputFile);
-#endif
-                auto afterW2 = std::chrono::steady_clock::now();
-                std::chrono::duration<double> durationW2 = afterW2 - beforeW2;
-                cout << "Write:2 " << durationW2.count() << endl;
-
-                lastFlushTime = currentTime;
-                sess.peakAmplitudeBuffer.clear();
-                sess.peakTimesBuffer.clear();
-                sess.resultMatrixBuffer.clear();
-                sess.DOAsBuffer.clear();
-
+            // print data rows
+            for (size_t i = 0; i < sess.peakAmplitudeBuffer.size(); ++i) {
+                auto time_point = sess.peakTimesBuffer[i];
+                auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
+                cout << time_since_epoch.count() << std::setw(20) << sess.peakAmplitudeBuffer[i] << endl;
             }
+
+            auto afterW = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationW = afterW - beforeW;
+            cout << "Write: " << durationW.count() << endl;
+
+            auto beforeW1 = std::chrono::steady_clock::now();
+            cout << "tdoa out" <<endl;
+            for (int row = 0; row < sess.resultMatrixBuffer.size(); row++){
+                auto time_point = sess.peakTimesBuffer[row];
+                auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
+
+                cout << time_since_epoch.count() << std::setw(20);
+                for (int i = 0; i < sess.resultMatrixBuffer[row].size(); ++i) {
+                    cout << sess.resultMatrixBuffer[row][i] << " ";
+                }
+                cout << std::endl;
+            }
+
+            auto afterW1 = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationW1 = afterW1 - beforeW1;
+            cout << "Write1: " << durationW1.count() << endl;
+
+            auto beforeW2 = std::chrono::steady_clock::now();
+            cout << "doa out" <<endl;
+            for (int row = 0; row < sess.DOAsBuffer.size(); row++){
+                auto time_point = sess.peakTimesBuffer[row];
+                auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
+
+                cout << time_since_epoch.count() << std::setw(20);
+                for (int i = 0; i < sess.DOAsBuffer[row].size(); ++i) {
+                    cout << sess.DOAsBuffer[row][i] << " ";
+                }
+                cout << std::endl;
+            }
+
+            auto afterW2 = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationW2 = afterW2 - beforeW2;
+            cout << "Write:2 " << durationW2.count() << endl;
+
+            lastFlushTime = currentTime;
+            sess.peakAmplitudeBuffer.clear();
+            sess.peakTimesBuffer.clear();
+            sess.resultMatrixBuffer.clear();
+            sess.DOAsBuffer.clear();
+
         }
+    }
 #else
     try {
 
@@ -769,10 +766,10 @@ void BlinkTask(__unused void *params){
 
 //            const char* ssid = "3187D";
 //            const char* password = "inputrain524";
-//            const char* ssid = "SpectrumSetup-D8";
-//            const char* password = "urbanfarmer157";
-            const char* ssid = "SSH";
-            const char* password = "19990114";
+            const char* ssid = "SpectrumSetup-D8";
+            const char* password = "urbanfarmer157";
+//            const char* ssid = "SSH";
+//            const char* password = "19990114";
 //            const char* ssid = "LeoZ";
 //            const char* password = "LZ19990114";
             while (cyw43_arch_wifi_connect_timeout_ms(ssid, password, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
@@ -929,18 +926,18 @@ void MainTask(__unused void* pvParameters){
         // tasks join
         EventBits_t uxBits = xEventGroupWaitBits(
                 xEventGroup,
-                LISTENER_DONE_BIT ,            // Wait for listener to complete
-//                PROCESSOR_DONE_BIT,        // Wait for processor to complete
+                LISTENER_DONE_BIT |            // Wait for listener to complete
+                PROCESSOR_DONE_BIT,        // Wait for processor to complete
                 pdTRUE,                        // Clear bits on exit
                 pdTRUE,                        // Wait for all bits to be set
                 portMAX_DELAY                  // Wait indefinitely
         );
 
         if (
-//            (uxBits & (LISTENER_DONE_BIT | PROCESSOR_DONE_BIT)) ==
-//            (LISTENER_DONE_BIT | PROCESSOR_DONE_BIT)
-                (uxBits & LISTENER_DONE_BIT )== LISTENER_DONE_BIT
-                ) {
+            (uxBits & (LISTENER_DONE_BIT | PROCESSOR_DONE_BIT)) ==
+            (LISTENER_DONE_BIT | PROCESSOR_DONE_BIT)
+//                (uxBits & LISTENER_DONE_BIT )== LISTENER_DONE_BIT
+            ) {
             printf("All worker tasks have completed. Main task continues.\n");
         }
 
@@ -965,71 +962,91 @@ void MainTask(__unused void* pvParameters){
     }
 }
 
-void WiFiInitTask(void *pvParameters){
+
+void Cyw43ArchInitTask(void *pvParameters){
     // Initialize the Wi-Fi driver
     if (cyw43_arch_init()) {
         while (true)
             printf("Failed to initialize Wi-Fi driver\n");
-    }
-
-    cyw43_arch_enable_sta_mode();
-
-//    const char* ssid = "SpectrumSetup-D8";
-//    const char* password = "urbanfarmer157";
-//    const char* ssid = "LeoZ";
-//    const char* password = "LZ19990114";
-//    const char* ssid = "3187D";
-//    const char* password = "inputrain524";
-    const char* ssid = "SSH";
-    const char* password = "19990114";
-
-
-    while (cyw43_arch_wifi_connect_timeout_ms(ssid, password, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
-        printf("scanning wifi.\n");
-        cyw43_wifi_scan_options_t scan_options = {0};
-        cyw43_wifi_scan(&cyw43_state, &scan_options, nullptr,
-                        [](void *env, const cyw43_ev_scan_result_t *result)->int{
-                            if (result) {
-                                printf("ssid: %-32s rssi: %4d chan: %3d mac: %02x:%02x:%02x:%02x:%02x:%02x sec: %u\n",
-                                       result->ssid, result->rssi, result->channel,
-                                       result->bssid[0], result->bssid[1], result->bssid[2], result->bssid[3], result->bssid[4], result->bssid[5],
-                                       result->auth_mode);
-                            }
-                            return 0;
-                        }
-        );
-        printf("failed to connect.\n");
-        printf("try again. \n");
-    }
-    printf("Connected to Wi-Fi!\n");
-
-    int link_status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
-    printf("Link status: %d\n", link_status);
-
-    TaskHandle_t mainHandle;
-    auto main_rslt = xTaskCreate(
-            MainTask,
-            "MainThread",
-            1024, // this is the size for the stack, and in words (for pico, 4 byte a word)
-            NULL,
-            MAIN_TASK_PRIORITY,
-            &mainHandle
-    );
-    if (main_rslt != pdPASS) {
-        printf("Error creating main task: %d\n", main_rslt);
     } else {
-        printf("main task created successfully\n");
+        printf("Wi-Fi driver initialized successfully\n");
     }
 
-    // assign main task to core 0
-    vTaskCoreAffinitySet(mainHandle, ( 1 << 0 ));
-    vTaskDelete(NULL);
+    // Signal that Wi-Fi initialization is complete
+    xSemaphoreGive(deviceInitSemaphore);
+    vTaskDelete(NULL);  // Delete the task after initialization
+}
+
+void WiFiInitTask(void *pvParameters){
+
+    if (xSemaphoreTake(deviceInitSemaphore, portMAX_DELAY) == pdTRUE){
+        cyw43_arch_enable_sta_mode();
+
+        const char* ssid = "SpectrumSetup-D8";
+        const char* password = "urbanfarmer157";
+//      const char* ssid = "LeoZ";
+//      const char* password = "LZ19990114";
+//      const char* ssid = "3187D";
+//      const char* password = "inputrain524";
+//      const char* ssid = "SSH";
+//      const char* password = "19990114";
+
+
+        while (cyw43_arch_wifi_connect_timeout_ms(ssid, password, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
+            printf("scanning wifi.\n");
+            cyw43_wifi_scan_options_t scan_options = {0};
+            cyw43_wifi_scan(&cyw43_state, &scan_options, nullptr,
+                            [](void *env, const cyw43_ev_scan_result_t *result)->int{
+                                if (result) {
+                                    printf("ssid: %-32s rssi: %4d chan: %3d mac: %02x:%02x:%02x:%02x:%02x:%02x sec: %u\n",
+                                           result->ssid, result->rssi, result->channel,
+                                           result->bssid[0], result->bssid[1], result->bssid[2], result->bssid[3], result->bssid[4], result->bssid[5],
+                                           result->auth_mode);
+                                }
+                                return 0;
+                            }
+            );
+            printf("failed to connect.\n");
+            printf("try again. \n");
+        }
+        printf("Connected to Wi-Fi!\n");
+
+        int link_status = cyw43_tcpip_link_status(&cyw43_state, CYW43_ITF_STA);
+        printf("Link status: %d\n", link_status);
+
+        TaskHandle_t mainHandle;
+        auto main_rslt = xTaskCreate(
+                MainTask,
+                "MainThread",
+                1024, // this is the size for the stack, and in words (for pico, 4 byte a word)
+                NULL,
+                MAIN_TASK_PRIORITY,
+                &mainHandle
+        );
+        if (main_rslt != pdPASS) {
+            printf("Error creating main task: %d\n", main_rslt);
+        } else {
+            printf("main task created successfully\n");
+        }
+
+        // assign main task to core 0
+        vTaskCoreAffinitySet(mainHandle, ( 1 << 0 ));
+        vTaskDelete(NULL);
+    }
+
 }
 #endif
 
 #ifdef PICO
 int main() {
     stdio_init_all();
+
+    deviceInitSemaphore = xSemaphoreCreateBinary();
+
+    // Create the Wi-Fi initialization task on Core 0
+    TaskHandle_t deviceInitHandle;
+    xTaskCreate(Cyw43ArchInitTask, "Device Init Task", configMINIMAL_STACK_SIZE, NULL, 2, &deviceInitHandle);
+    vTaskCoreAffinitySet(deviceInitHandle, (1 << 0));
 
     TaskHandle_t initHandle;
     auto init_rslt = xTaskCreate(

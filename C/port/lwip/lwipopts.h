@@ -86,7 +86,7 @@
 
 #define DEFAULT_TCP_RECVMBOX_SIZE 1024
 #define DEFAULT_UDP_RECVMBOX_SIZE 1024
-
+#define UDP_RECVQ_SIZE            4
 
 
 #endif /* __LWIPOPTS_H__ */

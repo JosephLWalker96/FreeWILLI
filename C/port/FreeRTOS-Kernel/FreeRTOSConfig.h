@@ -78,7 +78,8 @@
 
 // the more heap size here, the less system heap there will be
 //#define configTOTAL_HEAP_SIZE                   (180*1024)
-#define configTOTAL_HEAP_SIZE                   (40*1024)
+#define configTOTAL_HEAP_SIZE                   (50*1024)
+//#define configTOTAL_HEAP_SIZE                   (100*1024)
 
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
@@ -113,6 +114,7 @@
 #define configUSE_SMP        1
 #if FREE_RTOS_KERNEL_SMP // set by the RP2040 SMP port of FreeRTOS
 /* SMP port only */
+#define configNUM_CORES 2
 #define configNUMBER_OF_CORES                   2
 #define configTICK_CORE                         0
 #define configRUN_MULTIPLE_PRIORITIES           1
