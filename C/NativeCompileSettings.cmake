@@ -28,9 +28,9 @@ endif()
 
 
 # Set the path to the ONNX Runtime library and include directories
-set(ONNXRUNTIME_ROOT_DIR "/usr/local/onnxruntime")
-set(ONNXRUNTIME_INCLUDE_DIRS "${ONNXRUNTIME_ROOT_DIR}/include")
-set(ONNXRUNTIME_LIBRARY_DIR "${ONNXRUNTIME_ROOT_DIR}/lib")
+#set(ONNXRUNTIME_ROOT_DIR "/usr/local/onnxruntime")
+#set(ONNXRUNTIME_INCLUDE_DIRS "${ONNXRUNTIME_ROOT_DIR}/include")
+#set(ONNXRUNTIME_LIBRARY_DIR "${ONNXRUNTIME_ROOT_DIR}/lib")
 
 # Find the ONNX Runtime library using the specified path
 find_library(ONNXRUNTIME_LIBRARIES NAMES onnxruntime PATHS ${ONNXRUNTIME_LIBRARY_DIR} REQUIRED)
