@@ -223,7 +223,7 @@ while(True):
     
     ### Sleep for the correct time
     runTime = time.time() - startTime
-    Sleep((MICRO_INCR) * 1e-6 - runTime)
+    Sleep((MICRO_INCR-600) * 1e-6 - runTime)
     
     ### Sleep for an arbitrary time (debugging)
     #sleep(2*MICRO_INCR)

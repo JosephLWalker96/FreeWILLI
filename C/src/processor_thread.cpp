@@ -125,11 +125,11 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
                 sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
 
-                auto startTimestamps = std::chrono::steady_clock::now();
+                //auto startTimestamps = std::chrono::steady_clock::now();
                 bool timestampErrOccured = GenerateTimestamps(sess.dataTimes, dataBytes, expConfig.MICRO_INCR,
                                            previousTimeSet, previousTime, expRuntime.detectionOutputFile, expConfig.NUM_CHAN);
-                auto endTimestamps = std::chrono::steady_clock::now();
-                std::chrono::duration<double> durationGenerate = endTimestamps - startTimestamps;
+                //auto endTimestamps = std::chrono::steady_clock::now();
+                //std::chrono::duration<double> durationGenerate = endTimestamps - startTimestamps;
                 // std::cout << "durationGenerate: " << durationGenerate.count() << std::endl;
                 
 
@@ -148,10 +148,10 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
                 }
                 else {
                     // Convert byte data to floats
-                    auto startCDTime = std::chrono::steady_clock::now();
+                    //auto startCDTime = std::chrono::steady_clock::now();
                     ConvertAndAppend(sess.dataSegment, dataBytes, expConfig.DATA_SIZE, expConfig.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
-                    auto endCDTime = std::chrono::steady_clock::now();
-                    std::chrono::duration<double> durationCD = endCDTime - startCDTime;
+                    //auto endCDTime = std::chrono::steady_clock::now();
+                    //std::chrono::duration<double> durationCD = endCDTime - startCDTime;
                     // std::cout << "Convert data: " << durationCD.count() << std::endl;
                 }
             }
@@ -161,19 +161,19 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
              *   now apply energy detector.
              */
 
-            auto beforePtr = std::chrono::steady_clock::now();
+            //auto beforePtr = std::chrono::steady_clock::now();
             expConfig.ProcessFncPtr(sess.dataSegment, channelData, expConfig.NUM_CHAN);
-            auto afterPtr = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
+            //auto afterPtr = std::chrono::steady_clock::now();
+            //std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
 
-            auto beforeFilter = std::chrono::steady_clock::now();
+            //auto beforeFilter = std::chrono::steady_clock::now();
             FrequencyDomainFIRFiltering(
                 channelData,   // Zero-padded time-domain data
                 filterFreq,    // Frequency domain filter (FIR taps in freq domain)
                 expRuntime.forwardFFT, // FFT plan
                 savedFFTs);    // Output of FFT transformed time-domain data
-            auto afterFilter = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
+            //auto afterFilter = std::chrono::steady_clock::now();
+            //std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
 
             // DetectionResult detResult = ThresholdDetect(invFFT.col(0), sess.dataTimes, expConfig.energyDetThresh, expConfig.SAMPLE_RATE);
             DetectionResult detResult = ThresholdDetectFD(savedFFTs.col(0), sess.dataTimes, 
@@ -189,29 +189,29 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
              */
 
             sess.detectionCounter++;
-            std::cout << "Filter runtime: " << durationFilter.count() << std::endl;
+            //std::cout << "Filter runtime: " << durationFilter.count() << std::endl;
 
-            auto beforeGCCW = std::chrono::steady_clock::now();
+            //auto beforeGCCW = std::chrono::steady_clock::now();
             std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = GCC_PHAT(savedFFTs, expRuntime.inverseFFT, expConfig.interp, paddedLength, expConfig.NUM_CHAN, expConfig.SAMPLE_RATE);
-            auto afterGCCW = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            std::cout << "GCC time: " << durationGCCW.count() << std::endl;
+            //auto afterGCCW = std::chrono::steady_clock::now();
+            //std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
+            //std::cout << "GCC time: " << durationGCCW.count() << std::endl;
             Eigen::VectorXf tdoaVector = std::get<0>(tdoasAndXCorrAmps);
             Eigen::VectorXf XCorrAmps = std::get<1>(tdoasAndXCorrAmps);
-            std::cout << "TDOAs: " << tdoaVector.transpose() << std::endl;
-            std::cout << "GCC time: " << durationGCCW.count() << std::endl;
+            //std::cout << "TDOAs: " << tdoaVector.transpose() << std::endl;
+            //std::cout << "GCC time: " << durationGCCW.count() << std::endl;
 
             // Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, expConfig.speedOfSound, expConfig.chanSpacing);
-            auto beforeDOA = std::chrono::steady_clock::now();
+            //auto beforeDOA = std::chrono::steady_clock::now();
             //Eigen::VectorXf DOAs = TDOA_To_DOA_SVD(qrDecompH, expRuntime.speedOfSound, tdoaVector);
             Eigen::VectorXf DOAs = TDOA_To_DOA_Optimized(P, U, expRuntime.speedOfSound, tdoaVector, rankOfH);
-            auto afterDOA = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationDOA = afterDOA - beforeDOA;
-            std::cout << "DOA time: " << durationDOA.count() << std::endl;
+            //auto afterDOA = std::chrono::steady_clock::now();
+            //std::chrono::duration<double> durationDOA = afterDOA - beforeDOA;
+            //std::cout << "DOA time: " << durationDOA.count() << std::endl;
 
             //std::vector<float> chanSpacing = {1.0, 2.0, 3.0, 1.0, 2.0, 1.0};
             //Eigen::VectorXf DOAs = TDOA_To_DOA_VerticalArray(tdoaVector, 1500.0, chanSpacing);
-            std::cout << "DOAs: " << DOAs.transpose() << std::endl;
+            //std::cout << "DOAs: " << DOAs.transpose() << std::endl;
 
             // Write to buffers
             Eigen::VectorXf combined(1 + DOAs.size() + tdoaVector.size() + XCorrAmps.size()); // + 1 for amplitude
@@ -222,6 +222,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
 
             // Normalize the input data
+            /*
             std::vector<float> input_tensor_values = {
     92.1948, 96.1963, 101.122, 104.773, 107.151, 108.565, 109.293, 109.541, 109.451, 109.168, 
     108.921, 108.999, 109.475, 110.056, 110.395, 110.349, 109.977, 109.466, 109.018, 108.68, 
@@ -252,6 +253,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
             auto afterClass = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationClass = afterClass - beforeClass;
             std::cout << "classifier runtime: " << durationClass.count() << std::endl;
+            */
             /**
             for(int i = 0; i < predictions.size(); i++){
                 std::cout << predictions[i] << " ";
