@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "utils.h"
 #include "process_data.h"
+#include "session.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -51,18 +52,16 @@ void ConvertAndAppend(std::vector<float> &dataSegment, std::span<uint8_t> dataBy
     }
 }
 
-bool GenerateTimestamps(std::vector<TimePoint> &dataTimes, std::span<uint8_t> dataBytes, const int MICRO_INCR,
-                        bool &previousTimeSet, std::chrono::time_point<std::chrono::system_clock> &previousTime,
-                        std::string &detectionOutputFile, const int NUM_CHAN)
+TimePoint GenerateTimestamp(std::vector<uint8_t>& dataBytes, const int NUM_CHAN, std::string& detectionOutputFile) 
 {
 
     std::tm timeStruct{};                                 // Initialize a std::tm structure to hold the date and time components
     timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900; // Offset for year since 2000.. tm_year is years since 1900
-    timeStruct.tm_mon = (int)dataBytes[1] - 1;            // Months are 0-indexed
+    timeStruct.tm_mon  = (int)dataBytes[1] - 1;            // Months are 0-indexed
     timeStruct.tm_mday = (int)dataBytes[2];
     timeStruct.tm_hour = (int)dataBytes[3];
-    timeStruct.tm_min = (int)dataBytes[4];
-    timeStruct.tm_sec = (int)dataBytes[5];
+    timeStruct.tm_min  = (int)dataBytes[4];
+    timeStruct.tm_sec  = (int)dataBytes[5];
 
     // Calculate microseconds from the given bytes by shifting and combining them
     int64_t microSec = (static_cast<int64_t>(dataBytes[6]) << 24) +
@@ -81,9 +80,19 @@ bool GenerateTimestamps(std::vector<TimePoint> &dataTimes, std::span<uint8_t> da
 
     auto currentTime = std::chrono::system_clock::from_time_t(timeResult); // convert std::time_t to std::chrono::system_clock::time_point
     currentTime += std::chrono::microseconds(microSec);
-    dataTimes.push_back(currentTime);
+    
+    if ((detectionOutputFile).empty())
+    {
+        std::string feature = "detection";
+        InitiateOutputFile(detectionOutputFile, timeStruct, microSec, feature, NUM_CHAN);
+    }
+    return currentTime;
+}
+bool CheckForDataErrors(Session& sess, std::vector<uint8_t>& dataBytes, const int MICRO_INCR, bool &previousTimeSet, 
+                        TimePoint &previousTime, const int PACKET_SIZE) {
 
     // Calculate the elapsed time in microseconds since the previous time point
+    auto currentTime = sess.dataTimes.back();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime).count();
 
     // Check if the previous time was set and if the elapsed time is not equal to the expected increment
@@ -93,18 +102,23 @@ bool GenerateTimestamps(std::vector<TimePoint> &dataTimes, std::span<uint8_t> da
         msg << "Error: Time not incremented by " << MICRO_INCR << " " << elapsedTime << std::endl;
         
         std::cerr << msg.str() << std::endl;
+        WriteDataToCerr(sess.dataTimes, sess.dataBytesSaved);
+        sess.dataTimes.clear();
+        sess.dataSegment.clear();
+        sess.dataBytesSaved.clear();
+        previousTime = std::chrono::time_point<std::chrono::system_clock>::min();
+        previousTimeSet = false;
         return true;
         //throw std::runtime_error(msg.str());
+    }
+    else if (dataBytes.size() != PACKET_SIZE){ // Check if the amount of bytes in packet is what is expected
+        std::stringstream msg; // compose message to dispatch
+        msg << "Error: incorrect number of bytes in packet: " << "PACKET_SIZE: " << PACKET_SIZE << " dataBytes size: " << dataBytes.size() << std::endl;
+        throw std::runtime_error(msg.str());
     }
 
     previousTime = currentTime;
     previousTimeSet = true;
-
-    if ((detectionOutputFile).empty())
-    {
-        std::string feature = "detection";
-        InitiateOutputFile(detectionOutputFile, timeStruct, microSec, feature, NUM_CHAN);
-    }
     return false;
 }
 

@@ -6,6 +6,7 @@
 #include "session.h"
 #include "buffer_writter.h"
 
+using TimePoint = std::chrono::system_clock::time_point;
 
 void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime &expRuntime)
 {
@@ -121,33 +122,13 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
                 sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
 
-                //auto startTimestamps = std::chrono::steady_clock::now();
-                bool timestampErrOccured = GenerateTimestamps(sess.dataTimes, dataBytes, expConfig.MICRO_INCR,
-                                           previousTimeSet, previousTime, expRuntime.detectionOutputFile, expConfig.NUM_CHAN);
-                //auto endTimestamps = std::chrono::steady_clock::now();
-                //std::chrono::duration<double> durationGenerate = endTimestamps - startTimestamps;
-                // std::cout << "durationGenerate: " << durationGenerate.count() << std::endl;
+                sess.dataTimes.emplace_back(GenerateTimestamp(dataBytes, expConfig.NUM_CHAN, expRuntime.detectionOutputFile));
+                bool dataError = CheckForDataErrors(sess, dataBytes, expConfig.MICRO_INCR, previousTimeSet, previousTime, expConfig.PACKET_SIZE);
                 
 
-                if (timestampErrOccured){ // Check if the sequential timestamps differ by unexpected amount 
-                    WriteDataToCerr(sess.dataTimes, sess.dataBytesSaved);
-                    sess.dataTimes.clear();
-                    sess.dataSegment.clear();
-                    sess.dataBytesSaved.clear();
-                    previousTime = std::chrono::time_point<std::chrono::system_clock>::min();
-                    previousTimeSet = false;
+                if (!dataError){
+                    ConvertAndAppend(sess.dataSegment, dataBytes, expConfig.DATA_SIZE, expConfig.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
                 }
-                else if (dataBytes.size() != expConfig.PACKET_SIZE){ // Check if the amount of bytes in packet is what is expected
-                    std::stringstream msg; // compose message to dispatch
-                    msg << "Error: incorrect number of bytes in packet: " << "PACKET_SIZE: " << expConfig.PACKET_SIZE << " dataBytes size: " << dataBytes.size() << std::endl;
-                    throw std::runtime_error(msg.str());
-                }
-                // Convert byte data to floats
-                //auto startCDTime = std::chrono::steady_clock::now();
-                ConvertAndAppend(sess.dataSegment, dataBytes, expConfig.DATA_SIZE, expConfig.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
-                //auto endCDTime = std::chrono::steady_clock::now();
-                //std::chrono::duration<double> durationCD = endCDTime - startCDTime;
-                // std::cout << "Convert data: " << durationCD.count() << std::endl;
             }
 
             /*
@@ -195,9 +176,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
             //std::cout << "TDOAs: " << tdoaVector.transpose() << std::endl;
             //std::cout << "GCC time: " << durationGCCW.count() << std::endl;
 
-            // Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, expConfig.speedOfSound, expConfig.chanSpacing);
             //auto beforeDOA = std::chrono::steady_clock::now();
-            //Eigen::VectorXf DOAs = TDOA_To_DOA_SVD(qrDecompH, expRuntime.speedOfSound, tdoaVector);
             Eigen::VectorXf DOAs = TDOA_To_DOA_Optimized(P, U, expRuntime.speedOfSound, tdoaVector, rankOfH);
             //auto afterDOA = std::chrono::steady_clock::now();
             //std::chrono::duration<double> durationDOA = afterDOA - beforeDOA;
