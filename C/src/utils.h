@@ -16,6 +16,7 @@ int InitiateOutputFile(std::string& outputFile, std::tm& timeStruct, int64_t mic
 void PrintTimes(const std::span<TimePoint> timestamps);
 int RestartListener(Session& sess);
 void ClearQueue(std::queue<std::vector<uint8_t>>& q);
+void printSysMemory();
 #ifndef PICO
 bool WithProbability(double probability);
 void WritePulseAmplitudes(std::span<float> click_amps, std::span<TimePoint> timestamps, const std::string& filename);

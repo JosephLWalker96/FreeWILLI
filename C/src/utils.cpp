@@ -247,6 +247,20 @@ bool WithProbability(double probability){
     return randomValue < probability;
 }
 
+#include <malloc.h>
+void printSysMemory() {
+    struct mallinfo mi = mallinfo();
+    printf("Total non-mmapped bytes (arena):       %d\n", mi.arena);
+    printf("Number of free chunks (ordblks):        %d\n", mi.ordblks);
+    printf("Number of free fastbin blocks (smblks): %d\n", mi.smblks);
+    printf("Number of mapped regions (hblks):       %d\n", mi.hblks);
+    printf("Space allocated in mmapped regions (hblkhd): %d\n", mi.hblkhd);
+    printf("Maximum total allocated space (usmblks):    %d\n", mi.usmblks);
+    printf("Total allocated space (uordblks):       %d\n", mi.uordblks);
+    printf("Total free space (fordblks):            %d\n", mi.fordblks);
+    printf("Topmost releasable block (keepcost):    %d\n", mi.keepcost);
+}
+
 #ifndef PICO
 void WritePulseAmplitudes(std::span<float> clickPeakAmps, std::span<TimePoint> timestamps, const std::string& filename) {
     /**

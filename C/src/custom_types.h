@@ -71,7 +71,7 @@ struct Experiment {
     unsigned int MICRO_INCR;                                // time between packets
     const unsigned int SAMPLE_RATE = 1e5;
     const int interp = 1;
-    const float TIME_WINDOW = 0.01;                 // fraction of a second to consider  
+    const float TIME_WINDOW = 0.002;                 // fraction of a second to consider
     
     std::string detectionOutputFile = ""; // Define at runtime
     std::string tdoaOutputFile      = "";

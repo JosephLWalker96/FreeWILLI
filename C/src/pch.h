@@ -49,6 +49,7 @@
 #endif
 
 // Third-Party Libraries
+#define EIGEN_STACK_ALLOCATION_LIMIT 0;
 //#define EIGEN_VECTORIZE
 //#define EIGEN_VECTORIZE_AVX
 //#define EIGEN_VECTORIZE_AVX2

@@ -71,7 +71,7 @@ EventGroupHandle_t xEventGroup = xEventGroupCreate();
 
 #endif
 
-void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
+    void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
     /**
      * @brief Listens for UDP packets and processes them, storing data in a buffer.
      * 
@@ -140,7 +140,11 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
             sess.dataBufferLock.lock();              // give this thread exclusive rights to modify the shared dataBytes variable
             sess.dataBuffer.push(dataBytes);
             queueSize = sess.dataBuffer.size();
+//            cout << "queue size: "+std::to_string(queueSize) <<endl;
             sess.dataBufferLock.unlock();            // relinquish exclusive rights
+
+//            if (queueSize == 10)
+//                break;
 
             packetCounter += 1;
             if (packetCounter % printInterval == 0) {
@@ -153,11 +157,11 @@ void UdpListener(Session& sess, unsigned int PACKET_SIZE) {
                 startPacketTime = std::chrono::steady_clock::now();
             }
 
-            if (queueSize == 30)
-                break;
-
             if (queueSize > 50) { // check if buffer has grown to an unacceptable size
                 std::cerr << "Buffer overflowing" << std::endl;
+                sess.dataBufferLock.lock();
+                ClearQueue(sess.dataBuffer);
+                sess.dataBufferLock.unlock();
                 sess.errorOccurred = true;
                 break;
             }
@@ -295,12 +299,14 @@ void DataProcessor(Session& sess, Experiment& exp) {
     /* Zero-pad filter weights to the length of the signal                     */
     std::vector<float> paddedFilterWeights(paddedLength, 0.0f);
     std::copy(filterWeightsFloat.begin(),filterWeightsFloat.end(),paddedFilterWeights.begin());
+    delete filterWeightsFloat.data();
 
     // Create frequency domain filter
     Eigen::VectorXcf filterFreq(fftOutputSize);
     fftwf_plan fftFilter = fftwf_plan_dft_r2c_1d(paddedLength, paddedFilterWeights.data(), reinterpret_cast<fftwf_complex*>(filterFreq.data()), FFTW_ESTIMATE);
     fftwf_execute(fftFilter);
     fftwf_destroy_plan(fftFilter);
+    delete paddedFilterWeights.data();
 
     // Container for pulling bytes from buffer (dataBuffer)
     std::vector<uint8_t> dataBytes;
@@ -347,6 +353,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             else {
                 dataBytes = sess.dataBuffer.front();
                 sess.dataBuffer.pop();
+                cout << "getting " << sess.dataSegment.size() << " bytes so far" << endl;
                 sess.dataBufferLock.unlock();
             }
 
@@ -412,6 +419,8 @@ void DataProcessor(Session& sess, Experiment& exp) {
         auto afterFFTW = std::chrono::steady_clock::now();
         std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
         cout << "FFT filter time: " << durationFFTW.count() << endl;
+
+        printSysMemory();
 
         auto beforeGCCW = std::chrono::steady_clock::now();
         Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW(savedFFTs, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
@@ -800,7 +809,7 @@ void UdpListenerTask(void* pvParameters) {
     printf("Started Creating Listener Task\n");
     auto* params = static_cast<std::tuple<Session*, unsigned int>*>(pvParameters);
     UdpListener(*std::get<0>(*params), std::get<1>(*params));
-    printf("Delete Listener Task\n");
+    printf("Deleting Listener Task\n");
     vTaskDelete(NULL);
 }
 
@@ -808,6 +817,7 @@ void DataProcessorTask(void* pvParameters) {
     printf("Started Creating Processor Task\n");
     auto* params = static_cast<std::tuple<Session*, Experiment*>*>(pvParameters);
     DataProcessor(*std::get<0>(*params), *std::get<1>(*params));
+    printf("Deleting Processor Task\n");
     vTaskDelete(NULL);
 }
 
@@ -899,6 +909,7 @@ void MainTask(__unused void* pvParameters){
 //    }
 
     while (true) {
+        cout << "Restarting Threads ..." << endl;
 
         RestartListener(sess);
         std::tuple<Session *, unsigned int> listenerParams = std::make_tuple(&sess, exp.PACKET_SIZE);
@@ -943,7 +954,7 @@ void MainTask(__unused void* pvParameters){
 
 
         if (sess.errorOccurred) {
-            cout << "Restarting threads..." << endl;
+            cout << "Error Occur!" << endl;
         }
         else {
             cout << "Unknown problem occurred" << endl;

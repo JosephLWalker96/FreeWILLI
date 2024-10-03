@@ -19,12 +19,27 @@ Eigen::VectorXf GCC_PHAT_FFTW(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFF
 
     int fftLength = savedFFTs.col(0).size();
     int numTDOAs = NUM_CHAN * (NUM_CHAN - 1) / 2;
+    cout << "numTDOAs: " << numTDOAs << endl;
+    cout << "fftLength: " << fftLength << endl;
+    cout << "paddedLength: " << paddedLength << endl;
+    cout << sizeof(Eigen::VectorXf) << endl;
+    cout << sizeof(Eigen::VectorXcf) << endl;
     Eigen::VectorXf tauVector(numTDOAs);
+    cout << "after tauVector" << endl;
+    printSysMemory();
     Eigen::VectorXcf SIG1(fftLength);
+    cout << "after SIG1" << endl;
+    printSysMemory();
     Eigen::VectorXcf SIG2(fftLength);
+    cout << "after SIG2" << endl;
+    printSysMemory();
 
     static Eigen::VectorXcf crossSpectraMagnitudeNorm(fftLength);
+    cout << "after crossSpectraMagnitudeNorm" << endl;
+    printSysMemory();
     static Eigen::VectorXf crossCorr(paddedLength);
+    cout << "after crossCorr" << endl;
+    printSysMemory();
 
     if (inverseFFT == nullptr) {
         inverseFFT = fftwf_plan_dft_c2r_1d(paddedLength, reinterpret_cast<fftwf_complex*>(crossSpectraMagnitudeNorm.data()), crossCorr.data(), FFTW_ESTIMATE);
