@@ -1,15 +1,11 @@
-# HarpListen
-
 ## Description
+The aim of the Embedded mimiHARP project is to provide highly optimized C++ software that supports a broad range of real-time data processing functionalities for underwater autonomous vehicle. This repo consists of two main programs:
 
-**HarpListen** is a real-time program designed to receive and process UDP packets efficiently. The program sets up a UDP listener that captures packets from a specified IP address and port, storing the received data in a shared buffer for subsequent processing. By leveraging multi-threading, HarpListen ensures that data reception and processing occur concurrently, enabling efficient real-time handling of incoming data.
+# 1) HarpListen 
+is a the executable designed to receive and process UDP packets efficiently. The program sets up a UDP listener that captures packets from a specified IP address and port, storing the received data in a shared buffer for subsequent processing. 
 
-### Key Components
-
-- **UDP Listener**: Captures incoming UDP packets, stores the received data in a buffer, and prints statistics about the received packets.
-- **Data Processor**: Retrieves data from the buffer, applies filters, and performs analysis to detect and estimate specific signal characteristics.
-- **Session and Experiment Classes**: Manage session-specific and experiment-specific details, including configuration settings, data buffers, and synchronization mechanisms.
-- **Multi-threading**: Employs separate threads for listening to UDP packets and processing data, ensuring that both tasks are handled efficiently and in real-time.
+# 2) DataLogger simulator
+is a program which simulates the operation of a four channel data logger by reading prerecorded four channel data from a specified file, formatting it according to a chosen firmware version, and sending it as UDP packets to a specified IP address and port.
 
 ### Features
 
@@ -24,7 +20,8 @@
 
 ## Example Usage
 
-To run the program with a datalogger simulator:
-
-```bash
-./HarpListen 192.168.7.2 1045 1240 2500 2
+rm -r out/ && mkdir out/ && cd out
+cmake ..
+make
+cd ..
+./bin/HarpListen config_files/volumetric.json 50000
