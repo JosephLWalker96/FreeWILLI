@@ -59,8 +59,9 @@ public:
         scale = scaler_json["scale"].get<std::vector<float>>();
     }
 
-    std::vector<float> run_inference(const std::vector<float>& input_tensor_values) {
+    std::vector<float> run_inference(std::vector<float>& input_tensor_values) {
         Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        normalize_data(input_tensor_values);
         Ort::Value input_tensor = Ort::Value::CreateTensor<float>(
             memory_info, const_cast<float*>(input_tensor_values.data()), input_tensor_values.size(),
             input_node_dims.data(), input_node_dims.size()

@@ -21,7 +21,6 @@ Example usage:
 #include "session.h"
 #include "processor_thread.h"
 #include "onnx_model.h"
-//#include <memory>
 
 //valgrind --log-file=grind2.txt --leak-check=yes --show-possibly-lost=no ./debug/HarpListenDebug self 1045 1240 100 30
 //valgrind --tool=massif --pages-as-heap=yes ./bin/HarpListen self 1045 1240 100 10000
@@ -36,11 +35,6 @@ int main(int argc, char *argv[])
     ExperimentConfig expConfig;
     SocketManager socketManager;
     
-    // Create a single ONNX environment that persists for the entire program
-    //Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "TestOnnxRuntime");
-    
-    expConfig.onnxModel = std::make_unique<ONNXModel>(expConfig.onnxModelPath, expConfig.onnxModelScaling);
-
     // Main processing loop
     while (true) 
     {
@@ -48,8 +42,13 @@ int main(int argc, char *argv[])
         ExperimentRuntime expRuntime;
         
         // Initialize the session and experiment
-        //InitializeSession(socketManager, expRuntime, argv);
         ParseJSONConfig(socketManager, expRuntime, argv);
+        
+        // Initialize ONNX model if model path provided
+        if (!expRuntime.onnxModelPath.empty()) {
+            expRuntime.onnxModel = std::make_unique<ONNXModel>(expRuntime.onnxModelPath, expRuntime.onnxModelScaling);
+        }
+        
         socketManager.RestartListener(); // Reset the listener state
         
         expRuntime.programStartTime = std::chrono::system_clock::now(); // Start experiment timer
@@ -57,23 +56,18 @@ int main(int argc, char *argv[])
         // Create threads for listening to UDP packets and processing data
         std::thread listenerThread(UdpListener, std::ref(sess), std::ref(socketManager), expConfig.PACKET_SIZE);
         std::thread processorThread(DataProcessor, std::ref(sess), std::ref(expConfig), std::ref(expRuntime));
+        
         // Wait for threads to finish
         listenerThread.join();
         processorThread.join();
 
         // Handle any errors during execution
-        if (sess.errorOccurred) 
-        {
+        if (sess.errorOccurred) {
             std::cout << "Restarting threads..." << std::endl;
         } 
-        else 
-        {
+        else {
             std::cout << "Unknown problem occurred" << std::endl;
         }
-
-        // Reset error state for the next iteration
-        // sess.errorOccurred = false;
     }
-
     return 0;
 }

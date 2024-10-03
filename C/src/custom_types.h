@@ -14,9 +14,8 @@ public:
     GCC_Value_Error(const std::string &message) : std::runtime_error(message) {}
 };
 
-class ExperimentConfig
+struct ExperimentConfig
 {
-public:
     // UDP packet information
     static constexpr int HEAD_SIZE         = 12;   // packet head size (bytes)
     static constexpr int NUM_CHAN          = 4;    // number of channels per packet
@@ -35,14 +34,8 @@ public:
     static constexpr int   NUM_PACKS_DETECT    = static_cast<int>(TIME_WINDOW * 100000 / SAMPS_PER_CHANNEL);
     static constexpr int   DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN;
     static constexpr int   interp              = 1;
-
-    //static constexpr const char* receiverPositions = "../Data/SOCAL_H_72_HS_harp4chPar_VLA.txt";
-    static constexpr const char* onnxModelPath    = "../TestOnnx/model_quantized_static.onnx";
-    static constexpr const char* onnxModelScaling = "../TestOnnx/scaler_params.json";
-    
     
     const std::function<void(std::span<float>, Eigen::MatrixXf &, unsigned int)> ProcessFncPtr = ProcessSegmentInterleaved;
-    std::unique_ptr<ONNXModel> onnxModel;
 };
 
 class ExperimentRuntime {
@@ -56,10 +49,14 @@ public:
     
     std::string filterWeights     = "filters/highpass_taps@101_cutoff@20k_window@hamming_fs@100k.txt";
     std::string receiverPositions = "../Data/SOCAL_H_72_HS_harp4chPar_recPos.txt";
+    std::string onnxModelPath     = "";
+    std::string onnxModelScaling  = "";
 
     
     fftwf_plan forwardFFT = nullptr;
     fftwf_plan inverseFFT = nullptr;
+    
+    std::unique_ptr<ONNXModel> onnxModel = nullptr;
 
     // Constructor to initialize plans, runtime-specific methods here
     ExperimentRuntime() {

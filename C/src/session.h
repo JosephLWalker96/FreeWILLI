@@ -28,7 +28,8 @@ public:
         dataBuffer.push(data);
         return dataBuffer.size();
     }
-
+    
+    /*
     std::vector<uint8_t> popDataFromBuffer() {
         std::vector<uint8_t> data;
         while (true) {
@@ -43,5 +44,15 @@ public:
             // Sleep for 15ms before trying again
             std::this_thread::sleep_for(std::chrono::milliseconds(15ms));
         }
+    }
+    */
+    bool popDataFromBuffer(std::vector<uint8_t>& data) {
+        std::lock_guard<std::mutex> lock(dataBufferLock);
+        if (!dataBuffer.empty()) {
+            data = dataBuffer.front();
+            dataBuffer.pop();
+            return true;
+        }
+        return false;
     }
 };

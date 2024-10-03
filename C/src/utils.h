@@ -26,11 +26,9 @@ void ParseJSONConfig(SocketManager& sess, ExperimentRuntime& expRuntime, char* a
 auto LoadHydrophonePositions(const std::string& filename)-> Eigen::MatrixXd;
 void ClearQueue(std::queue<std::vector<uint8_t>> &q);
 bool WithProbability(double probability);
+auto GetExampleClick() -> std::vector<float>;
 
 // Debug and print functions
 void PrintTimes(const std::span<TimePoint> timestamps);
 void PrintFirstFiveValues(const Eigen::MatrixXf &savedFFTs, const Eigen::MatrixXf &invFFT);
 void PrintMode();
-
-// Session and experiment management
-void InitializeSession(SocketManager& sess, ExperimentRuntime& expRuntime, char* argv[]);
