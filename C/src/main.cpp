@@ -26,6 +26,7 @@ Example usage:
 //valgrind --tool=massif --pages-as-heap=yes ./bin/HarpListen self 1045 1240 100 10000
 // profiling the stack (--stacks=yes) slows down performance significantly
 // --pages-as-heap=yes likely to also slow down program
+// perf record -e cycles,instructions -g ./debug/HarpListenDebug config_files/volumetric.json 120
 
 int main(int argc, char *argv[]) 
 {
