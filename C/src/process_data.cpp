@@ -176,7 +176,6 @@ DetectionResult ThresholdDetectFD(const Eigen::VectorXcf &data, const std::span<
 
     if (peakAmplitude >= threshold)
     {
-        std::cout << "peakamp: " << peakAmplitude << std::endl;
         result.minPeakIndex = peakIndex;
         result.maxPeakIndex = peakIndex;
         result.peakAmplitude = peakAmplitude;

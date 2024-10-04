@@ -183,7 +183,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
             //std::cout << "DOA time: " << durationDOA.count() << std::endl;
 
             //Eigen::VectorXf DOAs = TDOA_To_DOA_VerticalArray(tdoaVector, 1500.0, chanSpacing);
-            std::cout << "DOAs: " << DOAs.transpose() << std::endl;
+            //std::cout << "DOAs: " << DOAs.transpose() << std::endl;
 
             // Write to buffers
             Eigen::VectorXf combined(1 + DOAs.size() + tdoaVector.size() + XCorrAmps.size()); // + 1 for amplitude
