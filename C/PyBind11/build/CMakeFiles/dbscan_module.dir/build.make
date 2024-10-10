@@ -97,20 +97,52 @@ CMakeFiles/dbscan_module.dir/dbscan_wrapper.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/dbscan_module.dir/dbscan_wrapper.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/harp/Documents/Embedded_miniHarp/C/PyBind11/dbscan_wrapper.cpp -o CMakeFiles/dbscan_module.dir/dbscan_wrapper.cpp.s
 
+CMakeFiles/dbscan_module.dir/kalman_filter.cpp.o: CMakeFiles/dbscan_module.dir/flags.make
+CMakeFiles/dbscan_module.dir/kalman_filter.cpp.o: /home/harp/Documents/Embedded_miniHarp/C/PyBind11/kalman_filter.cpp
+CMakeFiles/dbscan_module.dir/kalman_filter.cpp.o: CMakeFiles/dbscan_module.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/harp/Documents/Embedded_miniHarp/C/PyBind11/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/dbscan_module.dir/kalman_filter.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/dbscan_module.dir/kalman_filter.cpp.o -MF CMakeFiles/dbscan_module.dir/kalman_filter.cpp.o.d -o CMakeFiles/dbscan_module.dir/kalman_filter.cpp.o -c /home/harp/Documents/Embedded_miniHarp/C/PyBind11/kalman_filter.cpp
+
+CMakeFiles/dbscan_module.dir/kalman_filter.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/dbscan_module.dir/kalman_filter.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/harp/Documents/Embedded_miniHarp/C/PyBind11/kalman_filter.cpp > CMakeFiles/dbscan_module.dir/kalman_filter.cpp.i
+
+CMakeFiles/dbscan_module.dir/kalman_filter.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/dbscan_module.dir/kalman_filter.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/harp/Documents/Embedded_miniHarp/C/PyBind11/kalman_filter.cpp -o CMakeFiles/dbscan_module.dir/kalman_filter.cpp.s
+
+CMakeFiles/dbscan_module.dir/tracker.cpp.o: CMakeFiles/dbscan_module.dir/flags.make
+CMakeFiles/dbscan_module.dir/tracker.cpp.o: /home/harp/Documents/Embedded_miniHarp/C/PyBind11/tracker.cpp
+CMakeFiles/dbscan_module.dir/tracker.cpp.o: CMakeFiles/dbscan_module.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/harp/Documents/Embedded_miniHarp/C/PyBind11/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/dbscan_module.dir/tracker.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/dbscan_module.dir/tracker.cpp.o -MF CMakeFiles/dbscan_module.dir/tracker.cpp.o.d -o CMakeFiles/dbscan_module.dir/tracker.cpp.o -c /home/harp/Documents/Embedded_miniHarp/C/PyBind11/tracker.cpp
+
+CMakeFiles/dbscan_module.dir/tracker.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/dbscan_module.dir/tracker.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/harp/Documents/Embedded_miniHarp/C/PyBind11/tracker.cpp > CMakeFiles/dbscan_module.dir/tracker.cpp.i
+
+CMakeFiles/dbscan_module.dir/tracker.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/dbscan_module.dir/tracker.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/harp/Documents/Embedded_miniHarp/C/PyBind11/tracker.cpp -o CMakeFiles/dbscan_module.dir/tracker.cpp.s
+
 # Object files for target dbscan_module
 dbscan_module_OBJECTS = \
 "CMakeFiles/dbscan_module.dir/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.cpp.o" \
-"CMakeFiles/dbscan_module.dir/dbscan_wrapper.cpp.o"
+"CMakeFiles/dbscan_module.dir/dbscan_wrapper.cpp.o" \
+"CMakeFiles/dbscan_module.dir/kalman_filter.cpp.o" \
+"CMakeFiles/dbscan_module.dir/tracker.cpp.o"
 
 # External object files for target dbscan_module
 dbscan_module_EXTERNAL_OBJECTS =
 
 dbscan_module.cpython-310-x86_64-linux-gnu.so: CMakeFiles/dbscan_module.dir/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.cpp.o
 dbscan_module.cpython-310-x86_64-linux-gnu.so: CMakeFiles/dbscan_module.dir/dbscan_wrapper.cpp.o
+dbscan_module.cpython-310-x86_64-linux-gnu.so: CMakeFiles/dbscan_module.dir/kalman_filter.cpp.o
+dbscan_module.cpython-310-x86_64-linux-gnu.so: CMakeFiles/dbscan_module.dir/tracker.cpp.o
 dbscan_module.cpython-310-x86_64-linux-gnu.so: CMakeFiles/dbscan_module.dir/build.make
 dbscan_module.cpython-310-x86_64-linux-gnu.so: /home/harp/anaconda3/envs/pybind11_py310/lib/libpython3.10.so
 dbscan_module.cpython-310-x86_64-linux-gnu.so: CMakeFiles/dbscan_module.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/harp/Documents/Embedded_miniHarp/C/PyBind11/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX shared module dbscan_module.cpython-310-x86_64-linux-gnu.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/harp/Documents/Embedded_miniHarp/C/PyBind11/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX shared module dbscan_module.cpython-310-x86_64-linux-gnu.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/dbscan_module.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

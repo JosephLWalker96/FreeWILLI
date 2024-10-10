@@ -1,9 +1,11 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/eigen.h> // Add support for Eigen/NumPy conversion
 #include <pybind11/numpy.h>
 #include <vector>
 #include <span>
-
+#include <eigen3/Eigen/Dense>
+#include "kalman_filter.hpp"
 // Assuming the definition of point2 is as follows:
 struct point2
 {
@@ -68,4 +70,13 @@ PYBIND11_MODULE(dbscan_module, m)
 
     // Expose the label function to Python
     m.def("label", &label, py::arg("clusters"), py::arg("n"));
+
+    py::class_<KalmanFilter>(m, "KalmanFilter")
+        .def(py::init<const Eigen::MatrixXd &, const Eigen::MatrixXd &, const Eigen::VectorXd &, const Eigen::MatrixXd &, const Eigen::MatrixXd &, const Eigen::MatrixXd &>())
+        .def("predict", &KalmanFilter::predict)
+        .def("update", &KalmanFilter::update)
+        .def("filter_update", &KalmanFilter::filter_update)
+        .def_property_readonly("H", &KalmanFilter::getH)            // Expose H
+        .def_property_readonly("x_prior", &KalmanFilter::getXPrior) // Expose x_prior
+        .def_property_readonly("x", &KalmanFilter::getX);           // Expose x (state estimate)
 }

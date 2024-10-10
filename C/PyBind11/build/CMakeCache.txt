@@ -224,6 +224,9 @@ DBSCANModule_IS_TOP_LEVEL:STATIC=ON
 //Value Computed by CMake
 DBSCANModule_SOURCE_DIR:STATIC=/home/harp/Documents/Embedded_miniHarp/C/PyBind11
 
+//The directory containing a CMake configuration file for Eigen3.
+Eigen3_DIR:PATH=/usr/share/eigen3/cmake
+
 //No help, variable specified on the command line.
 Python3_EXECUTABLE:UNINITIALIZED=/home/harp/anaconda3/envs/pybind11_py310/bin/python
 

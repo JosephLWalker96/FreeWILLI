@@ -177,6 +177,54 @@ home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/dbscan_module.dir/build.make CMakeFiles/dbscan_module.dir/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.cpp.s
 .PHONY : home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.cpp.s
 
+kalman_filter.o: kalman_filter.cpp.o
+.PHONY : kalman_filter.o
+
+# target to build an object file
+kalman_filter.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dbscan_module.dir/build.make CMakeFiles/dbscan_module.dir/kalman_filter.cpp.o
+.PHONY : kalman_filter.cpp.o
+
+kalman_filter.i: kalman_filter.cpp.i
+.PHONY : kalman_filter.i
+
+# target to preprocess a source file
+kalman_filter.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dbscan_module.dir/build.make CMakeFiles/dbscan_module.dir/kalman_filter.cpp.i
+.PHONY : kalman_filter.cpp.i
+
+kalman_filter.s: kalman_filter.cpp.s
+.PHONY : kalman_filter.s
+
+# target to generate assembly for a file
+kalman_filter.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dbscan_module.dir/build.make CMakeFiles/dbscan_module.dir/kalman_filter.cpp.s
+.PHONY : kalman_filter.cpp.s
+
+tracker.o: tracker.cpp.o
+.PHONY : tracker.o
+
+# target to build an object file
+tracker.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dbscan_module.dir/build.make CMakeFiles/dbscan_module.dir/tracker.cpp.o
+.PHONY : tracker.cpp.o
+
+tracker.i: tracker.cpp.i
+.PHONY : tracker.i
+
+# target to preprocess a source file
+tracker.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dbscan_module.dir/build.make CMakeFiles/dbscan_module.dir/tracker.cpp.i
+.PHONY : tracker.cpp.i
+
+tracker.s: tracker.cpp.s
+.PHONY : tracker.s
+
+# target to generate assembly for a file
+tracker.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/dbscan_module.dir/build.make CMakeFiles/dbscan_module.dir/tracker.cpp.s
+.PHONY : tracker.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -192,6 +240,12 @@ help:
 	@echo "... home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.o"
 	@echo "... home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.i"
 	@echo "... home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.s"
+	@echo "... kalman_filter.o"
+	@echo "... kalman_filter.i"
+	@echo "... kalman_filter.s"
+	@echo "... tracker.o"
+	@echo "... tracker.i"
+	@echo "... tracker.s"
 .PHONY : help
 
 

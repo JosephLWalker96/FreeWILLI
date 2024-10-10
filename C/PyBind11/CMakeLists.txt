@@ -17,12 +17,28 @@ include_directories(${Python3_INCLUDE_DIRS})
 include_directories(${pybind11_INCLUDE_DIRS})
 include_directories(/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan)  # Add the dbscan directory for nanoflann
 include_directories(/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/vendor)
+# Add the Eigen3 include directory
+include_directories("/usr/include/eigen3")  # Add Eigen include path
 # Specify the source files for your project
 set(SOURCES
     /home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.cpp      # Your C++ DBSCAN implementation
     #/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/example.cpp      # Your C++ DBSCAN implementation
     dbscan_wrapper.cpp        # PyBind11 wrapper script
+    kalman_filter.cpp        # PyBind11 wrapper script
+    tracker.cpp
 )
+
+# Eigen3
+find_package (Eigen3 REQUIRED NO_MODULE)
+if (EIGEN3_LIBRARIES)
+    list(APPEND THIRD_PARTY_LIBRARIES ${EIGEN3_LIBRARIES})
+    message(STATUS "Eigen3 libraries: ${EIGEN3_LIBRARIES}")
+endif ()
+if (EIGEN3_INCLUDE_DIR)
+    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIRS})
+    message(STATUS "Eigen3 include dir: ${EIGEN3_INCLUDE_DIR}")
+endif()
+
 
 # Create the Python module using pybind11
 pybind11_add_module(dbscan_module ${SOURCES})
