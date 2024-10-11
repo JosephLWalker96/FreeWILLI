@@ -621,4 +621,6 @@ CMakeFiles/dbscan_module.dir/dbscan_wrapper.cpp.o: \
  /usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h \
  /usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h \
  /usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h \
- /home/harp/Documents/Embedded_miniHarp/C/PyBind11/kalman_filter.hpp
+ /home/harp/Documents/Embedded_miniHarp/C/PyBind11/kalman_filter.hpp \
+ /home/harp/Documents/Embedded_miniHarp/C/PyBind11/tracker.hpp \
+ /home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.hpp

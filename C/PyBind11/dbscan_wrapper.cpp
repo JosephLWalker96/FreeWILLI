@@ -6,12 +6,15 @@
 #include <span>
 #include <eigen3/Eigen/Dense>
 #include "kalman_filter.hpp"
+#include "tracker.hpp"
 // Assuming the definition of point2 is as follows:
+/*
 struct point2
 {
     float x;
     float y;
 };
+*/
 
 // Assuming dbscan function has been defined as follows:
 std::vector<std::vector<size_t>> dbscan(const std::span<const point2> &data, float eps, int min_pts);
@@ -79,4 +82,12 @@ PYBIND11_MODULE(dbscan_module, m)
         .def_property_readonly("H", &KalmanFilter::getH)            // Expose H
         .def_property_readonly("x_prior", &KalmanFilter::getXPrior) // Expose x_prior
         .def_property_readonly("x", &KalmanFilter::getX);           // Expose x (state estimate)
+    
+    py::class_<Tracker>(m, "Tracker")
+        .def(py::init<double, int, int>())
+        .def("update_kalman_filters", &Tracker::update_kalman_filters)
+        .def("process_batch", &Tracker::process_batch)
+        .def("update_kalman_filters_continuous", &Tracker::update_kalman_filters_continuous)
+        .def_readwrite("kalman_log", &Tracker::kalman_log);  // Expose kalman_log
+
 }

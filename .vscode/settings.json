@@ -81,7 +81,9 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "__nullptr": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "charconv": "cpp",
+        "typeindex": "cpp"
     },
     "C_Cpp.dimInactiveRegions": true
 }
