@@ -94,10 +94,10 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
         Eigen::MatrixXd U = svd.matrixU();
 
         // set the frequency of file writes
-        BufferWriter bufferWriter;
-        bufferWriter._flushInterval = 30s;
-        bufferWriter._bufferSizeThreshold = 1000; // Adjust as needed
-        bufferWriter._lastFlushTime = std::chrono::steady_clock::now();
+        ObservationBuffer observationBuffer;
+        observationBuffer._flushInterval = 30s;
+        observationBuffer._bufferSizeThreshold = 1000; // Adjust as needed
+        observationBuffer._lastFlushTime = std::chrono::steady_clock::now();
         std::cout << "Ready to process data..." << std::endl;
         while (!sess.errorOccurred)
         {
@@ -116,7 +116,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
                     if (gotData){
                         break;
                     }
-                    ShouldFlushBuffer(bufferWriter, sess, expRuntime, startLoop);
+                    ShouldFlushBuffer(observationBuffer, expRuntime, startLoop);
                     std::this_thread::sleep_for(std::chrono::milliseconds(15ms));
                 }
 
@@ -145,7 +145,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
             expConfig.ProcessFncPtr(sess.dataSegment, channelData, expConfig.NUM_CHAN);
             auto afterPtr = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
-            std::cout << "durationPtr: " << durationPtr.count() << std::endl;
+            //std::cout << "durationPtr: " << durationPtr.count() << std::endl;
 
             DetectionResult threshResult = ThresholdDetect(channelData.col(0), sess.dataTimes, expRuntime.ampDetThresh, expConfig.SAMPLE_RATE);
             if (threshResult.maxPeakIndex < 0){
@@ -196,12 +196,21 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
             //Eigen::VectorXf DOAs = TDOA_To_DOA_VerticalArray(tdoaVector, 1500.0, chanSpacing);
             std::cout << "AzEl: " << AzEl.transpose() << std::endl;
+            //std::cout << "Energy: " << detResult.peakAmplitude << std::endl;
+            //std::cout << "tdoa: " << tdoaVector.transpose() << std::endl;
 
             // Write to buffers
-            Eigen::VectorXf combined(1 + DOAs.size() + tdoaVector.size() + XCorrAmps.size()); // + 1 for amplitude
-            combined << detResult.peakAmplitude, DOAs, tdoaVector, XCorrAmps;
-            sess.peakTimesBuffer.push_back(threshResult.peakTimes);
-            sess.Buffer.push_back(combined);
+            //Eigen::VectorXf combined(1 + DOAs.size() + tdoaVector.size() + XCorrAmps.size()); // + 1 for amplitude
+            
+
+            observationBuffer.Buffer.amps.push_back(detResult.peakAmplitude);
+            observationBuffer.Buffer.DOA_x.push_back(DOAs[0]);
+            observationBuffer.Buffer.DOA_y.push_back(DOAs[1]);
+            observationBuffer.Buffer.DOA_z.push_back(DOAs[2]);
+            observationBuffer.Buffer.tdoaVector.push_back(tdoaVector);
+            observationBuffer.Buffer.XCorrAmps.push_back(XCorrAmps);
+            observationBuffer.Buffer.peakTimes.push_back(threshResult.peakTimes);
+            //observationBuffer.Buffer.amps.push_back(combined);
 
             // Normalize the input data
             /*

@@ -90,7 +90,7 @@ void PrintTimes(const std::span<TimePoint> timestamps)
         std::cout << msg.str();
     }
 }
-
+/*
 void InitiateOutputFile(std::string &outputFile, TimePoint& currentTime, const int NUM_CHAN)
 {
     
@@ -132,7 +132,7 @@ void InitiateOutputFile(std::string &outputFile, TimePoint& currentTime, const i
         throw std::runtime_error(throwMsg.str());
     }
 }
-
+*/
 auto ReadFIRFilterFile(const std::string& fileName) -> std::vector<float>
 {
     /**
@@ -301,24 +301,24 @@ Eigen::MatrixXd LoadHydrophonePositions(const std::string& filename)
     return relativePositions;
 }
 
-void ShouldFlushBuffer(BufferWriter &bufferWriter, Session &sess, ExperimentRuntime &expRuntime, const std::chrono::system_clock::time_point& startLoop){
-    int currentBufferSize = sess.peakTimesBuffer.size();
+void ShouldFlushBuffer(ObservationBuffer &observationBuffer, ExperimentRuntime &expRuntime, const std::chrono::system_clock::time_point& startLoop){
+    int currentBufferSize = observationBuffer.Buffer.peakTimes.size();
     
     if (currentBufferSize == 0){
         return;
     }
     
     auto elapsedTime = startLoop - expRuntime.programStartTime;
-    auto timeSinceLastWrite = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - bufferWriter._lastFlushTime);
+    auto timeSinceLastWrite = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - observationBuffer._lastFlushTime);
     
-    bool timeToWrite = bufferWriter._flushInterval <= timeSinceLastWrite;
+    bool timeToWrite = observationBuffer._flushInterval <= timeSinceLastWrite;
     bool timeToExit = elapsedTime >= expRuntime.programRuntime;
-    bool bufferIsFull = currentBufferSize >= bufferWriter._bufferSizeThreshold;
+    bool bufferIsFull = currentBufferSize >= observationBuffer._bufferSizeThreshold;
     
     if (bufferIsFull || timeToExit|| timeToWrite)
     {
         std::cout << "Flushing buffers of length: " << currentBufferSize << std::endl;
-        bufferWriter.write(sess.Buffer, sess.peakTimesBuffer, expRuntime.detectionOutputFile);
+        observationBuffer.write(expRuntime.detectionOutputFile);
         if (timeToExit){
             std::cout << "Terminating program from inside DataProcessor... duration reached \n";
             std::exit(0);
@@ -484,4 +484,147 @@ void WriteDataToCerr(std::span<TimePoint> dataTimes, std::vector<std::vector<uin
     }
     msg << std::endl;
     std::cerr << msg.str();
+}
+
+
+
+
+
+
+
+// Function to generate labels with a given prefix
+std::vector<std::string> GenerateLabels(const std::string& prefix, int NUM_CHAN)
+{
+    std::vector<std::string> labels;
+    for (int sig = 1; sig < NUM_CHAN; ++sig)
+    {
+        for (int ref = sig + 1; ref <= NUM_CHAN; ++ref)
+        {
+            labels.push_back(prefix + std::to_string(sig * 10 + ref));
+        }
+    }
+    return labels;
+}
+
+int GetNumberOfChannelPairs(int NUM_CHAN)
+{
+    return NUM_CHAN * (NUM_CHAN - 1) / 2;
+}
+
+void InitiateOutputFile(std::string &outputFile, TimePoint& currentTime, const int NUM_CHAN)
+{
+    outputFile = "deployment_files/" + TimePointToString(currentTime); 
+
+    std::cout << "Created and writing to file: " << outputFile << std::endl;
+
+    std::ofstream file(outputFile, std::ofstream::out | std::ofstream::trunc);
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Error: Unable to open file for writing: " + outputFile);
+    }
+
+    std::vector<std::string> columnNames = {
+        "PeakTime",
+        "Amplitude",
+        "DOA_x",
+        "DOA_y",
+        "DOA_z"
+    };
+
+    // Generate TDOA and XCorr labels
+    std::vector<std::string> tdoaLabels = GenerateLabels("TDOA", NUM_CHAN);
+    std::vector<std::string> xcorrLabels = GenerateLabels("XCorr", NUM_CHAN);
+
+    // Combine all column names
+    columnNames.insert(columnNames.end(), tdoaLabels.begin(), tdoaLabels.end());
+    columnNames.insert(columnNames.end(), xcorrLabels.begin(), xcorrLabels.end());
+
+    // Write the column names to the file, separated by commas
+    for (size_t i = 0; i < columnNames.size(); ++i)
+    {
+        file << columnNames[i];
+        if (i < columnNames.size() - 1)
+            file << ",";
+    }
+    file << std::endl;
+
+    file.close();
+}
+
+void AppendBufferToFile(const std::string& outputFile, const BufferStruct& buffer)
+{
+    // Open the file in append mode
+    std::ofstream file(outputFile, std::ofstream::out | std::ofstream::app);
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Error: Unable to open file for appending: " + outputFile);
+    }
+
+    // Verify that all vectors have the same size
+    size_t dataSize = buffer.amps.size();
+    if (buffer.DOA_x.size() != dataSize ||
+        buffer.DOA_y.size() != dataSize ||
+        buffer.DOA_z.size() != dataSize ||
+        buffer.tdoaVector.size() != dataSize ||
+        buffer.XCorrAmps.size() != dataSize ||
+        buffer.peakTimes.size() != dataSize)
+    {
+        throw std::runtime_error("Error: Mismatched buffer sizes in BufferStruct.");
+    }
+
+    int numChannelPairs = buffer.tdoaVector[0].size();
+
+    // For each data row
+    for (size_t i = 0; i < dataSize; ++i)
+    {
+        std::vector<std::string> rowData;
+
+        // Add peak time
+        auto time_point = buffer.peakTimes[i];
+        auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
+        rowData.emplace_back(std::to_string(time_since_epoch.count()));
+        //rowData.push_back(TimePointToString(buffer.peakTimes[i]));
+
+        // Add amplitude
+        rowData.push_back(std::to_string(buffer.amps[i]));
+
+        // Add DOA values
+        rowData.push_back(std::to_string(buffer.DOA_x[i]));
+        rowData.push_back(std::to_string(buffer.DOA_y[i]));
+        rowData.push_back(std::to_string(buffer.DOA_z[i]));
+
+        // Add TDOA values
+        Eigen::VectorXf tdoaVec = buffer.tdoaVector[i];
+        //std::cout << "tdoaVec: " << tdoaVec.size() << " numChannelPairs: " << numChannelPairs <<std::endl;
+        if (tdoaVec.size() != numChannelPairs)
+        {
+            throw std::runtime_error("Error: Inconsistent TDOA vector size at index " + std::to_string(i));
+        }
+        for (int j = 0; j < tdoaVec.size(); ++j)
+        {
+            rowData.push_back(std::to_string(tdoaVec[j]));
+        }
+
+        // Add XCorr values
+        Eigen::VectorXf xcorrVec = buffer.XCorrAmps[i];
+        if (xcorrVec.size() != numChannelPairs)
+        {
+            throw std::runtime_error("Error: Inconsistent XCorr vector size at index " + std::to_string(i));
+        }
+        for (int j = 0; j < xcorrVec.size(); ++j)
+        {
+            rowData.push_back(std::to_string(xcorrVec[j]));
+        }
+
+        // Write row data to file
+        for (size_t k = 0; k < rowData.size(); ++k)
+        {
+            file << rowData[k];
+            if (k < rowData.size() - 1)
+                file << ",";
+        }
+        file << std::endl;
+    }
+
+    file.close();
 }

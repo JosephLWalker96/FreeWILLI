@@ -12,11 +12,10 @@ public:
     std::queue<std::vector<uint8_t>> dataBuffer;
     std::vector<std::vector<uint8_t>> dataBytesSaved;
     std::vector<float> dataSegment;
-    std::vector<std::chrono::system_clock::time_point> dataTimes;
+    std::vector<std::chrono::system_clock::time_point> dataTimes; // timestamps of UDP packet
     std::mutex dataBufferLock;
     int detectionCounter = 0;
-    std::vector<Eigen::VectorXf> Buffer;
-    std::vector<std::chrono::system_clock::time_point> peakTimesBuffer;
+    //std::vector<std::chrono::system_clock::time_point> peakTimesBuffer;
 
     Session() {
         // Initialize other runtime-specific variables as needed

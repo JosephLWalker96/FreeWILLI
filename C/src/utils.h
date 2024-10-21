@@ -15,11 +15,11 @@ using TimePoint = std::chrono::system_clock::time_point;
 
 // File I/O functions
 auto ReadFIRFilterFile(const std::string& fileName) -> std::vector<float>;
-void InitiateOutputFile(std::string &outputFile, TimePoint& currentTimestamp, const int NUM_CHAN);
+//void InitiateOutputFile(std::string &outputFile, TimePoint& currentTimestamp, const int NUM_CHAN);
 void WritePulseAmplitudes(std::span<float> click_amps, std::span<TimePoint> timestamps, const std::string &filename);
 void WriteArray(const std::span<Eigen::VectorXf> array, const std::span<TimePoint> timestamps, const std::string &filename);
 void WriteDataToCerr(std::span<TimePoint> dataTimes, std::vector<std::vector<uint8_t>> dataBytesSaved);
-void ShouldFlushBuffer(BufferWriter &bufferWriter, Session &sess, ExperimentRuntime &expRuntime, const std::chrono::system_clock::time_point& startLoop);
+void ShouldFlushBuffer(ObservationBuffer& observationBuffer, ExperimentRuntime &expRuntime, const std::chrono::system_clock::time_point& startLoop);
 void ParseJSONConfig(SocketManager& sess, ExperimentRuntime& expRuntime, char* argv[]);
 
 // Data handling functions
@@ -33,3 +33,15 @@ auto TimePointToString(const TimePoint& timePoint) -> std::string;
 void PrintTimes(const std::span<TimePoint> timestamps);
 void PrintFirstFiveValues(const Eigen::MatrixXf &savedFFTs, const Eigen::MatrixXf &invFFT);
 void PrintMode();
+
+// Function to initialize the output CSV file and write column headers
+void InitiateOutputFile(std::string &outputFile, TimePoint& currentTime, const int NUM_CHAN);
+
+// Function to append data from BufferStruct to the CSV file
+void AppendBufferToFile(const std::string& outputFile, const BufferStruct& buffer);
+
+// Helper function to generate labels with a given prefix
+std::vector<std::string> GenerateLabels(const std::string& prefix, int NUM_CHAN);
+
+// Helper function to calculate the number of unique channel pairs
+int GetNumberOfChannelPairs(int NUM_CHAN);

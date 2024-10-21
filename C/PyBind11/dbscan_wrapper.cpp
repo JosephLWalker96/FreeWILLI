@@ -17,22 +17,22 @@ struct point2
 */
 
 // Assuming dbscan function has been defined as follows:
-std::vector<std::vector<size_t>> dbscan(const std::span<const point2> &data, float eps, int min_pts);
+std::vector<std::vector<size_t>> dbscan(const std::span<const point3> &data, float eps, int min_pts);
 
 // Helper function to convert NumPy array to std::vector<point2>
-std::vector<point2> numpy_to_point2_vector(pybind11::array_t<float> numpy_array)
+std::vector<point3> numpy_to_point2_vector(pybind11::array_t<float> numpy_array)
 {
-    if (numpy_array.ndim() != 2 || numpy_array.shape(1) != 2)
+    if (numpy_array.ndim() != 2 || numpy_array.shape(1) != 3)
     {
         throw std::runtime_error("Input array must be a 2D array with shape (N, 2).");
     }
 
-    std::vector<point2> points;
+    std::vector<point3> points;
     auto r = numpy_array.unchecked<2>(); // Get access to raw array data
 
     for (ssize_t i = 0; i < r.shape(0); ++i)
     {
-        points.push_back(point2{r(i, 0), r(i, 1)});
+        points.push_back(point3{r(i, 0), r(i, 1), r(i, 2)});
     }
 
     return points;
@@ -61,10 +61,10 @@ PYBIND11_MODULE(dbscan_module, m)
     m.def("dbscan", [](py::array_t<float> data, float eps, int min_pts)
           {
         // Convert the numpy array to std::vector<point2>
-        std::vector<point2> points = numpy_to_point2_vector(data);
+        std::vector<point3> points = numpy_to_point2_vector(data);
         
         // Convert std::vector<point2> to std::span<const point2>
-        std::span<const point2> data_span(points);
+        std::span<const point3> data_span(points);
         
         // Call the dbscan function
         std::vector<std::vector<size_t>> result = dbscan(data_span, eps, min_pts);

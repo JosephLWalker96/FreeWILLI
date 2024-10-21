@@ -12,30 +12,30 @@
 std::vector<size_t> label2(const std::vector<std::vector<size_t>> &clusters, size_t n);
 
 // Helper function to convert Eigen vectors to std::vector<point2>
-std::vector<point2> Eigen_to_point2_vector(const std::vector<Eigen::VectorXf> &data);
+std::vector<point3> Eigen_to_point2_vector(const std::vector<Eigen::VectorXf> &data);
 
 class Tracker
 {
 public:
     Tracker(double eps = 3, int min_samples = 15, int missed_update_threshold = 4);
 
-    KalmanFilter initialize_kalman_filter(const Eigen::Vector2d &initial_state);
+    KalmanFilter initialize_kalman_filter(const Eigen::Vector3d &initial_state);
 
-    std::vector<Eigen::Vector2d> run_dbscan(const std::vector<Eigen::VectorXf> &data);
+    std::vector<Eigen::Vector3d> run_dbscan(const std::vector<Eigen::VectorXf> &data);
 
     std::pair<std::vector<int>, std::vector<int>> find_optimal_association(const Eigen::MatrixXd &distance_matrix, double threshold);
 
-    Eigen::MatrixXd calculate_distance_matrix(const std::vector<Eigen::Vector2d> &cluster_centers);
+    Eigen::MatrixXd calculate_distance_matrix(const std::vector<Eigen::Vector3d> &cluster_centers);
 
     void destroy_expired_filters();
 
-    std::vector<Eigen::Vector2d> get_cluster_centroids(const std::vector<point2> &data, const std::vector<size_t> &labels);
+    std::vector<Eigen::Vector3d> get_cluster_centroids(const std::vector<point3> &data, const std::vector<size_t> &labels);
 
     void increment_missed_counter(const std::set<int> &associated_filters);
 
-    void initialize_filters_for_clusters(const std::vector<int> &unassigned_clusters, const std::vector<Eigen::Vector2d> &cluster_centers);
+    void initialize_filters_for_clusters(const std::vector<int> &unassigned_clusters, const std::vector<Eigen::Vector3d> &cluster_centers);
 
-    void update_kalman_filters(const std::vector<Eigen::Vector2d> &cluster_centers);
+    void update_kalman_filters(const std::vector<Eigen::Vector3d> &cluster_centers);
 
     void update_kalman_filters_continuous(const Eigen::VectorXd& observation, double time);
 
@@ -57,4 +57,4 @@ private:
     void filter_by_indices(std::vector<T> &vec, const std::vector<int> &indices_to_keep);
 };
 
-#endif // TRACKER_HPP
+#endif 

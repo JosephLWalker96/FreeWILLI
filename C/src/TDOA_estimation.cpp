@@ -177,6 +177,34 @@ int GetRank(const Eigen::MatrixXd &H, double tolerance) {
 }
 
 // Updated TDOA to DOA using precomputed matrices
+/*
+Eigen::VectorXf TDOA_To_DOA_Optimized(const Eigen::MatrixXd &P, const Eigen::MatrixXd &U, const float speedOfSound, const Eigen::VectorXf &tdoa, int rank) {
+    // Convert tdoa to VectorXd and scale it
+    Eigen::VectorXd scaled_tdoa = tdoa.cast<double>() * speedOfSound;
+
+    // Compute U^T * scaled_tdoa
+    Eigen::VectorXd Ut_tdoa = U.transpose() * scaled_tdoa;
+
+    // Compute DOA using the precomputed matrix P
+    Eigen::VectorXd doa = P * Ut_tdoa;
+
+    // Normalize the DOA vector
+    if (rank > 1){
+        normalizeDOA(doa, rank);
+    }
+
+    // Calculate elevation and azimuth
+    float el = static_cast<float>(180.0 - std::acos(doa(2)) * 180.0 / M_PI);
+    float az = static_cast<float>(std::atan2(doa(1), doa(0)) * 180.0 / M_PI);
+
+    // Create a result vector containing el and az
+    Eigen::VectorXf result_vector(2);
+    result_vector << el, az;
+
+    return result_vector;
+}
+*/
+
 Eigen::VectorXf TDOA_To_DOA_Optimized(const Eigen::MatrixXd &P, const Eigen::MatrixXd &U, const float speedOfSound, const Eigen::VectorXf &tdoa, int rank) {
     // Convert tdoa to VectorXd and scale it
     Eigen::VectorXd scaled_tdoa = tdoa.cast<double>() * speedOfSound;
@@ -193,6 +221,7 @@ Eigen::VectorXf TDOA_To_DOA_Optimized(const Eigen::MatrixXd &P, const Eigen::Mat
     }
     return doa.cast<float>();
 }
+
 
  Eigen::VectorXf DOA_to_ElAz(Eigen::VectorXf& doa){
 
