@@ -45,7 +45,8 @@ public:
     std::chrono::seconds programRuntime;
     TimePoint            programStartTime;
     float                energyDetThresh = 100.0f; // 28.0f;
-    float                speedOfSound = 1482.965459;
+    float                ampDetThresh    = 100.0f; // 28.0f;
+    float                speedOfSound    = 1482.965459;
     
     std::string filterWeights     = "filters/highpass_taps@101_cutoff@20k_window@hamming_fs@100k.txt";
     std::string receiverPositions = "../Data/SOCAL_H_72_HS_harp4chPar_recPos.txt";
@@ -56,7 +57,8 @@ public:
     fftwf_plan forwardFFT = nullptr;
     fftwf_plan inverseFFT = nullptr;
     
-    std::unique_ptr<ONNXModel> onnxModel = nullptr;
+    //std::unique_ptr<ONNXModel> onnxModel = nullptr;
+    int onnxModel = 0;
 
     // Constructor to initialize plans, runtime-specific methods here
     ExperimentRuntime() {

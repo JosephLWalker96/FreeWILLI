@@ -52,7 +52,7 @@ void ConvertAndAppend(std::vector<float> &dataSegment, std::span<uint8_t> dataBy
     }
 }
 
-TimePoint GenerateTimestamp(std::vector<uint8_t>& dataBytes, const int NUM_CHAN, std::string& detectionOutputFile) 
+TimePoint GenerateTimestamp(std::vector<uint8_t>& dataBytes, const int NUM_CHAN) 
 {
 
     std::tm timeStruct{};                                 // Initialize a std::tm structure to hold the date and time components
@@ -81,11 +81,6 @@ TimePoint GenerateTimestamp(std::vector<uint8_t>& dataBytes, const int NUM_CHAN,
     auto currentTime = std::chrono::system_clock::from_time_t(timeResult); // convert std::time_t to std::chrono::system_clock::time_point
     currentTime += std::chrono::microseconds(microSec);
     
-    if ((detectionOutputFile).empty())
-    {
-        std::string feature = "detection";
-        InitiateOutputFile(detectionOutputFile, timeStruct, microSec, feature, NUM_CHAN);
-    }
     return currentTime;
 }
 bool CheckForDataErrors(Session& sess, std::vector<uint8_t>& dataBytes, const int MICRO_INCR, bool &previousTimeSet, 
@@ -138,8 +133,8 @@ DetectionResult ThresholdDetect(const Eigen::VectorXf &data, const std::span<Tim
      */
 
     DetectionResult result{};
-
     int peakIndex = 0;
+    
     float peakAmplitude = data.maxCoeff(&peakIndex);
 
     if (peakAmplitude >= threshold)
@@ -179,9 +174,9 @@ DetectionResult ThresholdDetectFD(const Eigen::VectorXcf &data, const std::span<
         result.minPeakIndex = peakIndex;
         result.maxPeakIndex = peakIndex;
         result.peakAmplitude = peakAmplitude;
-        unsigned int microseconds = peakIndex * (1e6 / SAMPLE_RATE);
-        auto maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
-        result.peakTimes = maxPeakTime;
+        //unsigned int microseconds = peakIndex * (1e6 / SAMPLE_RATE);
+        //auto maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
+        //result.peakTimes = maxPeakTime;
     }
     return result;
 }
@@ -203,6 +198,8 @@ void ProcessSegmentInterleaved(std::span<float> data, Eigen::MatrixXf &channels,
     // channels.resize(numSamples, NUM_CHAN);
 
     // Iterate through the data container and save every NUM_CHANth element into the corresponding row of the channels matrix
+    
+    
     for (unsigned int ch = 0; ch < NUM_CHAN; ++ch)
     {
         for (size_t i = 0; i < numSamples; ++i)
@@ -210,4 +207,5 @@ void ProcessSegmentInterleaved(std::span<float> data, Eigen::MatrixXf &channels,
             channels(i, ch) = data[i * NUM_CHAN + ch];
         }
     }
+    
 }

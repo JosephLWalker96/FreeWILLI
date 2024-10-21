@@ -82,7 +82,7 @@ def process_npy_file(npy_file):
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 dateTime = datetime.datetime.now()
 
-for npy_file in npy_files[2:]:
+for npy_file in npy_files:
     firstRead = 1
     startTime = time.time()
     dataBytes = process_npy_file(npy_file)
@@ -161,7 +161,7 @@ for npy_file in npy_files[2:]:
 
         dateTime = dateTime + timedelta(microseconds=int(MICRO_INCR))  # Increment the time for the next packet
         runTime = time.time() - startTime
-        sleepTime = (MICRO_INCR) * 1e-6 - runTime
+        sleepTime = (MICRO_INCR - 900) * 1e-6 - runTime
         Sleep(sleepTime)
         #print("sleep time: ",sleepTime)
 

@@ -24,5 +24,6 @@ Eigen::JacobiSVD<Eigen::MatrixXd> SVD(const Eigen::MatrixXd &H);
 Eigen::MatrixXd precomputeInverse(const Eigen::JacobiSVD<Eigen::MatrixXd> &svd);
 Eigen::VectorXf TDOA_To_DOA_SVD(const Eigen::JacobiSVD<Eigen::MatrixXd> &svd, const float speedOfSound, const Eigen::VectorXf &tdoa);
 Eigen::VectorXf TDOA_To_DOA_Optimized(const Eigen::MatrixXd &P, const Eigen::MatrixXd &U, const float speedOfSound, const Eigen::VectorXf &tdoa, int rank);
+Eigen::VectorXf DOA_to_ElAz(Eigen::VectorXf& doa);
 void normalizeDOA(Eigen::VectorXd &doa, int rank);
 int GetRank(const Eigen::MatrixXd &H, double tolerance = 1e-6);

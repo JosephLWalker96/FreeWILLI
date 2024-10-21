@@ -191,6 +191,10 @@ Eigen::VectorXf TDOA_To_DOA_Optimized(const Eigen::MatrixXd &P, const Eigen::Mat
     if (rank > 1){
         normalizeDOA(doa, rank);
     }
+    return doa.cast<float>();
+}
+
+ Eigen::VectorXf DOA_to_ElAz(Eigen::VectorXf& doa){
 
     // Calculate elevation and azimuth
     float el = static_cast<float>(180.0 - std::acos(doa(2)) * 180.0 / M_PI);

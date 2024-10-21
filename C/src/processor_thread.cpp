@@ -122,13 +122,18 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
                 sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
 
-                sess.dataTimes.emplace_back(GenerateTimestamp(dataBytes, expConfig.NUM_CHAN, expRuntime.detectionOutputFile));
+                auto currentTimestamp = GenerateTimestamp(dataBytes, expConfig.NUM_CHAN);
+                sess.dataTimes.push_back(currentTimestamp);
                 bool dataError = CheckForDataErrors(sess, dataBytes, expConfig.MICRO_INCR, previousTimeSet, previousTime, expConfig.PACKET_SIZE);
-                
 
-                if (!dataError){
+                if (!dataError) [[likely]]{
                     ConvertAndAppend(sess.dataSegment, dataBytes, expConfig.DATA_SIZE, expConfig.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
                 }
+
+                if  ((expRuntime.detectionOutputFile).empty()) [[unlikely]] {
+                    InitiateOutputFile(expRuntime.detectionOutputFile, currentTimestamp, expConfig.NUM_CHAN);
+                }
+
             }
 
             /*
@@ -136,21 +141,27 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
              *   now apply energy detector.
              */
 
-            //auto beforePtr = std::chrono::steady_clock::now();
+            auto beforePtr = std::chrono::steady_clock::now();
             expConfig.ProcessFncPtr(sess.dataSegment, channelData, expConfig.NUM_CHAN);
-            //auto afterPtr = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
+            auto afterPtr = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
+            std::cout << "durationPtr: " << durationPtr.count() << std::endl;
+
+            DetectionResult threshResult = ThresholdDetect(channelData.col(0), sess.dataTimes, expRuntime.ampDetThresh, expConfig.SAMPLE_RATE);
+            if (threshResult.maxPeakIndex < 0){
+                continue;
+            }
 
             //auto beforeFilter = std::chrono::steady_clock::now();
             FrequencyDomainFIRFiltering(
-                channelData,   // Zero-padded time-domain data
-                filterFreq,    // Frequency domain filter (FIR taps in freq domain)
+                channelData,           // Zero-padded time-domain data
+                filterFreq,            // Frequency domain filter (FIR taps in freq domain)
                 expRuntime.forwardFFT, // FFT plan
-                savedFFTs);    // Output of FFT transformed time-domain data
+                savedFFTs);            // Output of FFT transformed time-domain data
             //auto afterFilter = std::chrono::steady_clock::now();
             //std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
 
-            // DetectionResult detResult = ThresholdDetect(invFFT.col(0), sess.dataTimes, expConfig.energyDetThresh, expConfig.SAMPLE_RATE);
+            
             DetectionResult detResult = ThresholdDetectFD(savedFFTs.col(0), sess.dataTimes, 
                                                           expRuntime.energyDetThresh, expConfig.SAMPLE_RATE);
 
@@ -178,20 +189,22 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
             //auto beforeDOA = std::chrono::steady_clock::now();
             Eigen::VectorXf DOAs = TDOA_To_DOA_Optimized(P, U, expRuntime.speedOfSound, tdoaVector, rankOfH);
+            Eigen::VectorXf AzEl = DOA_to_ElAz(DOAs);
             //auto afterDOA = std::chrono::steady_clock::now();
             //std::chrono::duration<double> durationDOA = afterDOA - beforeDOA;
             //std::cout << "DOA time: " << durationDOA.count() << std::endl;
 
             //Eigen::VectorXf DOAs = TDOA_To_DOA_VerticalArray(tdoaVector, 1500.0, chanSpacing);
-            //std::cout << "DOAs: " << DOAs.transpose() << std::endl;
+            std::cout << "AzEl: " << AzEl.transpose() << std::endl;
 
             // Write to buffers
             Eigen::VectorXf combined(1 + DOAs.size() + tdoaVector.size() + XCorrAmps.size()); // + 1 for amplitude
             combined << detResult.peakAmplitude, DOAs, tdoaVector, XCorrAmps;
-            sess.peakTimesBuffer.push_back(detResult.peakTimes);
+            sess.peakTimesBuffer.push_back(threshResult.peakTimes);
             sess.Buffer.push_back(combined);
 
             // Normalize the input data
+            /*
             if (expRuntime.onnxModel){
                 std::vector<float> input_tensor_values = GetExampleClick();
                 // Run inference
@@ -205,6 +218,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
                 }
                 std::cout << std::endl;
             }
+            */
         }
     }
     catch (const GCC_Value_Error &e)

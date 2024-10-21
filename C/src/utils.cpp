@@ -13,6 +13,24 @@ void PrintMode()
     std::cout << "Running Release Mode" << std::endl;
 #endif
 }
+std::string TimePointToString(const TimePoint& timePoint) {
+    // Convert time_point to time_t to get calendar time
+    std::time_t timeT = std::chrono::system_clock::to_time_t(timePoint);
+    std::tm* tm = std::gmtime(&timeT); // Convert to UTC (or use std::localtime for local time)
+
+    // Format the calendar time (year, month, day, hour, minute, second)
+    std::ostringstream oss;
+    oss << std::put_time(tm, "%Y-%m-%d %H:%M:%S");
+
+    // Extract the microseconds from the time_point
+    auto duration = timePoint.time_since_epoch();
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration) % 1000000;
+
+    // Add the microseconds to the formatted time string
+    oss << "." << std::setw(6) << std::setfill('0') << microseconds.count(); // Zero-pad to 6 digits
+
+    return oss.str();
+}
 
 void ParseJSONConfig(SocketManager& sess, ExperimentRuntime& expRuntime, char* argv[]){
 
@@ -34,6 +52,7 @@ void ParseJSONConfig(SocketManager& sess, ExperimentRuntime& expRuntime, char* a
     sess.UDP_PORT = jsonConfig.at("Port").get<int>();
     expRuntime.speedOfSound = jsonConfig.at("SpeedOfSound").get<float>();
     expRuntime.energyDetThresh = jsonConfig.at("EnergyDetectionThreshold").get<float>();
+    expRuntime.ampDetThresh = jsonConfig.at("AmplitudeDetectionThreshold").get<float>();
     expRuntime.programRuntime = std::chrono::seconds(std::stoi(argv[2]));
     expRuntime.filterWeights = jsonConfig.at("FilterWeights").get<std::string>();
     expRuntime.receiverPositions = jsonConfig.at("ReceiverPositions").get<std::string>();
@@ -72,27 +91,10 @@ void PrintTimes(const std::span<TimePoint> timestamps)
     }
 }
 
-void InitiateOutputFile(std::string &outputFile, std::tm &timeStruct, int64_t microSec, std::string &feature, int NUM_CHAN)
+void InitiateOutputFile(std::string &outputFile, TimePoint& currentTime, const int NUM_CHAN)
 {
-    /**
-     * @brief Initializes the output file for writing experiment results.
-     *
-     * This function generates the output file name based on the provided time structure, microsecond timestamp,
-     * and feature string. It then opens the file in write mode, clears its contents if it exists, and writes
-     * the header for the experiment data. If the file cannot be opened, the function throws a runtime error.
-     *
-     * @param outputFile Reference to a string where the generated output file name will be stored.
-     * @param timeStruct A structure containing the time information used to generate the file name.
-     * @param microSec The microsecond part of the timestamp used in the file name.
-     * @param feature A string representing the feature to include in the file name.
-     * @param NUM_CHAN The number of channels, used to generate the header columns for TDOA and Xcorr.
-     * 
-     * @throws std::runtime_error if the file cannot be opened for writing.
-     */
-
-    outputFile = "deployment_files/" + std::to_string(timeStruct.tm_year + 1900) + '-' + std::to_string(timeStruct.tm_mon + 1) + '-' +
-                 std::to_string(timeStruct.tm_mday) + '-' + std::to_string(timeStruct.tm_hour) + '-' + std::to_string(timeStruct.tm_min) + '-' +
-                 std::to_string(timeStruct.tm_sec) + '-' + std::to_string(microSec) + '_' + feature;
+    
+    outputFile = "deployment_files/" + TimePointToString(currentTime); 
 
     std::stringstream msg; // compose message to dispatch
     msg << "created and writting to file: " << outputFile << std::endl;
@@ -102,7 +104,7 @@ void InitiateOutputFile(std::string &outputFile, std::tm &timeStruct, int64_t mi
     std::ofstream file(outputFile, std::ofstream::out | std::ofstream::trunc);
     if (file.is_open())
     {
-        file << "usec since Unix Start" << std::setw(20) << "Energy     " << "El.      " << "Az.     ";
+        file << "usec since Unix Start" << std::setw(20) << "Energy     " << "DOA_x    " << "DOA_y   " << "DOA_z   ";
 
         for (int sig = 1; sig < NUM_CHAN; ++sig)
         {

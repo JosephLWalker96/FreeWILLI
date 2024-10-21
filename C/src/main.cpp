@@ -46,9 +46,12 @@ int main(int argc, char *argv[])
         ParseJSONConfig(socketManager, expRuntime, argv);
         
         // Initialize ONNX model if model path provided
+        /*
         if (!expRuntime.onnxModelPath.empty()) {
+            std::cout << "loading model" << std::endl;
             expRuntime.onnxModel = std::make_unique<ONNXModel>(expRuntime.onnxModelPath, expRuntime.onnxModelScaling);
         }
+        */
         
         socketManager.RestartListener(); // Reset the listener state
         

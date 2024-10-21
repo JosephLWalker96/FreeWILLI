@@ -25,7 +25,7 @@ void FrequencyDomainFIRFiltering(
     Eigen::MatrixXcf &savedFFTs);       // Output of FFT transformed time-domain data
 
 void ConvertAndAppend(std::vector<float> &dataSegment, std::span<uint8_t> dataBytes, const int &DATA_SIZE, const int &HEAD_SIZE);
-TimePoint GenerateTimestamp(std::vector<uint8_t>& dataBytes, const int NUM_CHAN, std::string& detectionOutputFile);
+TimePoint GenerateTimestamp(std::vector<uint8_t>& dataBytes, const int NUM_CHAN);
 bool CheckForDataErrors(Session& sess, std::vector<uint8_t>& dataBytes, const int MICRO_INCR, 
                         bool &previousTimeSet, TimePoint &previousTime, const int PACKET_SIZE);
 
