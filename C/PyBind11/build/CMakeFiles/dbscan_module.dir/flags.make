@@ -6,5 +6,5 @@ CXX_DEFINES = -Ddbscan_module_EXPORTS
 
 CXX_INCLUDES = -I/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan -I/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/vendor -I/usr/include/eigen3 -I/home/harp/.local/lib/python3.10/site-packages/numpy/core/include -isystem /home/harp/anaconda3/envs/pybind11_py310/include/python3.10
 
-CXX_FLAGS = -std=gnu++20 -fPIC -fvisibility=hidden -flto -fno-fat-lto-objects
+CXX_FLAGS = -std=gnu++20 -fPIC -fvisibility=hidden -O3 -Wall -flto -fno-fat-lto-objects
 

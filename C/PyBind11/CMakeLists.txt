@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Find Python3 and PyBind11
 find_package(Python3 COMPONENTS Interpreter Development NumPy REQUIRED)
 find_package(pybind11 REQUIRED)
+target_link_libraries(dbscan_module PRIVATE pybind11::module)
 
 # Include directories for Python and PyBind11
 include_directories(${Python3_INCLUDE_DIRS})
@@ -51,4 +52,4 @@ target_include_directories(dbscan_module PRIVATE ${Python3_NumPy_INCLUDE_DIRS})
 
 # Set additional compile options if necessary (optional)
 # For example, enabling optimization or warnings:
-# target_compile_options(dbscan_module PRIVATE -O3 -Wall)
+target_compile_options(dbscan_module PRIVATE -O3 -Wall)

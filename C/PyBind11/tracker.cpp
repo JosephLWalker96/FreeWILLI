@@ -73,6 +73,7 @@ Tracker::Tracker(double eps, int min_samples, int missed_update_threshold)
 KalmanFilter Tracker::initialize_kalman_filter(const Eigen::Vector3d &initial_state)
 {
     // State transition matrix (6x6): Constant velocity model in 3D
+    /*
     Eigen::MatrixXd transition_matrix(6, 6);
     transition_matrix << 1, 0, 0, 1, 0, 0,  // X position update
                          0, 1, 0, 0, 1, 0,  // Y position update
@@ -107,6 +108,33 @@ KalmanFilter Tracker::initialize_kalman_filter(const Eigen::Vector3d &initial_st
     std::cout << "after Kalman" << std::endl;
     //kalman_filters.push_back(new_kf);
     //return fil;
+    */
+
+       // Kalman filter initialization as per your implementation
+    Eigen::MatrixXd transition_matrix(4, 4);
+    transition_matrix << 1, 0, 1, 0,
+                         0, 1, 0, 1,
+                         0, 0, 1, 0,
+                         0, 0, 0, 1;
+
+    Eigen::MatrixXd observation_matrix(2, 4);
+    observation_matrix << 1, 0, 0, 0,
+                          0, 1, 0, 0;
+
+    Eigen::VectorXd initial_state_mean(4);
+    initial_state_mean << initial_state(0), initial_state(1), 0.0, 0.0;
+
+    Eigen::MatrixXd initial_state_covariance(4, 4);
+    initial_state_covariance.setIdentity();
+    initial_state_covariance *= 1000.0;
+
+    Eigen::MatrixXd process_covariance(4, 4);
+    process_covariance.setIdentity();
+    process_covariance *= 0.01;
+
+    Eigen::MatrixXd observation_covariance(2, 2);
+    observation_covariance.setIdentity();
+    observation_covariance *= 10.0;
     return KalmanFilter(transition_matrix, observation_matrix, initial_state_mean, initial_state_covariance, process_covariance, observation_covariance);
 }
 
@@ -261,11 +289,12 @@ void Tracker::initialize_filters_for_clusters(const std::vector<int> &unassigned
     //try {
     for (int c : unassigned_clusters)
     {
-        KalmanFilter new_kf = initialize_kalman_filter(cluster_centers[0]);
-        initialize_kalman_filter(cluster_centers[0]);
+        KalmanFilter new_kf = initialize_kalman_filter(cluster_centers[c]);
+        //initialize_kalman_filter(cluster_centers[c]);
         std::cout << " size of kal filters: " << kalman_filters.size()<< std::endl;
-        KalmanFilter fil2 = new_kf;
-        std::cout << " size of fil2: " << sizeof(fil2) << std::endl;
+        //KalmanFilter fil2 = new_kf;
+        kalman_filters.push_back(new_kf);
+        //std::cout << " size of fil2: " << sizeof(fil2) << std::endl;
 
         cluster_assignments.push_back(next_label++);
         missed_updates.push_back(0);
