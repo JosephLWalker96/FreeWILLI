@@ -2,6 +2,7 @@
 #define KALMAN_FILTER_HPP
 
 #include <eigen3/Eigen/Dense>
+
 class KalmanFilter
 {
 public:
