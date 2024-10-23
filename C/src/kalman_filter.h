@@ -6,12 +6,7 @@
 class KalmanFilter
 {
 public:
-    KalmanFilter(const Eigen::MatrixXd &transition_matrices,
-                 const Eigen::MatrixXd &observation_matrices,
-                 const Eigen::VectorXd &initial_state_mean,
-                 const Eigen::MatrixXd &initial_state_covariance,
-                 const Eigen::MatrixXd &transition_covariance,
-                 const Eigen::MatrixXd &observation_covariance);
+    KalmanFilter(const Eigen::Vector3d &initial_state);
 
     void predict();
     void update(const Eigen::VectorXd &z);

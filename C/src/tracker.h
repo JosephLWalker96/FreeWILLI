@@ -7,7 +7,7 @@
 #include <map>
 #include <chrono>
 #include <fstream>
-#include "kalman_filter.hpp"
+#include "kalman_filter.h"
 #include "/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.hpp"
 
 using namespace std::chrono_literals;
@@ -40,7 +40,7 @@ class Tracker
 public:
     Tracker(double eps = 3, int min_samples = 15, int missed_update_threshold = 4);
 
-    KalmanFilter initialize_kalman_filter(const Eigen::Vector3d &initial_state);
+    // KalmanFilter initialize_kalman_filter(const Eigen::Vector3d &initial_state);
 
     std::vector<Eigen::Vector3d> run_dbscan(const std::vector<Eigen::VectorXf> &data);
 

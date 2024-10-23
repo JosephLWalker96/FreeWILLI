@@ -5,8 +5,8 @@
 #include <vector>
 #include <span>
 #include <eigen3/Eigen/Dense>
-#include "kalman_filter.hpp"
-#include "tracker.hpp"
+#include "kalman_filter.h"
+#include "tracker.h"
 // Assuming the definition of point2 is as follows:
 /*
 struct point2
@@ -75,7 +75,7 @@ PYBIND11_MODULE(dbscan_module, m)
     m.def("label", &label, py::arg("clusters"), py::arg("n"));
 
     py::class_<KalmanFilter>(m, "KalmanFilter")
-        .def(py::init<const Eigen::MatrixXd &, const Eigen::MatrixXd &, const Eigen::VectorXd &, const Eigen::MatrixXd &, const Eigen::MatrixXd &, const Eigen::MatrixXd &>())
+        .def(pybind11::init<const Eigen::Vector3d &>())
         .def("predict", &KalmanFilter::predict)
         .def("update", &KalmanFilter::update)
         .def("filter_update", &KalmanFilter::filter_update)

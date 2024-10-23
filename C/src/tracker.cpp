@@ -1,5 +1,5 @@
-#include "tracker.hpp"
-#include "kalman_filter.hpp"
+#include "tracker.h"
+#include "kalman_filter.h"
 #include <iostream>
 
 void PrintInfo(const std::vector<Eigen::Vector3d> &cluster_centers,
@@ -81,44 +81,7 @@ std::vector<point3> Eigen_to_point_vector(const std::vector<Eigen::VectorXf> &da
 Tracker::Tracker(double eps, int min_samples, int missed_update_threshold)
     : eps(eps), min_samples(min_samples), missed_update_threshold(missed_update_threshold), global_counter(0), next_label(0) {}
 
-KalmanFilter Tracker::initialize_kalman_filter(const Eigen::Vector3d &initial_state)
-{
-    // State transition matrix (6x6): Constant velocity model in 3D
-
-    Eigen::MatrixXd transition_matrix(6, 6);
-    transition_matrix << 1, 0, 0, 1, 0, 0, // X position update
-        0, 1, 0, 0, 1, 0,                  // Y position update
-        0, 0, 1, 0, 0, 1,                  // Z position update
-        0, 0, 0, 1, 0, 0,                  // X velocity remains the same
-        0, 0, 0, 0, 1, 0,                  // Y velocity remains the same
-        0, 0, 0, 0, 0, 1;                  // Z velocity remains the same
-
-    // Observation matrix (3x6): We can only observe position, not velocity
-    Eigen::MatrixXd observation_matrix(3, 6);
-    observation_matrix << 1, 0, 0, 0, 0, 0, // Observing X position
-        0, 1, 0, 0, 0, 0,                   // Observing Y position
-        0, 0, 1, 0, 0, 0;                   // Observing Z position
-
-    // Initial state vector (6x1): [X, Y, Z, Vx, Vy, Vz]
-    Eigen::VectorXd initial_state_mean(6);
-    initial_state_mean << initial_state(0), initial_state(1), initial_state(2), 0.0, 0.0, 0.0;
-
-    Eigen::MatrixXd initial_state_covariance(6, 6);
-    initial_state_covariance.setIdentity();
-    initial_state_covariance *= 1000.0;
-
-    Eigen::MatrixXd process_covariance(6, 6);
-    process_covariance.setIdentity();
-    process_covariance *= 0.01;
-
-    Eigen::MatrixXd observation_covariance(3, 3);
-    observation_covariance.setIdentity();
-    observation_covariance *= 10.0;
-
-    std::cout << "before Kalman" << std::endl;
-    std::cout << "after Kalman" << std::endl;
-    return KalmanFilter(transition_matrix, observation_matrix, initial_state_mean, initial_state_covariance, process_covariance, observation_covariance);
-}
+// KalmanFilter Tracker::initialize_kalman_filter(const Eigen::Vector3d &initial_state)
 
 std::vector<Eigen::Vector3d> Tracker::run_dbscan(const std::vector<Eigen::VectorXf> &data)
 {
@@ -127,7 +90,7 @@ std::vector<Eigen::Vector3d> Tracker::run_dbscan(const std::vector<Eigen::Vector
 
     std::vector<std::vector<size_t>> db_clusters = dbscan(data_points, eps, min_samples);
     std::vector<size_t> labels = label2(db_clusters, data_points.size());
-    std::cout << std::endl;
+    // std::cout << std::endl;
 
     return get_cluster_centroids(data_points, labels);
 }
@@ -190,7 +153,10 @@ Eigen::MatrixXd Tracker::calculate_distance_matrix(const std::vector<Eigen::Vect
         Eigen::MatrixXd predicted_state_means(kalman_filters.size(), 3);
         for (size_t i = 0; i < kalman_filters.size(); ++i)
         {
+            // auto &kal = kalman_filters[i];
+            // kal.predict();
             predicted_state_means.row(i) = kalman_filters[i].getXPrior().head<3>().transpose();
+            // predicted_state_means.row(i) = kal.getXPrior().head<3>().transpose();
         }
         for (size_t i = 0; i < kalman_filters.size(); ++i)
         {
@@ -266,7 +232,7 @@ void Tracker::initialize_filters_for_clusters(const std::vector<int> &unassigned
 {
     for (int c : unassigned_clusters)
     {
-        kalman_filters.emplace_back(initialize_kalman_filter(cluster_centers[c]));
+        kalman_filters.emplace_back(KalmanFilter(cluster_centers[c]));
 
         cluster_assignments.push_back(next_label++);
         missed_updates.push_back(0);
@@ -288,7 +254,7 @@ void Tracker::update_kalman_filters(const std::vector<Eigen::Vector3d> &cluster_
         }
     }
 
-    PrintInfo(cluster_centers, distance_matrix, associations, unassigned_clusters);
+    // PrintInfo(cluster_centers, distance_matrix, associations, unassigned_clusters);
     initialize_filters_for_clusters(unassigned_clusters, cluster_centers);
 
     increment_missed_counter(associated_filters);
@@ -321,6 +287,7 @@ void Tracker::update_kalman_filters_continuous(const Eigen::VectorXd &observatio
     }
 
     // If a valid match is found, update the corresponding Kalman filter
+
     if (best_match != -1)
     {
         KalmanFilter &kf = kalman_filters[best_match];
