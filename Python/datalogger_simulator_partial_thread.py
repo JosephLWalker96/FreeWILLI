@@ -9,6 +9,7 @@ import psutil
 import os
 import sys
 from utils import SetHighPriority, Sleep, Normalize, DuplicateAndShiftChannels, InterleaveData, ScaleData, ConvertToBytes, TDOASimAction
+import threading  # Import threading module
 
 SetHighPriority(15)  # Set this process to run the program at high priority (nice value = -15)
 
@@ -50,6 +51,11 @@ else:
 # List all .npy files in the specified directory
 npy_files = sorted([os.path.join(args.data_dir, f) for f in os.listdir(args.data_dir) if f.endswith('.npy')])
 
+# Shared variables for threading
+dataBytes_current = None
+dataBytes_next = None
+lock = threading.Lock()  # Lock for thread synchronization
+
 # Function to process each file
 def process_npy_file(npy_file):
     print("Loading file: ",npy_file )
@@ -78,23 +84,41 @@ def process_npy_file(npy_file):
 
     return dataBytes
 
+# Function to load the next file in a separate thread
+def load_next_file(npy_file):
+    global dataBytes_next
+    dataBytes_next = process_npy_file(npy_file)
+
 # Processing files sequentially
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #dateTime = datetime.datetime.now()
 dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
 
-for npy_file in npy_files:
+# Preload the first file
+dataBytes_current = process_npy_file(npy_files[0])
+
+# Start preloading the next file if available
+if len(npy_files) > 1:
+    next_file_index = 1
+    thread_next = threading.Thread(target=load_next_file, args=(npy_files[next_file_index],))
+    thread_next.start()
+else:
+    thread_next = None
+
+current_file_index = 0
+
+
+while True:
     firstRead = 1
     startTime = time.time()
-    dataBytes = process_npy_file(npy_file)
     flag = 0
     loopCounter = 0
-
+    print("Sending data: ")
     while True:
         if firstRead == 0:
             startTime = time.time()
 
-        atEnd = len(dataBytes) // DATA_SIZE == flag  # Check if at the end of the data
+        atEnd = len(dataBytes_current) // DATA_SIZE == flag  # Check if at the end of the data
         if args.loop and atEnd:
             flag = 0
         elif args.cos_shift and atEnd:
@@ -136,9 +160,9 @@ for npy_file in npy_files:
         if args.high_act:
             byteIndex = highAmplitudeIndex * NUM_CHAN * BYTES_PER_SAMP
             offset = 10 * NUM_CHAN * BYTES_PER_SAMP
-            dataPacket = dataBytes[(byteIndex - offset):(byteIndex - offset) + DATA_SIZE]
+            dataPacket = dataBytes_current[(byteIndex - offset):(byteIndex - offset) + DATA_SIZE]
         else:
-            dataPacket = dataBytes[flag * DATA_SIZE:(flag + 1) * DATA_SIZE]
+            dataPacket = dataBytes_current[flag * DATA_SIZE:(flag + 1) * DATA_SIZE]
 
         packet = timeHeader + dataPacket
 
@@ -171,6 +195,27 @@ for npy_file in npy_files:
         # Exit the loop if the end is reached and not looping
         if atEnd and not args.loop and not args.cos_shift:
             break
+    
+    # Wait for the next file to be loaded
+    if thread_next is not None:
+        thread_next.join()
+
+    # Move to the next file
+    current_file_index += 1
+    if current_file_index >= len(npy_files):
+        break  # No more files to process
+
+    # Set dataBytes_current to dataBytes_next
+    with lock:
+        dataBytes_current = dataBytes_next
+
+    # Start preloading the next file if available
+    next_file_index = current_file_index + 1
+    if next_file_index < len(npy_files):
+        thread_next = threading.Thread(target=load_next_file, args=(npy_files[next_file_index],))
+        thread_next.start()
+    else:
+        thread_next = None
 
 sock.close()  # Close the socket
 

@@ -7,5 +7,6 @@
     "FilterWeights": "filters/highpass_taps@101_cutoff@20k_window@hamming_fs@100k.txt",
     "ReceiverPositions": "receiver_pos/SOCAL_H_72_HS_harp4chPar_recPos.txt",
     "ONNX_model_path": "",
-    "ONNX_model_normalization": "../TestOnnx/scaler_params.json"
+    "ONNX_model_normalization": "../TestOnnx/scaler_params.json",
+    "Enable_Tracking": true
 }

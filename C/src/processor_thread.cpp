@@ -102,8 +102,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
         // tracker stuff
         std::vector<Eigen::VectorXf> obsForTracker;
-        bool trackerInitialized = false;
-        Tracker tracker(0.04, 15, 4);
+        // std::string trackerOutputFile = "";
 
         std::cout << "Ready to process data..." << std::endl;
         while (!sess.errorOccurred)
@@ -112,12 +111,12 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
             sess.dataTimes.clear();
             sess.dataSegment.clear();
             sess.dataBytesSaved.clear();
+            TimePoint currentTimestamp;
 
             while (sess.dataSegment.size() < expConfig.DATA_SEGMENT_LENGTH)
             {
 
                 auto startLoop = std::chrono::system_clock::now();
-
                 while (true)
                 {
                     bool gotData = sess.popDataFromBuffer(dataBytes); // this function will send the thread to sleep until data is available
@@ -131,7 +130,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
                 sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
 
-                auto currentTimestamp = GenerateTimestamp(dataBytes, expConfig.NUM_CHAN);
+                currentTimestamp = GenerateTimestamp(dataBytes, expConfig.NUM_CHAN);
                 sess.dataTimes.push_back(currentTimestamp);
                 bool dataError = CheckForDataErrors(sess, dataBytes, expConfig.MICRO_INCR, previousTimeSet, previousTime, expConfig.PACKET_SIZE);
 
@@ -142,7 +141,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
                 if ((expRuntime.detectionOutputFile).empty()) [[unlikely]]
                 {
-                    InitiateOutputFile(expRuntime.detectionOutputFile, currentTimestamp, expConfig.NUM_CHAN);
+                    InitiateOutputFiles(expRuntime.detectionOutputFile, expRuntime.tracker, currentTimestamp, expConfig.NUM_CHAN);
                 }
             }
 
@@ -159,22 +158,12 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
             // tracker stuff
             // Calculate the time since the last cluster
-            auto timeSinceLastCluster = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - tracker._lastClusterTime);
-            // Check if it's time to perform batch processing (at the top of the minute)
-            bool timeToCluster = tracker._clusterInterval <= timeSinceLastCluster;
-            // std::cout << "time since last cluster: " << timeSinceLastCluster.count() << " timeToCluster " << timeToCluster << std::endl;
-            if (timeToCluster)
+
+            // auto timeSinceLastCluster = std::chrono::duration_cast<std::chrono::seconds>(currentTimestamp - tracker._lastClusterTime);
+
+            if (expRuntime.tracker)
             {
-                // Update the last cluster time to the current time
-                tracker._lastClusterTime = std::chrono::steady_clock::now();
-
-                // Process the last 30 seconds of collected data
-                std::cout << "CLUSTER SIZE: " << obsForTracker.size() << std::endl;
-                tracker.process_batch(obsForTracker);
-
-                trackerInitialized = true;
-                // Clear the buffer after processing
-                obsForTracker.clear();
+                TrackerClusterSchedule(expRuntime.tracker, obsForTracker);
             }
 
             DetectionResult threshResult = ThresholdDetect(channelData.col(0), sess.dataTimes, expRuntime.ampDetThresh, expConfig.SAMPLE_RATE);
@@ -231,26 +220,20 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
             // Write to buffers
             // Eigen::VectorXf combined(1 + DOAs.size() + tdoaVector.size() + XCorrAmps.size()); // + 1 for amplitude
-            observationBuffer.AppendToBuffer(detResult.peakAmplitude,DOAs[0], DOAs[1],DOAs[2], tdoaVector, XCorrAmps, threshResult.peakTimes);
+            observationBuffer.AppendToBuffer(detResult.peakAmplitude, DOAs[0], DOAs[1], DOAs[2], tdoaVector, XCorrAmps, threshResult.peakTimes);
             // tracker stuff
 
-            // Check if we are within the last 30 seconds of the minute for batch processing
-            auto vari = tracker._clusterInterval - std::chrono::seconds(60);
-            bool withinLast30Seconds = timeSinceLastCluster >= vari;
-
-            // Start collecting observations only in the last 30 seconds
-            if (withinLast30Seconds || !trackerInitialized)
+            if (expRuntime.tracker)
             {
-                // std::cout << "pushing back DOA" << std::endl;
-                obsForTracker.push_back(DOAs); // Collect data for tracking
+                ScheduleTrackerBuffer(expRuntime.tracker, obsForTracker, DOAs);
             }
 
             // Perform continuous Kalman filter updates regardless of observation collection
-            if (trackerInitialized)
+            if (expRuntime.trackerUse && expRuntime.tracker->trackerInitialized)
             {
                 auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(threshResult.peakTimes.time_since_epoch());
                 unsigned long timenum = static_cast<unsigned long>(time_since_epoch.count());
-                tracker.update_kalman_filters_continuous(DOAs, timenum);
+                expRuntime.tracker->update_kalman_filters_continuous(DOAs, timenum);
             }
 
             // Normalize the input data

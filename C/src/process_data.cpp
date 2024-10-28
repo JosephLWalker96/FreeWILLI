@@ -9,7 +9,7 @@ using TimePoint = std::chrono::system_clock::time_point;
 void FrequencyDomainFIRFiltering(
     const Eigen::MatrixXf &channelData, // Zero-padded time-domain data
     const Eigen::VectorXcf &filterFreq, // Frequency domain filter (FIR taps in freq domain)
-    fftwf_plan &forwardFFT,                // FFT plan
+    fftwf_plan &forwardFFT,             // FFT plan
     Eigen::MatrixXcf &savedFFTs)        // Output of FFT transformed time-domain data
 {
     int numChannels = channelData.cols();
@@ -19,12 +19,11 @@ void FrequencyDomainFIRFiltering(
     fftwf_execute(forwardFFT);
 
     // Apply the frequency domain filter to each channel
-    
+
     for (int i = 0; i < numChannels; i++)
     {
         savedFFTs.col(i) = savedFFTs.col(i).array() * filterFreq.array();
     }
-    
 }
 
 void ConvertAndAppend(std::vector<float> &dataSegment, std::span<uint8_t> dataBytes, const int &DATA_SIZE, const int &HEAD_SIZE)
@@ -52,16 +51,16 @@ void ConvertAndAppend(std::vector<float> &dataSegment, std::span<uint8_t> dataBy
     }
 }
 
-TimePoint GenerateTimestamp(std::vector<uint8_t>& dataBytes, const int NUM_CHAN) 
+TimePoint GenerateTimestamp(std::vector<uint8_t> &dataBytes, const int NUM_CHAN)
 {
 
     std::tm timeStruct{};                                 // Initialize a std::tm structure to hold the date and time components
     timeStruct.tm_year = (int)dataBytes[0] + 2000 - 1900; // Offset for year since 2000.. tm_year is years since 1900
-    timeStruct.tm_mon  = (int)dataBytes[1] - 1;            // Months are 0-indexed
+    timeStruct.tm_mon = (int)dataBytes[1] - 1;            // Months are 0-indexed
     timeStruct.tm_mday = (int)dataBytes[2];
     timeStruct.tm_hour = (int)dataBytes[3];
-    timeStruct.tm_min  = (int)dataBytes[4];
-    timeStruct.tm_sec  = (int)dataBytes[5];
+    timeStruct.tm_min = (int)dataBytes[4];
+    timeStruct.tm_sec = (int)dataBytes[5];
 
     // Calculate microseconds from the given bytes by shifting and combining them
     int64_t microSec = (static_cast<int64_t>(dataBytes[6]) << 24) +
@@ -80,11 +79,12 @@ TimePoint GenerateTimestamp(std::vector<uint8_t>& dataBytes, const int NUM_CHAN)
 
     auto currentTime = std::chrono::system_clock::from_time_t(timeResult); // convert std::time_t to std::chrono::system_clock::time_point
     currentTime += std::chrono::microseconds(microSec);
-    
+
     return currentTime;
 }
-bool CheckForDataErrors(Session& sess, std::vector<uint8_t>& dataBytes, const int MICRO_INCR, bool &previousTimeSet, 
-                        TimePoint &previousTime, const int PACKET_SIZE) {
+bool CheckForDataErrors(Session &sess, std::vector<uint8_t> &dataBytes, const int MICRO_INCR, bool &previousTimeSet,
+                        TimePoint &previousTime, const int PACKET_SIZE)
+{
 
     // Calculate the elapsed time in microseconds since the previous time point
     auto currentTime = sess.dataTimes.back();
@@ -95,7 +95,7 @@ bool CheckForDataErrors(Session& sess, std::vector<uint8_t>& dataBytes, const in
     {
         std::stringstream msg; // compose message to dispatch
         msg << "Error: Time not incremented by " << MICRO_INCR << " " << elapsedTime << std::endl;
-        
+
         std::cerr << msg.str() << std::endl;
         WriteDataToCerr(sess.dataTimes, sess.dataBytesSaved);
         sess.dataTimes.clear();
@@ -104,9 +104,10 @@ bool CheckForDataErrors(Session& sess, std::vector<uint8_t>& dataBytes, const in
         previousTime = std::chrono::time_point<std::chrono::system_clock>::min();
         previousTimeSet = false;
         return true;
-        //throw std::runtime_error(msg.str());
+        // throw std::runtime_error(msg.str());
     }
-    else if (dataBytes.size() != PACKET_SIZE){ // Check if the amount of bytes in packet is what is expected
+    else if (dataBytes.size() != PACKET_SIZE)
+    {                          // Check if the amount of bytes in packet is what is expected
         std::stringstream msg; // compose message to dispatch
         msg << "Error: incorrect number of bytes in packet: " << "PACKET_SIZE: " << PACKET_SIZE << " dataBytes size: " << dataBytes.size() << std::endl;
         throw std::runtime_error(msg.str());
@@ -134,7 +135,7 @@ DetectionResult ThresholdDetect(const Eigen::VectorXf &data, const std::span<Tim
 
     DetectionResult result{};
     int peakIndex = 0;
-    
+
     float peakAmplitude = data.maxCoeff(&peakIndex);
 
     if (peakAmplitude >= threshold)
@@ -174,9 +175,9 @@ DetectionResult ThresholdDetectFD(const Eigen::VectorXcf &data, const std::span<
         result.minPeakIndex = peakIndex;
         result.maxPeakIndex = peakIndex;
         result.peakAmplitude = peakAmplitude;
-        //unsigned int microseconds = peakIndex * (1e6 / SAMPLE_RATE);
-        //auto maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
-        //result.peakTimes = maxPeakTime;
+        // unsigned int microseconds = peakIndex * (1e6 / SAMPLE_RATE);
+        // auto maxPeakTime = times[0] + std::chrono::microseconds(microseconds);
+        // result.peakTimes = maxPeakTime;
     }
     return result;
 }
@@ -198,8 +199,7 @@ void ProcessSegmentInterleaved(std::span<float> data, Eigen::MatrixXf &channels,
     // channels.resize(numSamples, NUM_CHAN);
 
     // Iterate through the data container and save every NUM_CHANth element into the corresponding row of the channels matrix
-    
-    
+
     for (unsigned int ch = 0; ch < NUM_CHAN; ++ch)
     {
         for (size_t i = 0; i < numSamples; ++i)
@@ -207,5 +207,50 @@ void ProcessSegmentInterleaved(std::span<float> data, Eigen::MatrixXf &channels,
             channels(i, ch) = data[i * NUM_CHAN + ch];
         }
     }
-    
+}
+
+void TrackerClusterSchedule(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker)
+{
+
+    auto getNow = std::chrono::steady_clock::now();
+    auto timeSinceLastCluster = std::chrono::duration_cast<std::chrono::seconds>(getNow - tracker->_lastClusterTime);
+
+    // Check if it's time to perform batch processing (at the top of the minute)
+    bool timeToCluster = tracker->_clusterInterval <= timeSinceLastCluster;
+    // std::cout << "time since last cluster: " << timeSinceLastCluster.count() << " timeToCluster " << timeToCluster << std::endl;
+    if (timeToCluster)
+    {
+        // Update the last cluster time to the current time
+        tracker->_lastClusterTime = getNow;
+
+        // Process the last 30 seconds of collected data
+        std::cout << "CLUSTER SIZE: " << obsForTracker.size() << std::endl;
+        auto befCluster = std::chrono::steady_clock::now();
+        tracker->process_batch(obsForTracker);
+        auto aftCluster = std::chrono::steady_clock::now();
+        std::chrono::duration<double> clusterT = aftCluster - befCluster;
+        std::cout << "cluster time: " << clusterT.count() << std::endl;
+
+        tracker->trackerInitialized = true;
+        // Clear the buffer after processing
+        obsForTracker.clear();
+    }
+}
+
+void ScheduleTrackerBuffer(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker, const Eigen::VectorXf &DOAs)
+{
+
+    auto getNow = std::chrono::steady_clock::now();
+    auto timeSinceLastCluster = std::chrono::duration_cast<std::chrono::seconds>(getNow - tracker->_lastClusterTime);
+
+    // Check if we are within the last 30 seconds of the minute for batch processing
+    auto vari = tracker->_clusterInterval - std::chrono::seconds(30);
+    bool withinLast30Seconds = timeSinceLastCluster >= vari;
+
+    // Start collecting observations only in the last 30 seconds
+    if (withinLast30Seconds || !tracker->trackerInitialized)
+    {
+        // std::cout << "pushing back DOA" << std::endl;
+        obsForTracker.push_back(DOAs); // Collect data for tracking
+    }
 }

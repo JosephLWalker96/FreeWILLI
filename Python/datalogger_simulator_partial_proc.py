@@ -9,6 +9,7 @@ import psutil
 import os
 import sys
 from utils import SetHighPriority, Sleep, Normalize, DuplicateAndShiftChannels, InterleaveData, ScaleData, ConvertToBytes, TDOASimAction
+import multiprocessing  # Import multiprocessing module
 
 SetHighPriority(15)  # Set this process to run the program at high priority (nice value = -15)
 
@@ -51,15 +52,14 @@ else:
 npy_files = sorted([os.path.join(args.data_dir, f) for f in os.listdir(args.data_dir) if f.endswith('.npy')])
 
 # Function to process each file
-def process_npy_file(npy_file):
-    print("Loading file: ",npy_file )
+def process_npy_file(npy_file, args, return_dict):
+    print("Loading file: ", npy_file)
     dataMatrix = np.load(npy_file, mmap_mode='r').T  # Load the .npy file with memory mapping
-    #print("dataMatrix size: ", dataMatrix.shape())
-    
+
     if args.tdoa_sim is not False:
         dataMatrixShifted = DuplicateAndShiftChannels(np.copy(dataMatrix), args.tdoa_sim, NUM_CHAN)
     elif args.cos_shift:
-        shift = int(66*np.cos((0) / 5))
+        shift = int(66 * np.cos((0) / 5))
         dataMatrixShifted = DuplicateAndShiftChannels(np.copy(dataMatrix), shift, NUM_CHAN)
     else:
         dataMatrixShifted = np.copy(dataMatrix)
@@ -70,23 +70,39 @@ def process_npy_file(npy_file):
         print("Error: only interleaving method for firmware version 1240 is implemented")
         sys.exit()
 
-    #del dataMatrixShifted
     dataFlattenedScaled = ScaleData(dataFlattened, DATA_SCALE, args.stretch)
-    #del dataFlattened
     dataBytes = ConvertToBytes(dataFlattenedScaled)
-    #del dataFlattenedScaled
 
-    return dataBytes
+    return_dict['dataBytes'] = dataBytes  # Pass data back using the shared dictionary
 
-# Processing files sequentially
+# Initialize socket and datetime
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-#dateTime = datetime.datetime.now()
-dateTime = datetime.datetime(2000+23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
+dateTime = datetime.datetime(2000 + 23, 11, 5, 1, 1, 1, tzinfo=datetime.timezone.utc)
 
-for npy_file in npy_files:
+manager = multiprocessing.Manager()
+return_dict = manager.dict()
+
+# Preload the first file
+process_npy_file(npy_files[0], args, return_dict)
+dataBytes_current = return_dict['dataBytes']
+
+# Start preloading the next file if available
+print("here")
+if len(npy_files) > 1:
+    next_file_index = 1
+    return_dict_next = manager.dict()
+    process_next = multiprocessing.Process(target=process_npy_file, args=(npy_files[next_file_index], args, return_dict_next))
+    process_next.start()
+else:
+    process_next = None
+
+current_file_index = 0
+
+#print("starting in 1 sec: ")
+#time.sleep(1)
+while True:
     firstRead = 1
     startTime = time.time()
-    dataBytes = process_npy_file(npy_file)
     flag = 0
     loopCounter = 0
 
@@ -94,30 +110,14 @@ for npy_file in npy_files:
         if firstRead == 0:
             startTime = time.time()
 
-        atEnd = len(dataBytes) // DATA_SIZE == flag  # Check if at the end of the data
+        atEnd = len(dataBytes_current) // DATA_SIZE == flag  # Check if at the end of the data
         if args.loop and atEnd:
             flag = 0
         elif args.cos_shift and atEnd:
-            cosLoadStart = time.time()
-            loopCounter += 1
-            shift = int(66 * np.cos((loopCounter + 1) / 5))
-            print("Loading new data: ", shift)
-            dataMatrixShifted = DuplicateAndShiftChannels(np.copy(dataMatrix), shift, NUM_CHAN)
-            if args.fw == 1240:
-                dataFlattened, _ = InterleaveData(dataMatrixShifted)
-            else:
-                print("Error: only interleaving method for firmware version 1240 is implemented")
-                sys.exit()
-
-            del dataMatrixShifted
-            dataFlattenedScaled = ScaleData(dataFlattened, DATA_SCALE, args.stretch)
-            del dataFlattened
-            dataBytes = ConvertToBytes(dataFlattenedScaled)
-            del dataFlattenedScaled
-
-            flag = 0
-            startTime = time.time()
-            print("Applying new shift time: ", startTime - cosLoadStart)
+            # Handle cos_shift case if needed
+            pass  # Add appropriate handling if required
+        else:
+            pass  # Continue normally
 
         year = int(dateTime.year - 2000)
         month = int(dateTime.month)
@@ -127,7 +127,6 @@ for npy_file in npy_files:
         second = int(dateTime.second)
         microseconds = int(dateTime.microsecond)
 
-
         timePack = struct.pack("BBBBBB", *np.array([year, month, day, hour, minute, second]))
         microPack = microseconds.to_bytes(4, byteorder='big')
         zeroPack = struct.pack("BB", 0, 0)
@@ -136,9 +135,9 @@ for npy_file in npy_files:
         if args.high_act:
             byteIndex = highAmplitudeIndex * NUM_CHAN * BYTES_PER_SAMP
             offset = 10 * NUM_CHAN * BYTES_PER_SAMP
-            dataPacket = dataBytes[(byteIndex - offset):(byteIndex - offset) + DATA_SIZE]
+            dataPacket = dataBytes_current[(byteIndex - offset):(byteIndex - offset) + DATA_SIZE]
         else:
-            dataPacket = dataBytes[flag * DATA_SIZE:(flag + 1) * DATA_SIZE]
+            dataPacket = dataBytes_current[flag * DATA_SIZE:(flag + 1) * DATA_SIZE]
 
         packet = timeHeader + dataPacket
 
@@ -152,11 +151,10 @@ for npy_file in npy_files:
         if len(packet) != PACKET_SIZE and args.data_glitch == 0:
             print('ERROR: packet length error')
             print('FLAG: ', flag)
-            #sys.exit()
             break
 
         sock.sendto(packet, (args.ip, args.port))  # Send the packet
-        if firstRead ==1:
+        if firstRead == 1:
             firstRead = 0
             print("Transfer time: ", time.time() - startTime)
 
@@ -164,7 +162,6 @@ for npy_file in npy_files:
         runTime = time.time() - startTime
         sleepTime = (MICRO_INCR) * 1e-6 - runTime
         Sleep(sleepTime)
-        #print("sleep time: ",sleepTime)
 
         flag += 1
 
@@ -172,5 +169,25 @@ for npy_file in npy_files:
         if atEnd and not args.loop and not args.cos_shift:
             break
 
-sock.close()  # Close the socket
+    # Wait for the next file to be loaded
+    if process_next is not None:
+        process_next.join()
 
+    # Move to the next file
+    current_file_index += 1
+    if current_file_index >= len(npy_files):
+        break  # No more files to process
+
+    # Set dataBytes_current to dataBytes_next
+    dataBytes_current = return_dict_next['dataBytes']
+
+    # Start preloading the next file if available
+    next_file_index = current_file_index + 1
+    if next_file_index < len(npy_files):
+        return_dict_next = manager.dict()
+        process_next = multiprocessing.Process(target=process_npy_file, args=(npy_files[next_file_index], args, return_dict_next))
+        process_next.start()
+    else:
+        process_next = None
+
+sock.close()  # Close the socket

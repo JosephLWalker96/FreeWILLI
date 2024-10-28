@@ -7,6 +7,7 @@
 #include <map>
 #include <chrono>
 #include <fstream>
+#include <string>
 #include "kalman_filter.h"
 #include "/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.hpp"
 
@@ -38,15 +39,13 @@ struct LogEntry
 class Tracker
 {
 public:
-    Tracker(double eps = 3, int min_samples = 15, int missed_update_threshold = 4);
-
-    // KalmanFilter initialize_kalman_filter(const Eigen::Vector3d &initial_state);
+    Tracker(double eps = 3, int min_samples = 15, int missed_update_threshold = 4, const std::string &outputFile = "");
 
     std::vector<Eigen::Vector3f> run_dbscan(const std::vector<Eigen::VectorXf> &data);
 
-    std::pair<std::vector<int>, std::vector<int>> find_optimal_association(const Eigen::MatrixXd &distance_matrix, double threshold);
+    std::pair<std::vector<int>, std::vector<int>> find_optimal_association(const Eigen::MatrixXf &distance_matrix, double threshold);
 
-    Eigen::MatrixXd calculate_distance_matrix(const std::vector<Eigen::Vector3d> &cluster_centers);
+    Eigen::MatrixXf calculate_distance_matrix(const std::vector<Eigen::Vector3f> &cluster_centers);
 
     void destroy_expired_filters();
 
@@ -54,9 +53,9 @@ public:
 
     void increment_missed_counter(const std::set<int> &associated_filters);
 
-    void initialize_filters_for_clusters(const std::vector<int> &unassigned_clusters, const std::vector<Eigen::Vector3d> &cluster_centers);
+    void initialize_filters_for_clusters(const std::vector<int> &unassigned_clusters, const std::vector<Eigen::Vector3f> &cluster_centers);
 
-    void update_kalman_filters(const std::vector<Eigen::Vector3d> &cluster_centers);
+    void update_kalman_filters(const std::vector<Eigen::Vector3f> &cluster_centers);
 
     void update_kalman_filters_continuous(const Eigen::VectorXf &observation, unsigned long time);
 
@@ -65,9 +64,12 @@ public:
     void write_log_to_file(const std::string &filename, std::vector<LogEntry> &kalman_log);
 
     std::vector<LogEntry> kalman_log;
-    std::chrono::time_point<std::chrono::steady_clock> _lastClusterTime = std::chrono::steady_clock::now() - std::chrono::seconds(60);
+    std::chrono::time_point<std::chrono::steady_clock> _lastClusterTime = std::chrono::steady_clock::now() - std::chrono::seconds(30);
     std::chrono::time_point<std::chrono::steady_clock> _lastFlushTime = std::chrono::steady_clock::now();
-    std::chrono::milliseconds _clusterInterval = 120s;
+    std::chrono::milliseconds _clusterInterval = 60s;
+
+    bool trackerInitialized = false;
+    std::string outputfile;
 
 private:
     double eps;
@@ -75,7 +77,6 @@ private:
     int missed_update_threshold;
     int global_counter;
     int next_label;
-    std::string outputfile = "tracker_output.csv";
 
     std::chrono::milliseconds _flushInterval = 5s;
     size_t _bufferSizeThreshold = 1000; // Adjust as needed

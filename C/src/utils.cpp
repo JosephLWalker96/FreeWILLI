@@ -5,7 +5,7 @@
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-void PrintMode() 
+void PrintMode()
 {
 #ifdef DEBUG
     std::cout << "Running Debug Mode" << std::endl;
@@ -13,10 +13,11 @@ void PrintMode()
     std::cout << "Running Release Mode" << std::endl;
 #endif
 }
-std::string TimePointToString(const TimePoint& timePoint) {
+std::string TimePointToString(const TimePoint &timePoint)
+{
     // Convert time_point to time_t to get calendar time
     std::time_t timeT = std::chrono::system_clock::to_time_t(timePoint);
-    std::tm* tm = std::gmtime(&timeT); // Convert to UTC (or use std::localtime for local time)
+    std::tm *tm = std::gmtime(&timeT); // Convert to UTC (or use std::localtime for local time)
 
     // Format the calendar time (year, month, day, hour, minute, second)
     std::ostringstream oss;
@@ -32,11 +33,13 @@ std::string TimePointToString(const TimePoint& timePoint) {
     return oss.str();
 }
 
-void ParseJSONConfig(SocketManager& sess, ExperimentRuntime& expRuntime, char* argv[]){
+void ParseJSONConfig(SocketManager &sess, ExperimentRuntime &expRuntime, char *argv[])
+{
 
-    std::string filepath = argv[1]; 
+    std::string filepath = argv[1];
     std::ifstream file(filepath);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         throw std::runtime_error("Unable to open JSON file: " + filepath);
     }
 
@@ -44,11 +47,12 @@ void ParseJSONConfig(SocketManager& sess, ExperimentRuntime& expRuntime, char* a
     file >> jsonConfig;
 
     sess.UDP_IP = jsonConfig.at("IPAddress").get<std::string>();
-    
-    if (sess.UDP_IP == "self") {
+
+    if (sess.UDP_IP == "self")
+    {
         sess.UDP_IP = "127.0.0.1";
     }
-    
+
     sess.UDP_PORT = jsonConfig.at("Port").get<int>();
     expRuntime.speedOfSound = jsonConfig.at("SpeedOfSound").get<float>();
     expRuntime.energyDetThresh = jsonConfig.at("EnergyDetectionThreshold").get<float>();
@@ -58,7 +62,9 @@ void ParseJSONConfig(SocketManager& sess, ExperimentRuntime& expRuntime, char* a
     expRuntime.receiverPositions = jsonConfig.at("ReceiverPositions").get<std::string>();
     expRuntime.onnxModelPath = jsonConfig.at("ONNX_model_path").get<std::string>();
     expRuntime.onnxModelScaling = jsonConfig.at("ONNX_model_normalization").get<std::string>();
-} 
+
+    expRuntime.trackerUse = jsonConfig.at("Enable_Tracking").get<bool>();
+}
 
 void PrintTimes(const std::span<TimePoint> timestamps)
 {
@@ -93,8 +99,8 @@ void PrintTimes(const std::span<TimePoint> timestamps)
 /*
 void InitiateOutputFile(std::string &outputFile, TimePoint& currentTime, const int NUM_CHAN)
 {
-    
-    outputFile = "deployment_files/" + TimePointToString(currentTime); 
+
+    outputFile = "deployment_files/" + TimePointToString(currentTime);
 
     std::stringstream msg; // compose message to dispatch
     msg << "created and writting to file: " << outputFile << std::endl;
@@ -133,7 +139,7 @@ void InitiateOutputFile(std::string &outputFile, TimePoint& currentTime, const i
     }
 }
 */
-auto ReadFIRFilterFile(const std::string& fileName) -> std::vector<float>
+auto ReadFIRFilterFile(const std::string &fileName) -> std::vector<float>
 {
     /**
      * @brief Reads a file containing the FIR filter taps and returns the values as an Armadillo column vector.
@@ -209,14 +215,14 @@ bool WithProbability(double probability)
     return randomValue < probability;
 }
 
-Eigen::MatrixXd LoadHydrophonePositions(const std::string& filename)
+Eigen::MatrixXd LoadHydrophonePositions(const std::string &filename)
 {
     /**
      * @brief Loads hydrophone positions from a CSV file and calculates relative positions.
      *
      * @param filename The name (or path) of the CSV file containing the hydrophone positions.
      * @return Eigen::MatrixXd A matrix containing the relative positions between hydrophones.
-     * 
+     *
      * @throws std::ios_base::failure if the file cannot be opened.
      */
     std::ifstream inputFile(filename);
@@ -297,29 +303,31 @@ Eigen::MatrixXd LoadHydrophonePositions(const std::string& filename)
     }
     */
 
-
     return relativePositions;
 }
 
-void ShouldFlushBuffer(ObservationBuffer &observationBuffer, ExperimentRuntime &expRuntime, const std::chrono::system_clock::time_point& startLoop){
+void ShouldFlushBuffer(ObservationBuffer &observationBuffer, ExperimentRuntime &expRuntime, const std::chrono::system_clock::time_point &startLoop)
+{
     int currentBufferSize = observationBuffer.Buffer.peakTimes.size();
-    
-    if (currentBufferSize == 0){
+
+    if (currentBufferSize == 0)
+    {
         return;
     }
-    
+
     auto elapsedTime = startLoop - expRuntime.programStartTime;
     auto timeSinceLastWrite = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - observationBuffer._lastFlushTime);
-    
+
     bool timeToWrite = observationBuffer._flushInterval <= timeSinceLastWrite;
     bool timeToExit = elapsedTime >= expRuntime.programRuntime;
     bool bufferIsFull = currentBufferSize >= observationBuffer._bufferSizeThreshold;
-    
-    if (bufferIsFull || timeToExit|| timeToWrite)
+
+    if (bufferIsFull || timeToExit || timeToWrite)
     {
         std::cout << "Flushing buffers of length: " << currentBufferSize << std::endl;
         observationBuffer.write(expRuntime.detectionOutputFile);
-        if (timeToExit){
+        if (timeToExit)
+        {
             std::cout << "Terminating program from inside DataProcessor... duration reached \n";
             std::exit(0);
         }
@@ -437,27 +445,28 @@ void WriteArray(const std::span<Eigen::VectorXf> array, const std::span<TimePoin
     outfile.close();
 }
 
-auto GetExampleClick() -> std::vector<float> {
+auto GetExampleClick() -> std::vector<float>
+{
     std::vector<float> input_tensor_values = {
-    92.1948, 96.1963, 101.122, 104.773, 107.151, 108.565, 109.293, 109.541, 109.451, 109.168, 
-    108.921, 108.999, 109.475, 110.056, 110.395, 110.349, 109.977, 109.466, 109.018, 108.68, 
-    108.28, 107.571, 106.516, 105.596, 105.651, 106.584, 107.503, 108.037, 108.182, 107.898, 
-    107.157, 105.957, 104.561, 103.774, 104.144, 104.945, 105.38, 105.203, 104.43, 103.139, 
-    101.439, 99.5627, 97.9943, 97.3363, 97.4403, 97.6794, 97.7522, 97.6871, 97.5253, 97.2252, 
-    96.8271, 96.475, 96.1248, 95.6222, 94.9328, 94.1597, 93.6609, 93.7281, 94.0786, 94.1562, 
-    93.6164, 92.3879, 90.4895, 88.4291, 87.6331, 88.309, 88.8974, 88.7232, 88.0315, 87.4041, 
-    86.8748, 85.9485, 84.4688, 82.9816, 81.7751, 79.9937, 78.3869, 79.4843, 80.6382, 80.135, 
-    78.6906, 78.3676, 80.49, 83.8795, 86.785, 88.5948, 89.3266, 89.1901, 88.2955, 86.7553, 
-    84.8847, 83.6774, 84.5187, 86.541, 88.1887, 89.0825, 89.3545, 89.3343, 89.3493, 89.5171, 
-    89.751, 89.7528, 89.2266, 88.0493, 86.4237, 85.5187, 86.7017, 88.6813, 90.1444, 90.944, 
-    91.2794, 91.3301, 91.2617, 91.0691, 90.6381, 89.8405, 88.4528, 86.3709, 84.3802, 84.9515, 
-    87.2957, 89.235, 90.4691, 91.233, 91.6813, 91.9263, 92.2548, 92.8246, 93.2115, 92.905, 
-    91.6683, 89.3315, 85.8135, 81.2775, 76.8763, 77.3899, 81.2361, 84.1679, 85.5111, 85.1557, 
-    82.9623, 81.2194, 84.8278, 88.5298, 90.6789, 91.8252, 92.4424, 92.7654, 92.9029, 92.9495, 
-    92.9146, 92.6751, 92.1435, 91.2272, 90.0295, 89.3202, 89.9183, 91.1307, 91.9888, 92.2035, 
-    91.9298, 91.4551, 91.174, 91.2775, 91.702, 92.2776, 92.9613, 93.6848, 94.2458, 94.4455, 
-    94.2079, 93.6266, 92.9577, 92.4459, 92.1938, 92.2134, 92.6957, 93.7765, 95.1637, 96.4559, 
-    97.3677};
+        92.1948, 96.1963, 101.122, 104.773, 107.151, 108.565, 109.293, 109.541, 109.451, 109.168,
+        108.921, 108.999, 109.475, 110.056, 110.395, 110.349, 109.977, 109.466, 109.018, 108.68,
+        108.28, 107.571, 106.516, 105.596, 105.651, 106.584, 107.503, 108.037, 108.182, 107.898,
+        107.157, 105.957, 104.561, 103.774, 104.144, 104.945, 105.38, 105.203, 104.43, 103.139,
+        101.439, 99.5627, 97.9943, 97.3363, 97.4403, 97.6794, 97.7522, 97.6871, 97.5253, 97.2252,
+        96.8271, 96.475, 96.1248, 95.6222, 94.9328, 94.1597, 93.6609, 93.7281, 94.0786, 94.1562,
+        93.6164, 92.3879, 90.4895, 88.4291, 87.6331, 88.309, 88.8974, 88.7232, 88.0315, 87.4041,
+        86.8748, 85.9485, 84.4688, 82.9816, 81.7751, 79.9937, 78.3869, 79.4843, 80.6382, 80.135,
+        78.6906, 78.3676, 80.49, 83.8795, 86.785, 88.5948, 89.3266, 89.1901, 88.2955, 86.7553,
+        84.8847, 83.6774, 84.5187, 86.541, 88.1887, 89.0825, 89.3545, 89.3343, 89.3493, 89.5171,
+        89.751, 89.7528, 89.2266, 88.0493, 86.4237, 85.5187, 86.7017, 88.6813, 90.1444, 90.944,
+        91.2794, 91.3301, 91.2617, 91.0691, 90.6381, 89.8405, 88.4528, 86.3709, 84.3802, 84.9515,
+        87.2957, 89.235, 90.4691, 91.233, 91.6813, 91.9263, 92.2548, 92.8246, 93.2115, 92.905,
+        91.6683, 89.3315, 85.8135, 81.2775, 76.8763, 77.3899, 81.2361, 84.1679, 85.5111, 85.1557,
+        82.9623, 81.2194, 84.8278, 88.5298, 90.6789, 91.8252, 92.4424, 92.7654, 92.9029, 92.9495,
+        92.9146, 92.6751, 92.1435, 91.2272, 90.0295, 89.3202, 89.9183, 91.1307, 91.9888, 92.2035,
+        91.9298, 91.4551, 91.174, 91.2775, 91.702, 92.2776, 92.9613, 93.6848, 94.2458, 94.4455,
+        94.2079, 93.6266, 92.9577, 92.4459, 92.1938, 92.2134, 92.6957, 93.7765, 95.1637, 96.4559,
+        97.3677};
     return input_tensor_values;
 }
 
@@ -486,14 +495,8 @@ void WriteDataToCerr(std::span<TimePoint> dataTimes, std::vector<std::vector<uin
     std::cerr << msg.str();
 }
 
-
-
-
-
-
-
 // Function to generate labels with a given prefix
-std::vector<std::string> GenerateLabels(const std::string& prefix, int NUM_CHAN)
+std::vector<std::string> GenerateLabels(const std::string &prefix, int NUM_CHAN)
 {
     std::vector<std::string> labels;
     for (int sig = 1; sig < NUM_CHAN; ++sig)
@@ -511,9 +514,14 @@ int GetNumberOfChannelPairs(int NUM_CHAN)
     return NUM_CHAN * (NUM_CHAN - 1) / 2;
 }
 
-void InitiateOutputFile(std::string &outputFile, TimePoint& currentTime, const int NUM_CHAN)
+void InitiateOutputFiles(std::string &outputFile, std::unique_ptr<Tracker> &tracker, TimePoint &currentTime, const int NUM_CHAN)
 {
-    outputFile = "deployment_files/" + TimePointToString(currentTime); 
+    outputFile = "deployment_files/" + TimePointToString(currentTime);
+
+    if (tracker)
+    {
+        tracker->outputfile = outputFile + "_tracker";
+    }
 
     std::cout << "Created and writing to file: " << outputFile << std::endl;
 
@@ -528,8 +536,7 @@ void InitiateOutputFile(std::string &outputFile, TimePoint& currentTime, const i
         "Amplitude",
         "DOA_x",
         "DOA_y",
-        "DOA_z"
-    };
+        "DOA_z"};
 
     // Generate TDOA and XCorr labels
     std::vector<std::string> tdoaLabels = GenerateLabels("TDOA", NUM_CHAN);
@@ -551,7 +558,7 @@ void InitiateOutputFile(std::string &outputFile, TimePoint& currentTime, const i
     file.close();
 }
 
-void AppendBufferToFile(const std::string& outputFile, const BufferStruct& buffer)
+void AppendBufferToFile(const std::string &outputFile, const BufferStruct &buffer)
 {
     // Open the file in append mode
     std::ofstream file(outputFile, std::ofstream::out | std::ofstream::app);
@@ -583,7 +590,7 @@ void AppendBufferToFile(const std::string& outputFile, const BufferStruct& buffe
         auto time_point = buffer.peakTimes[i];
         auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
         rowData.emplace_back(std::to_string(time_since_epoch.count()));
-        //rowData.push_back(TimePointToString(buffer.peakTimes[i]));
+        // rowData.push_back(TimePointToString(buffer.peakTimes[i]));
 
         // Add amplitude
         rowData.push_back(std::to_string(buffer.amps[i]));
@@ -595,7 +602,7 @@ void AppendBufferToFile(const std::string& outputFile, const BufferStruct& buffe
 
         // Add TDOA values
         Eigen::VectorXf tdoaVec = buffer.tdoaVector[i];
-        //std::cout << "tdoaVec: " << tdoaVec.size() << " numChannelPairs: " << numChannelPairs <<std::endl;
+        // std::cout << "tdoaVec: " << tdoaVec.size() << " numChannelPairs: " << numChannelPairs <<std::endl;
         if (tdoaVec.size() != numChannelPairs)
         {
             throw std::runtime_error("Error: Inconsistent TDOA vector size at index " + std::to_string(i));

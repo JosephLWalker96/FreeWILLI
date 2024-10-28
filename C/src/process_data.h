@@ -25,11 +25,13 @@ void FrequencyDomainFIRFiltering(
     Eigen::MatrixXcf &savedFFTs);       // Output of FFT transformed time-domain data
 
 void ConvertAndAppend(std::vector<float> &dataSegment, std::span<uint8_t> dataBytes, const int &DATA_SIZE, const int &HEAD_SIZE);
-TimePoint GenerateTimestamp(std::vector<uint8_t>& dataBytes, const int NUM_CHAN);
-bool CheckForDataErrors(Session& sess, std::vector<uint8_t>& dataBytes, const int MICRO_INCR, 
+TimePoint GenerateTimestamp(std::vector<uint8_t> &dataBytes, const int NUM_CHAN);
+bool CheckForDataErrors(Session &sess, std::vector<uint8_t> &dataBytes, const int MICRO_INCR,
                         bool &previousTimeSet, TimePoint &previousTime, const int PACKET_SIZE);
 
 DetectionResult ThresholdDetect(const Eigen::VectorXf &data, const std::span<TimePoint> times, const float &threshold, const int &SAMPLE_RATE);
 DetectionResult ThresholdDetectFD(const Eigen::VectorXcf &data, const std::span<TimePoint> times, const float &threshold, const int &SAMPLE_RATE);
 
 void ProcessSegmentInterleaved(std::span<float> data, Eigen::MatrixXf &channelData, const int NUM_CHAN);
+void TrackerClusterSchedule(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker);
+void ScheduleTrackerBuffer(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker, const Eigen::VectorXf &DOAs);

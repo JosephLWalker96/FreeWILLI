@@ -1,6 +1,6 @@
 #include "kalman_filter.h"
 
-KalmanFilter::KalmanFilter(const Eigen::Vector3d &initial_state)
+KalmanFilter::KalmanFilter(const Eigen::Vector3f &initial_state)
 {
 
     // State transition matrix
@@ -23,7 +23,7 @@ KalmanFilter::KalmanFilter(const Eigen::Vector3d &initial_state)
     // Initial state vector (6x1): [X, Y, Z, Vx, Vy, Vz]
     // Eigen::VectorXd x(6);
     x.resize(6);
-    x << initial_state(0), initial_state(1), initial_state(2), 0.0, 0.0, 0.0;
+    x << initial_state(0), initial_state(1), initial_state(2), 0.0f, 0.0f, 0.0f;
 
     // x_prior = x;
 
@@ -31,19 +31,19 @@ KalmanFilter::KalmanFilter(const Eigen::Vector3d &initial_state)
     // Eigen::MatrixXd P(6, 6);
     P.resize(6, 6);
     P.setIdentity();
-    P *= 1000.0;
+    P *= 1000.0f;
 
     // Process / transition covariance
     // Eigen::MatrixXd Q(6, 6);
     Q.resize(6, 6);
     Q.setIdentity();
-    Q *= 0.01;
+    Q *= 0.01f;
 
     // Observation covariance
     // Eigen::MatrixXd R(3, 3);
     R.resize(3, 3);
     R.setIdentity();
-    R *= 10.0;
+    R *= 10.0f;
 
     // std::cout << "before Kalman" << std::endl;
     // std::cout << "after Kalman" << std::endl;
@@ -56,23 +56,23 @@ void KalmanFilter::predict()
     P_prior = F * P * F.transpose() + Q;
 }
 
-void KalmanFilter::update(const Eigen::VectorXd &z)
+void KalmanFilter::update(const Eigen::VectorXf &z)
 {
-    Eigen::VectorXd y = z - H * x_prior;
-    Eigen::MatrixXd S = H * P_prior * H.transpose() + R;
-    Eigen::MatrixXd K = P_prior * H.transpose() * S.inverse();
+    Eigen::VectorXf y = z - H * x_prior;
+    Eigen::MatrixXf S = H * P_prior * H.transpose() + R;
+    Eigen::MatrixXf K = P_prior * H.transpose() * S.inverse();
     x = x_prior + K * y;
-    P = (Eigen::MatrixXd::Identity(P_prior.rows(), P_prior.cols()) - K * H) * P_prior;
+    P = (Eigen::MatrixXf::Identity(P_prior.rows(), P_prior.cols()) - K * H) * P_prior;
 }
 
 // Add getter methods for H and x_prior
-const Eigen::MatrixXd &KalmanFilter::getH() const { return H; }
-const Eigen::VectorXd &KalmanFilter::getXPrior() const { return x_prior; }
-const Eigen::VectorXd &KalmanFilter::getX() const { return x; }
+const Eigen::MatrixXf &KalmanFilter::getH() const { return H; }
+const Eigen::VectorXf &KalmanFilter::getXPrior() const { return x_prior; }
+const Eigen::VectorXf &KalmanFilter::getX() const { return x; }
 
-std::pair<Eigen::VectorXd, Eigen::MatrixXd> KalmanFilter::filter_update(const Eigen::VectorXd *filtered_state_mean,
-                                                                        const Eigen::MatrixXd *filtered_state_covariance,
-                                                                        const Eigen::VectorXd *observation)
+std::pair<Eigen::VectorXf, Eigen::MatrixXf> KalmanFilter::filter_update(const Eigen::VectorXf *filtered_state_mean,
+                                                                        const Eigen::MatrixXf *filtered_state_covariance,
+                                                                        const Eigen::VectorXf *observation)
 {
     if (filtered_state_mean != nullptr)
     {
