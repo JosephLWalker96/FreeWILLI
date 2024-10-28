@@ -83,7 +83,7 @@ Tracker::Tracker(double eps, int min_samples, int missed_update_threshold)
 
 // KalmanFilter Tracker::initialize_kalman_filter(const Eigen::Vector3d &initial_state)
 
-std::vector<Eigen::Vector3d> Tracker::run_dbscan(const std::vector<Eigen::VectorXf> &data)
+std::vector<Eigen::Vector3f> Tracker::run_dbscan(const std::vector<Eigen::VectorXf> &data)
 {
     global_counter++;
     auto data_points = Eigen_to_point_vector(data);
@@ -186,9 +186,9 @@ void Tracker::destroy_expired_filters()
     filter_by_indices(cluster_assignments, indices_to_keep);
 }
 
-std::vector<Eigen::Vector3d> Tracker::get_cluster_centroids(const std::vector<point3> &data, const std::vector<size_t> &labels)
+std::vector<Eigen::Vector3f> Tracker::get_cluster_centroids(const std::vector<point3> &data, const std::vector<size_t> &labels)
 {
-    std::vector<Eigen::Vector3d> cluster_centers;
+    std::vector<Eigen::Vector3f> cluster_centers;
     std::set<int> unique_labels(labels.begin(), labels.end());
     for (int label : unique_labels)
     {
@@ -202,10 +202,10 @@ std::vector<Eigen::Vector3d> Tracker::get_cluster_centroids(const std::vector<po
                     cluster_points.push_back(data[i]);
                 }
             }
-            Eigen::Vector3d cluster_center = Eigen::Vector3d::Zero();
+            Eigen::Vector3f cluster_center = Eigen::Vector3f::Zero();
             for (size_t i = std::max(0, static_cast<int>(cluster_points.size()) - 3); i < cluster_points.size(); ++i)
             {
-                Eigen::Vector3d data_point(cluster_points[i].x, cluster_points[i].y, cluster_points[i].z);
+                Eigen::Vector3f data_point(cluster_points[i].x, cluster_points[i].y, cluster_points[i].z);
                 cluster_center += data_point;
             }
             cluster_center /= std::min(static_cast<int>(cluster_points.size()), 3);
@@ -262,10 +262,12 @@ void Tracker::update_kalman_filters(const std::vector<Eigen::Vector3d> &cluster_
 }
 
 // Function to update the Kalman filters based on continuous observations
-void Tracker::update_kalman_filters_continuous(const Eigen::VectorXd &observation, unsigned long time)
+void Tracker::update_kalman_filters_continuous(const Eigen::VectorXf &observationF, unsigned long time)
 {
     int best_match = -1;
     double best_dist = 0.14; // Gating threshold
+
+    Eigen::VectorXd observation = observationF.cast<double>();
 
     // Find the Kalman filter with the closest prediction to the current observation
     for (size_t idx = 0; idx < kalman_filters.size(); ++idx)
@@ -314,9 +316,18 @@ void Tracker::update_kalman_filters_continuous(const Eigen::VectorXd &observatio
 void Tracker::process_batch(const std::vector<Eigen::VectorXf> &df_current)
 {
     // std::cout << "Before run_dbsan" << std::endl;
-    std::vector<Eigen::Vector3d> cluster_centers = Tracker::run_dbscan(df_current);
+    std::vector<Eigen::Vector3f> cluster_centers = Tracker::run_dbscan(df_current);
 
-    Tracker::update_kalman_filters(cluster_centers);
+    std::vector<Eigen::Vector3d> vector3d;
+    vector3d.reserve(cluster_centers.size()); // Reserve space for efficiency
+
+    // Convert each Eigen::Vector3f to Eigen::Vector3d and store it in vector3d
+    for (const auto &vec : cluster_centers)
+    {
+        vector3d.push_back(vec.cast<double>()); // Cast each Vector3f to Vector3d
+    }
+
+    Tracker::update_kalman_filters(vector3d);
 }
 
 template <typename T>

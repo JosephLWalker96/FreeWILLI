@@ -52,4 +52,16 @@ public:
         _lastFlushTime = std::chrono::steady_clock::now();
         ClearBuffer();
     }
+    void AppendToBuffer(const float peakAmp, const float doa_x, const float doa_y, 
+                        const float doa_z, const Eigen::VectorXf& tdoaVector, 
+                        const Eigen::VectorXf& XCorrAmps, const TimePoint& peakTime){
+        Buffer.amps.push_back(peakAmp);
+        Buffer.DOA_x.push_back(doa_x);
+        Buffer.DOA_y.push_back(doa_y);
+        Buffer.DOA_z.push_back(doa_z);
+        Buffer.tdoaVector.push_back(tdoaVector);
+        Buffer.XCorrAmps.push_back(XCorrAmps);
+        Buffer.peakTimes.push_back(peakTime);
+
+    }
 };

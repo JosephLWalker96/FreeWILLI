@@ -95,6 +95,9 @@ endif ()
 # Add the source directory
 add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 
+# Add the dbscan subdirectory
+add_subdirectory(${PROJECT_SOURCE_DIR}/libs/dbscan)
+
 # Add the test and benchmark directories
 if (ENABLE_TEST)
     message(STATUS "Compiling Unit Tests")

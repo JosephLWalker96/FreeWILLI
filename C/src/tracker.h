@@ -21,7 +21,7 @@ namespace fs = std::filesystem;
 std::vector<size_t> label2(const std::vector<std::vector<size_t>> &clusters, size_t n);
 
 // Helper function to convert Eigen vectors to std::vector<point2>
-std::vector<point3> Eigen_to_point2_vector(const std::vector<Eigen::VectorXf> &data);
+std::vector<point3> Eigen_to_point_vector(const std::vector<Eigen::VectorXf> &data);
 
 struct LogEntry
 {
@@ -42,7 +42,7 @@ public:
 
     // KalmanFilter initialize_kalman_filter(const Eigen::Vector3d &initial_state);
 
-    std::vector<Eigen::Vector3d> run_dbscan(const std::vector<Eigen::VectorXf> &data);
+    std::vector<Eigen::Vector3f> run_dbscan(const std::vector<Eigen::VectorXf> &data);
 
     std::pair<std::vector<int>, std::vector<int>> find_optimal_association(const Eigen::MatrixXd &distance_matrix, double threshold);
 
@@ -50,7 +50,7 @@ public:
 
     void destroy_expired_filters();
 
-    std::vector<Eigen::Vector3d> get_cluster_centroids(const std::vector<point3> &data, const std::vector<size_t> &labels);
+    std::vector<Eigen::Vector3f> get_cluster_centroids(const std::vector<point3> &data, const std::vector<size_t> &labels);
 
     void increment_missed_counter(const std::set<int> &associated_filters);
 
@@ -58,13 +58,16 @@ public:
 
     void update_kalman_filters(const std::vector<Eigen::Vector3d> &cluster_centers);
 
-    void update_kalman_filters_continuous(const Eigen::VectorXd &observation, unsigned long time);
+    void update_kalman_filters_continuous(const Eigen::VectorXf &observation, unsigned long time);
 
     void process_batch(const std::vector<Eigen::VectorXf> &df_current);
 
     void write_log_to_file(const std::string &filename, std::vector<LogEntry> &kalman_log);
 
     std::vector<LogEntry> kalman_log;
+    std::chrono::time_point<std::chrono::steady_clock> _lastClusterTime = std::chrono::steady_clock::now() - std::chrono::seconds(60);
+    std::chrono::time_point<std::chrono::steady_clock> _lastFlushTime = std::chrono::steady_clock::now();
+    std::chrono::milliseconds _clusterInterval = 120s;
 
 private:
     double eps;
@@ -76,7 +79,6 @@ private:
 
     std::chrono::milliseconds _flushInterval = 5s;
     size_t _bufferSizeThreshold = 1000; // Adjust as needed
-    std::chrono::time_point<std::chrono::steady_clock> _lastFlushTime = std::chrono::steady_clock::now();
 
     std::vector<KalmanFilter> kalman_filters;
     std::vector<int> cluster_assignments;

@@ -5,6 +5,7 @@
 #include "pch.h"
 #include "session.h"
 #include "buffer_writter.h"
+#include "tracker.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -67,26 +68,26 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
         // Create the FFTW plan with the correct strides
         expRuntime.forwardFFT = fftwf_plan_many_dft_r2c(1,                                                   // Rank of the transform (1D)
-                                                &paddedLength,                                       // Pointer to the size of the transform
-                                                4,                                                   // Number of transforms (channels)
-                                                channelData.data(),                                  // Input data pointer
-                                                nullptr,                                             // No embedding (we're not doing multi-dimensional transforms)
-                                                1,                                                   // Stride between successive elements in input
-                                                paddedLength,                                        // Stride between successive channels in input
-                                                reinterpret_cast<fftwf_complex *>(savedFFTs.data()), // Output data pointer
-                                                nullptr,                                             // No embedding
-                                                1,                                                   // Stride between successive elements in output
-                                                fftOutputSize,                                       // Stride between successive channels in output
-                                                FFTW_ESTIMATE);                                       // Flag to measure and optimize the plan
+                                                        &paddedLength,                                       // Pointer to the size of the transform
+                                                        4,                                                   // Number of transforms (channels)
+                                                        channelData.data(),                                  // Input data pointer
+                                                        nullptr,                                             // No embedding (we're not doing multi-dimensional transforms)
+                                                        1,                                                   // Stride between successive elements in input
+                                                        paddedLength,                                        // Stride between successive channels in input
+                                                        reinterpret_cast<fftwf_complex *>(savedFFTs.data()), // Output data pointer
+                                                        nullptr,                                             // No embedding
+                                                        1,                                                   // Stride between successive elements in output
+                                                        fftOutputSize,                                       // Stride between successive channels in output
+                                                        FFTW_ESTIMATE);                                      // Flag to measure and optimize the plan
 
         // Fill the matrices with zeros
         channelData.setZero();
         savedFFTs.setZero();
 
         Eigen::MatrixXd H = LoadHydrophonePositions(expRuntime.receiverPositions);
-        
+
         // Precompute QR decomposition once
-        //auto qrDecompH = precomputedQR(H);
+        // auto qrDecompH = precomputedQR(H);
         auto svd = SVD(H);
         int rankOfH = GetRank(H);
         // Precompute P and extract U
@@ -98,6 +99,12 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
         observationBuffer._flushInterval = 30s;
         observationBuffer._bufferSizeThreshold = 1000; // Adjust as needed
         observationBuffer._lastFlushTime = std::chrono::steady_clock::now();
+
+        // tracker stuff
+        std::vector<Eigen::VectorXf> obsForTracker;
+        bool trackerInitialized = false;
+        Tracker tracker(0.04, 15, 4);
+
         std::cout << "Ready to process data..." << std::endl;
         while (!sess.errorOccurred)
         {
@@ -111,9 +118,11 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
 
                 auto startLoop = std::chrono::system_clock::now();
 
-                while (true){
-                    bool gotData = sess.popDataFromBuffer(dataBytes); // this function will send the thread to sleep until data is available 
-                    if (gotData){
+                while (true)
+                {
+                    bool gotData = sess.popDataFromBuffer(dataBytes); // this function will send the thread to sleep until data is available
+                    if (gotData)
+                    {
                         break;
                     }
                     ShouldFlushBuffer(observationBuffer, expRuntime, startLoop);
@@ -126,14 +135,15 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
                 sess.dataTimes.push_back(currentTimestamp);
                 bool dataError = CheckForDataErrors(sess, dataBytes, expConfig.MICRO_INCR, previousTimeSet, previousTime, expConfig.PACKET_SIZE);
 
-                if (!dataError) [[likely]]{
+                if (!dataError) [[likely]]
+                {
                     ConvertAndAppend(sess.dataSegment, dataBytes, expConfig.DATA_SIZE, expConfig.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
                 }
 
-                if  ((expRuntime.detectionOutputFile).empty()) [[unlikely]] {
+                if ((expRuntime.detectionOutputFile).empty()) [[unlikely]]
+                {
                     InitiateOutputFile(expRuntime.detectionOutputFile, currentTimestamp, expConfig.NUM_CHAN);
                 }
-
             }
 
             /*
@@ -145,24 +155,44 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
             expConfig.ProcessFncPtr(sess.dataSegment, channelData, expConfig.NUM_CHAN);
             auto afterPtr = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
-            //std::cout << "durationPtr: " << durationPtr.count() << std::endl;
+            // std::cout << "durationPtr: " << durationPtr.count() << std::endl;
+
+            // tracker stuff
+            // Calculate the time since the last cluster
+            auto timeSinceLastCluster = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - tracker._lastClusterTime);
+            // Check if it's time to perform batch processing (at the top of the minute)
+            bool timeToCluster = tracker._clusterInterval <= timeSinceLastCluster;
+            // std::cout << "time since last cluster: " << timeSinceLastCluster.count() << " timeToCluster " << timeToCluster << std::endl;
+            if (timeToCluster)
+            {
+                // Update the last cluster time to the current time
+                tracker._lastClusterTime = std::chrono::steady_clock::now();
+
+                // Process the last 30 seconds of collected data
+                std::cout << "CLUSTER SIZE: " << obsForTracker.size() << std::endl;
+                tracker.process_batch(obsForTracker);
+
+                trackerInitialized = true;
+                // Clear the buffer after processing
+                obsForTracker.clear();
+            }
 
             DetectionResult threshResult = ThresholdDetect(channelData.col(0), sess.dataTimes, expRuntime.ampDetThresh, expConfig.SAMPLE_RATE);
-            if (threshResult.maxPeakIndex < 0){
+            if (threshResult.maxPeakIndex < 0)
+            {
                 continue;
             }
 
-            //auto beforeFilter = std::chrono::steady_clock::now();
+            // auto beforeFilter = std::chrono::steady_clock::now();
             FrequencyDomainFIRFiltering(
                 channelData,           // Zero-padded time-domain data
                 filterFreq,            // Frequency domain filter (FIR taps in freq domain)
                 expRuntime.forwardFFT, // FFT plan
                 savedFFTs);            // Output of FFT transformed time-domain data
-            //auto afterFilter = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
+            // auto afterFilter = std::chrono::steady_clock::now();
+            // std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
 
-            
-            DetectionResult detResult = ThresholdDetectFD(savedFFTs.col(0), sess.dataTimes, 
+            DetectionResult detResult = ThresholdDetectFD(savedFFTs.col(0), sess.dataTimes,
                                                           expRuntime.energyDetThresh, expConfig.SAMPLE_RATE);
 
             if (detResult.maxPeakIndex < 0)
@@ -175,42 +205,53 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
              */
 
             sess.detectionCounter++;
-            //std::cout << "Filter runtime: " << durationFilter.count() << std::endl;
+            // std::cout << "Filter runtime: " << durationFilter.count() << std::endl;
 
-            //auto beforeGCCW = std::chrono::steady_clock::now();
+            // auto beforeGCCW = std::chrono::steady_clock::now();
             std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = GCC_PHAT(savedFFTs, expRuntime.inverseFFT, expConfig.interp, paddedLength, expConfig.NUM_CHAN, expConfig.SAMPLE_RATE);
-            //auto afterGCCW = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            //std::cout << "GCC time: " << durationGCCW.count() << std::endl;
+            // auto afterGCCW = std::chrono::steady_clock::now();
+            // std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
+            // std::cout << "GCC time: " << durationGCCW.count() << std::endl;
             Eigen::VectorXf tdoaVector = std::get<0>(tdoasAndXCorrAmps);
             Eigen::VectorXf XCorrAmps = std::get<1>(tdoasAndXCorrAmps);
-            //std::cout << "TDOAs: " << tdoaVector.transpose() << std::endl;
-            //std::cout << "GCC time: " << durationGCCW.count() << std::endl;
+            // std::cout << "TDOAs: " << tdoaVector.transpose() << std::endl;
+            // std::cout << "GCC time: " << durationGCCW.count() << std::endl;
 
-            //auto beforeDOA = std::chrono::steady_clock::now();
+            // auto beforeDOA = std::chrono::steady_clock::now();
             Eigen::VectorXf DOAs = TDOA_To_DOA_Optimized(P, U, expRuntime.speedOfSound, tdoaVector, rankOfH);
             Eigen::VectorXf AzEl = DOA_to_ElAz(DOAs);
-            //auto afterDOA = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationDOA = afterDOA - beforeDOA;
-            //std::cout << "DOA time: " << durationDOA.count() << std::endl;
+            // auto afterDOA = std::chrono::steady_clock::now();
+            // std::chrono::duration<double> durationDOA = afterDOA - beforeDOA;
+            // std::cout << "DOA time: " << durationDOA.count() << std::endl;
 
-            //Eigen::VectorXf DOAs = TDOA_To_DOA_VerticalArray(tdoaVector, 1500.0, chanSpacing);
-            std::cout << "AzEl: " << AzEl.transpose() << std::endl;
-            //std::cout << "Energy: " << detResult.peakAmplitude << std::endl;
-            //std::cout << "tdoa: " << tdoaVector.transpose() << std::endl;
+            // Eigen::VectorXf DOAs = TDOA_To_DOA_VerticalArray(tdoaVector, 1500.0, chanSpacing);
+            // std::cout << "AzEl: " << AzEl.transpose() << std::endl;
+            // std::cout << "Energy: " << detResult.peakAmplitude << std::endl;
+            // std::cout << "tdoa: " << tdoaVector.transpose() << std::endl;
 
             // Write to buffers
-            //Eigen::VectorXf combined(1 + DOAs.size() + tdoaVector.size() + XCorrAmps.size()); // + 1 for amplitude
-            
+            // Eigen::VectorXf combined(1 + DOAs.size() + tdoaVector.size() + XCorrAmps.size()); // + 1 for amplitude
+            observationBuffer.AppendToBuffer(detResult.peakAmplitude,DOAs[0], DOAs[1],DOAs[2], tdoaVector, XCorrAmps, threshResult.peakTimes);
+            // tracker stuff
 
-            observationBuffer.Buffer.amps.push_back(detResult.peakAmplitude);
-            observationBuffer.Buffer.DOA_x.push_back(DOAs[0]);
-            observationBuffer.Buffer.DOA_y.push_back(DOAs[1]);
-            observationBuffer.Buffer.DOA_z.push_back(DOAs[2]);
-            observationBuffer.Buffer.tdoaVector.push_back(tdoaVector);
-            observationBuffer.Buffer.XCorrAmps.push_back(XCorrAmps);
-            observationBuffer.Buffer.peakTimes.push_back(threshResult.peakTimes);
-            //observationBuffer.Buffer.amps.push_back(combined);
+            // Check if we are within the last 30 seconds of the minute for batch processing
+            auto vari = tracker._clusterInterval - std::chrono::seconds(60);
+            bool withinLast30Seconds = timeSinceLastCluster >= vari;
+
+            // Start collecting observations only in the last 30 seconds
+            if (withinLast30Seconds || !trackerInitialized)
+            {
+                // std::cout << "pushing back DOA" << std::endl;
+                obsForTracker.push_back(DOAs); // Collect data for tracking
+            }
+
+            // Perform continuous Kalman filter updates regardless of observation collection
+            if (trackerInitialized)
+            {
+                auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(threshResult.peakTimes.time_since_epoch());
+                unsigned long timenum = static_cast<unsigned long>(time_since_epoch.count());
+                tracker.update_kalman_filters_continuous(DOAs, timenum);
+            }
 
             // Normalize the input data
             /*

@@ -20,7 +20,7 @@ include_directories("/usr/include/eigen3")  # Add Eigen include path
 # Specify the source files for your project
 set(SOURCES
     /home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.cpp
-    ../src/dbscan_wrapper.cpp
+    dbscan_wrapper.cpp
     ../src/kalman_filter.cpp
     ../src/tracker.cpp
 )
