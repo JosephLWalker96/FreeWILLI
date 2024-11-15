@@ -157,7 +157,7 @@ EventGroupHandle_t xEventGroup = xEventGroupCreate();
                 startPacketTime = std::chrono::steady_clock::now();
             }
 
-            if (queueSize > 50) { // check if buffer has grown to an unacceptable size
+            if (queueSize > 100) { // check if buffer has grown to an unacceptable size
                 std::cerr << "Buffer overflowing" << std::endl;
                 sess.dataBufferLock.lock();
                 ClearQueue(sess.dataBuffer);
@@ -353,7 +353,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
             else {
                 dataBytes = sess.dataBuffer.front();
                 sess.dataBuffer.pop();
-                cout << "getting " << sess.dataSegment.size() << " bytes so far" << endl;
+                // cout << "getting " << sess.dataSegment.size() << " bytes so far" << endl;
                 sess.dataBufferLock.unlock();
             }
 
@@ -403,6 +403,7 @@ void DataProcessor(Session& sess, Experiment& exp) {
          */
 
         detectionCounter++;
+        std::cout<< "Detected!" << std::endl;
 
         auto beforeFFTWF = std::chrono::steady_clock::now();
         for (auto& plan : exp.fftForChannels) {
@@ -419,17 +420,17 @@ void DataProcessor(Session& sess, Experiment& exp) {
         auto afterFFTW = std::chrono::steady_clock::now();
         std::chrono::duration<double> durationFFTW = afterFFTW - beforeFFTW;
         cout << "FFT filter time: " << durationFFTW.count() << endl;
-
-        printSysMemory();
+        // printSysMemory();
 
         auto beforeGCCW = std::chrono::steady_clock::now();
         Eigen::VectorXf resultMatrix = GCC_PHAT_FFTW(savedFFTs, exp.inverseFFT, exp.interp, paddedLength, exp.NUM_CHAN, exp.SAMPLE_RATE);
         auto afterGCCW = std::chrono::steady_clock::now();
         std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
         cout << "GCC time: " << durationGCCW.count() << endl;
+        // printSysMemory();
 
         Eigen::VectorXf DOAs = DOA_EstimateVerticalArray(resultMatrix, exp.speedOfSound, exp.chanSpacing);
-        cout << "DOAs: " << DOAs.transpose() << endl;
+        // cout << "DOAs: " << DOAs.transpose() << endl;
 
         // Write to buffers
         sess.peakAmplitudeBuffer.push_back(detResult.peakAmplitude);
@@ -719,6 +720,13 @@ void DataProcessor(Session& sess, Experiment& exp) {
 #endif
 
 #ifdef PICO
+    if (sess.errorOccurred) {
+        sess.dataBufferLock.unlock();
+        sess.peakAmplitudeBuffer.clear();
+        sess.peakTimesBuffer.clear();
+        sess.resultMatrixBuffer.clear();
+        sess.DOAsBuffer.clear();
+    }
     xEventGroupSetBits(xEventGroup, PROCESSOR_DONE_BIT);
 #endif
 }
@@ -912,6 +920,8 @@ void MainTask(__unused void* pvParameters){
         cout << "Restarting Threads ..." << endl;
 
         RestartListener(sess);
+        // printSysMemory();
+        std::cout<<"Check Unlock =" << sess.dataBufferLock.isUnlock() <<std::endl;
         std::tuple<Session *, unsigned int> listenerParams = std::make_tuple(&sess, exp.PACKET_SIZE);
         std::tuple<Session *, Experiment *> processorParams = std::make_tuple(&sess, &exp);
 
@@ -950,6 +960,16 @@ void MainTask(__unused void* pvParameters){
 //                (uxBits & LISTENER_DONE_BIT )== LISTENER_DONE_BIT
             ) {
             printf("All worker tasks have completed. Main task continues.\n");
+            if (eTaskGetState(listenHandle) != eDeleted) {
+                vTaskDelete(listenHandle);
+                std::cout << "listener deleted!" << std::endl;
+            }
+
+            if (eTaskGetState(processHandle) != eDeleted) {
+                vTaskDelete(processHandle);
+                std::cout << "processor deleted!" << std::endl;
+            }
+            printf("All tasks is deleted\n");
         }
 
 

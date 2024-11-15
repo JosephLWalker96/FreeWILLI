@@ -65,7 +65,7 @@ void GenerateTimestamps(std::vector<TimePoint>& dataTimes, std::span<uint8_t> da
     // Calculate the elapsed time in microseconds since the previous time point
     auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime).count();
 
-    cout << "Time incremented by" << elapsedTime << endl;
+    // cout << "Time incremented by" << elapsedTime << endl;
 
     // Check if the previous time was set and if the elapsed time is not equal to the expected increment
     if (previousTimeSet && (elapsedTime != MICRO_INCR)){

@@ -44,6 +44,7 @@ int RestartListener(Session& sess){
      */
     
     cout << "restarting listener: \n";
+    std::cout << sess.dataBuffer.size() << std::endl;
 
     if (close(sess.datagramSocket) == -1) {
 #ifdef PICO
