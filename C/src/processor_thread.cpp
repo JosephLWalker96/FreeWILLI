@@ -4,7 +4,7 @@
 #include "utils.h"
 #include "pch.h"
 #include "session.h"
-#include "buffer_writter.h"
+#include "buffer_writer.h"
 #include "tracker.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
@@ -84,15 +84,15 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
         channelData.setZero();
         savedFFTs.setZero();
 
-        Eigen::MatrixXd H = LoadHydrophonePositions(expRuntime.receiverPositions);
+        Eigen::MatrixXf H = LoadHydrophonePositions(expRuntime.receiverPositions);
 
         // Precompute QR decomposition once
         // auto qrDecompH = precomputedQR(H);
         auto svd = SVD(H);
         int rankOfH = GetRank(H);
         // Precompute P and extract U
-        Eigen::MatrixXd P = precomputeInverse(svd);
-        Eigen::MatrixXd U = svd.matrixU();
+        Eigen::MatrixXf P = precomputeInverse(svd);
+        Eigen::MatrixXf U = svd.matrixU();
 
         // set the frequency of file writes
         ObservationBuffer observationBuffer;
@@ -150,6 +150,8 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
              *   now apply energy detector.
              */
 
+            auto beginLatency = std::chrono::steady_clock::now();
+
             auto beforePtr = std::chrono::steady_clock::now();
             expConfig.ProcessFncPtr(sess.dataSegment, channelData, expConfig.NUM_CHAN);
             auto afterPtr = std::chrono::steady_clock::now();
@@ -196,15 +198,16 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
             sess.detectionCounter++;
             // std::cout << "Filter runtime: " << durationFilter.count() << std::endl;
 
-            // auto beforeGCCW = std::chrono::steady_clock::now();
+            auto beforeGCCW = std::chrono::steady_clock::now();
             std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = GCC_PHAT(savedFFTs, expRuntime.inverseFFT, expConfig.interp, paddedLength, expConfig.NUM_CHAN, expConfig.SAMPLE_RATE);
-            // auto afterGCCW = std::chrono::steady_clock::now();
-            // std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
-            // std::cout << "GCC time: " << durationGCCW.count() << std::endl;
+            auto afterGCCW = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
+            std::cout << "GCC time: " << durationGCCW.count() << std::endl;
+
             Eigen::VectorXf tdoaVector = std::get<0>(tdoasAndXCorrAmps);
             Eigen::VectorXf XCorrAmps = std::get<1>(tdoasAndXCorrAmps);
             // std::cout << "TDOAs: " << tdoaVector.transpose() << std::endl;
-            // std::cout << "GCC time: " << durationGCCW.count() << std::endl;
+            //  std::cout << "GCC time: " << durationGCCW.count() << std::endl;
 
             // auto beforeDOA = std::chrono::steady_clock::now();
             Eigen::VectorXf DOAs = TDOA_To_DOA_Optimized(P, U, expRuntime.speedOfSound, tdoaVector, rankOfH);
@@ -214,7 +217,7 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
             // std::cout << "DOA time: " << durationDOA.count() << std::endl;
 
             // Eigen::VectorXf DOAs = TDOA_To_DOA_VerticalArray(tdoaVector, 1500.0, chanSpacing);
-            // std::cout << "AzEl: " << AzEl.transpose() << std::endl;
+            std::cout << "AzEl: " << AzEl.transpose() << std::endl;
             // std::cout << "Energy: " << detResult.peakAmplitude << std::endl;
             // std::cout << "tdoa: " << tdoaVector.transpose() << std::endl;
 
@@ -252,6 +255,9 @@ void DataProcessor(Session &sess, ExperimentConfig &expConfig, ExperimentRuntime
                 std::cout << std::endl;
             }
             */
+            auto endLatency = std::chrono::steady_clock::now();
+            std::chrono::duration<double> latencyMeasure = endLatency - beginLatency;
+            std::cout << "Latency: " << latencyMeasure.count() << std::endl;
         }
     }
     catch (const GCC_Value_Error &e)

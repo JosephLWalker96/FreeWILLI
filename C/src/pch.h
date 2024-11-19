@@ -1,6 +1,4 @@
-#ifndef PCH_H // Precompiled Headers
-#define PCH_H
-
+#pragma once
 // Standard C++ Library Headers
 #include <vector>
 #include <iostream>
@@ -36,6 +34,8 @@
 // #include <liquid/liquid.h>
 
 #include <onnxruntime_cxx_api.h>
-#include <nlohmann/json.hpp>  // Use a JSON library to load JSON data
+#include <nlohmann/json.hpp> // Use a JSON library to load JSON data
 
-#endif // PCH_H
+#ifdef __ARM_NEON
+#include <arm_neon.h> // Include NEON intrinsics
+#endif

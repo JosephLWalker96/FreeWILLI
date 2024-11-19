@@ -22,7 +22,7 @@
 # src/CMakeLists.txt
 
 # Add MainLib target
-add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp listener_thread.cpp processor_thread.cpp kalman_filter.cpp tracker.cpp)
+add_library(MainLib STATIC process_data.cpp TDOA_estimation.cpp utils.cpp listener_thread.cpp processor_thread.cpp socket_manager.cpp kalman_filter.cpp tracker.cpp onnx_model.cpp)
 
 # Include directories for MainLib
 target_include_directories(MainLib PRIVATE

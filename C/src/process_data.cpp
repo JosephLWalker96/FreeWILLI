@@ -2,8 +2,12 @@
 #include "utils.h"
 #include "process_data.h"
 #include "session.h"
+#include "tracker.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
+
+// forward declarations
+class Tracker;
 
 // Function to perform frequency domain FIR filtering
 void FrequencyDomainFIRFiltering(
@@ -194,63 +198,18 @@ void ProcessSegmentInterleaved(std::span<float> data, Eigen::MatrixXf &channels,
 
     // Calculate the number of samples per channel
     size_t numSamples = data.size() / NUM_CHAN;
-
+#ifdef __ARM_NEON
+#else
+#endif
     // Ensure the channels matrix has the correct dimensions
     // channels.resize(numSamples, NUM_CHAN);
 
     // Iterate through the data container and save every NUM_CHANth element into the corresponding row of the channels matrix
-
     for (unsigned int ch = 0; ch < NUM_CHAN; ++ch)
     {
         for (size_t i = 0; i < numSamples; ++i)
         {
             channels(i, ch) = data[i * NUM_CHAN + ch];
         }
-    }
-}
-
-void TrackerClusterSchedule(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker)
-{
-
-    auto getNow = std::chrono::steady_clock::now();
-    auto timeSinceLastCluster = std::chrono::duration_cast<std::chrono::seconds>(getNow - tracker->_lastClusterTime);
-
-    // Check if it's time to perform batch processing (at the top of the minute)
-    bool timeToCluster = tracker->_clusterInterval <= timeSinceLastCluster;
-    // std::cout << "time since last cluster: " << timeSinceLastCluster.count() << " timeToCluster " << timeToCluster << std::endl;
-    if (timeToCluster)
-    {
-        // Update the last cluster time to the current time
-        tracker->_lastClusterTime = getNow;
-
-        // Process the last 30 seconds of collected data
-        std::cout << "CLUSTER SIZE: " << obsForTracker.size() << std::endl;
-        auto befCluster = std::chrono::steady_clock::now();
-        tracker->process_batch(obsForTracker);
-        auto aftCluster = std::chrono::steady_clock::now();
-        std::chrono::duration<double> clusterT = aftCluster - befCluster;
-        std::cout << "cluster time: " << clusterT.count() << std::endl;
-
-        tracker->trackerInitialized = true;
-        // Clear the buffer after processing
-        obsForTracker.clear();
-    }
-}
-
-void ScheduleTrackerBuffer(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker, const Eigen::VectorXf &DOAs)
-{
-
-    auto getNow = std::chrono::steady_clock::now();
-    auto timeSinceLastCluster = std::chrono::duration_cast<std::chrono::seconds>(getNow - tracker->_lastClusterTime);
-
-    // Check if we are within the last 30 seconds of the minute for batch processing
-    auto vari = tracker->_clusterInterval - std::chrono::seconds(30);
-    bool withinLast30Seconds = timeSinceLastCluster >= vari;
-
-    // Start collecting observations only in the last 30 seconds
-    if (withinLast30Seconds || !tracker->trackerInitialized)
-    {
-        // std::cout << "pushing back DOA" << std::endl;
-        obsForTracker.push_back(DOAs); // Collect data for tracking
     }
 }

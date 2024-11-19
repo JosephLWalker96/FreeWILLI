@@ -7,6 +7,11 @@
 #include "session.h"
 #include "pch.h"
 
+//forward declarations
+//class SocketManager;
+//class Session;
+//class Session;
+
 // #include "udp_listener.h"
 int packetCounter = 0; // this should only be used inside the UDPListener function, as it is not protected by a mutex
 void UdpListener(Session &sess, SocketManager &socketManager, const int PACKET_SIZE)

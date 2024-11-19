@@ -384,3 +384,49 @@ void Tracker::write_log_to_file(const std::string &filename, std::vector<LogEntr
     // Clear the kalman_log vector
     kalman_log.clear();
 }
+
+void TrackerClusterSchedule(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker)
+{
+
+    auto getNow = std::chrono::steady_clock::now();
+    auto timeSinceLastCluster = std::chrono::duration_cast<std::chrono::seconds>(getNow - tracker->_lastClusterTime);
+
+    // Check if it's time to perform batch processing (at the top of the minute)
+    bool timeToCluster = tracker->_clusterInterval <= timeSinceLastCluster;
+    // std::cout << "time since last cluster: " << timeSinceLastCluster.count() << " timeToCluster " << timeToCluster << std::endl;
+    if (timeToCluster)
+    {
+        // Update the last cluster time to the current time
+        tracker->_lastClusterTime = getNow;
+
+        // Process the last 30 seconds of collected data
+        std::cout << "CLUSTER SIZE: " << obsForTracker.size() << std::endl;
+        auto befCluster = std::chrono::steady_clock::now();
+        tracker->process_batch(obsForTracker);
+        auto aftCluster = std::chrono::steady_clock::now();
+        std::chrono::duration<double> clusterT = aftCluster - befCluster;
+        std::cout << "cluster time: " << clusterT.count() << std::endl;
+
+        tracker->trackerInitialized = true;
+        // Clear the buffer after processing
+        obsForTracker.clear();
+    }
+}
+
+void ScheduleTrackerBuffer(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker, const Eigen::VectorXf &DOAs)
+{
+
+    auto getNow = std::chrono::steady_clock::now();
+    auto timeSinceLastCluster = std::chrono::duration_cast<std::chrono::seconds>(getNow - tracker->_lastClusterTime);
+
+    // Check if we are within the last 30 seconds of the minute for batch processing
+    auto vari = tracker->_clusterInterval - std::chrono::seconds(30);
+    bool withinLast30Seconds = timeSinceLastCluster >= vari;
+
+    // Start collecting observations only in the last 30 seconds
+    if (withinLast30Seconds || !tracker->trackerInitialized)
+    {
+        // std::cout << "pushing back DOA" << std::endl;
+        obsForTracker.push_back(DOAs); // Collect data for tracking
+    }
+}

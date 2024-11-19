@@ -1,6 +1,5 @@
 
 #pragma once
-
 #include "pch.h"
 
 using namespace std::chrono_literals;
@@ -15,11 +14,6 @@ public:
     std::vector<std::chrono::system_clock::time_point> dataTimes; // timestamps of UDP packet
     std::mutex dataBufferLock;
     int detectionCounter = 0;
-    //std::vector<std::chrono::system_clock::time_point> peakTimesBuffer;
-
-    Session() {
-        // Initialize other runtime-specific variables as needed
-    }
 
     // Add methods for buffer management
     int pushDataToBuffer(const std::vector<uint8_t>& data) {

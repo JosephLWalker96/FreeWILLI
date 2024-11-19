@@ -8,6 +8,8 @@ This file contains all function prototypes for process_data.cpp
 
 using TimePoint = std::chrono::system_clock::time_point;
 
+class Session;
+
 struct DetectionResult
 {
     int minPeakIndex = -1;
@@ -16,7 +18,6 @@ struct DetectionResult
     float peakAmplitude;
 };
 
-class Session;
 
 void FrequencyDomainFIRFiltering(
     const Eigen::MatrixXf &channelData, // Zero-padded time-domain data
@@ -33,5 +34,3 @@ DetectionResult ThresholdDetect(const Eigen::VectorXf &data, const std::span<Tim
 DetectionResult ThresholdDetectFD(const Eigen::VectorXcf &data, const std::span<TimePoint> times, const float &threshold, const int &SAMPLE_RATE);
 
 void ProcessSegmentInterleaved(std::span<float> data, Eigen::MatrixXf &channelData, const int NUM_CHAN);
-void TrackerClusterSchedule(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker);
-void ScheduleTrackerBuffer(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker, const Eigen::VectorXf &DOAs);

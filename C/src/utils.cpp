@@ -2,6 +2,8 @@
 #include "process_data.h"
 #include "socket_manager.h"
 #include "custom_types.h"
+#include "tracker.h"
+#include "buffer_writer.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -215,7 +217,7 @@ bool WithProbability(double probability)
     return randomValue < probability;
 }
 
-Eigen::MatrixXd LoadHydrophonePositions(const std::string &filename)
+Eigen::MatrixXf LoadHydrophonePositions(const std::string &filename)
 {
     /**
      * @brief Loads hydrophone positions from a CSV file and calculates relative positions.
@@ -236,7 +238,7 @@ Eigen::MatrixXd LoadHydrophonePositions(const std::string &filename)
 
     std::cout << "Reading hydrophone positions..." << std::endl;
 
-    std::vector<std::vector<double>> temp_positions;
+    std::vector<std::vector<float>> temp_positions;
     std::string line;
     std::string token;
 
@@ -246,7 +248,7 @@ Eigen::MatrixXd LoadHydrophonePositions(const std::string &filename)
     while (std::getline(inputFile, line))
     {
         std::stringstream ss(line);
-        std::vector<double> row_data;
+        std::vector<float> row_data;
         while (std::getline(ss, token, ','))
         {
             row_data.push_back(std::stod(token)); // Convert token to double
@@ -260,7 +262,7 @@ Eigen::MatrixXd LoadHydrophonePositions(const std::string &filename)
     }
 
     // Now create the Eigen matrix with determined dimensions
-    Eigen::MatrixXd positions(numRows, numCols);
+    Eigen::MatrixXf positions(numRows, numCols);
 
     // Populate the Eigen matrix with the data from the temp_positions vector
     for (int i = 0; i < numRows; ++i)
@@ -277,7 +279,7 @@ Eigen::MatrixXd LoadHydrophonePositions(const std::string &filename)
 
     // Initialize relativePositions with the correct size
     int numRelativePositions = numRows * (numRows - 1) / 2;
-    Eigen::MatrixXd relativePositions(numRelativePositions, numCols);
+    Eigen::MatrixXf relativePositions(numRelativePositions, numCols);
 
     int index = 0;
     for (int i = 0; i < numRows; i++)

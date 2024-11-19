@@ -36,6 +36,7 @@ link_directories(${CMAKE_LIBRARY_PATH})
 if(CMAKE_CROSSCOMPILING) # assuming we are building on Ubuntu x86 and targeting R Pi Zero 2W
     set(ENABLE_AUTO_TEST FALSE)
     include("${CMAKE_SOURCE_DIR}/CrossCompileSettings.cmake")
+    #include("${CMAKE_SOURCE_DIR}/VectorCompileSettings.cmake")
 else ()
     include("${CMAKE_SOURCE_DIR}/NativeCompileSettings.cmake")
 endif()
@@ -65,7 +66,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     endif ()
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
     if(CMAKE_CROSSCOMPILING) # assuming we are always cross-compiling for R Pi Zero 2W
-        add_compile_options(-mcpu=cortex-a53 -O3 -flto=auto)
+        # Define a variable for the vectorization report directory
+        add_compile_options(-mcpu=cortex-a53 -O3 -fopt-info-vec-optimized-missed=vector_info.txt)
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm|aarch64")
             message(STATUS "ARM processor does not support AVX vectorization.")
@@ -181,4 +183,3 @@ if(ENABLE_BENCHMARK)
     get_target_property(target_options Benchmark COMPILE_OPTIONS)
     message(STATUS "Compile options for Benchmark: ${target_options}")
 endif ()
-

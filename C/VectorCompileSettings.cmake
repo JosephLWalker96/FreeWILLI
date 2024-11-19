@@ -1,14 +1,5 @@
-message(STATUS "Cross-compiling for ARM (Raspberry Pi Zero 2W)")
+# VectorCompileSettings.cmake
 
-# Set Raspberry Pi 64-bit specific flags
-# add_compile_options(-mcpu=cortex-a53 -O3)
-# Specify flags for NEON SIMD support and armv8-a architecture 
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=cortex-a53") 
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=cortex-a53") 
-
-
-#set(ENABLE_TEST FALSE)  # Disable tests for cross-compiling
-#set(ENABLE_BENCHMARK FALSE)
 
 # Ensure CMake searches the correct paths within the sysroot
 set(CMAKE_PREFIX_PATH ${CMAKE_SYSROOT}/usr ${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu ${CMAKE_SYSROOT}/usr/include)
@@ -77,3 +68,57 @@ endif()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Set the directory for vectorization reports
+set(VECTOR_REPORT_DIR "${CMAKE_BINARY_DIR}/vector_reports")
+file(MAKE_DIRECTORY "${VECTOR_REPORT_DIR}")
+
+# Define compile options specifically for vectorization report generation
+set(VECTOR_COMPILE_OPTIONS
+    "-mcpu=cortex-a53"
+    "-O3"
+    "-flto=auto"
+)
+
+# Find all .cpp files in src/ for vectorization reporting
+file(GLOB_RECURSE VECTOR_SOURCE_FILES "${PROJECT_SOURCE_DIR}/src/*.cpp")
+
+# Create a custom target for generating vectorization reports
+add_custom_target(vector_reports ALL)
+
+foreach(src_file ${VECTOR_SOURCE_FILES})
+    get_filename_component(src_name ${src_file} NAME_WE)
+
+    # Define the output vector report file for each source file
+    set(VECTOR_REPORT_FILE "${VECTOR_REPORT_DIR}/vec_report_${src_name}.txt")
+
+    # Add a custom command to compile each file with vectorization report enabled
+    add_custom_command(
+        OUTPUT "${VECTOR_REPORT_FILE}"
+        COMMAND ${CMAKE_CXX_COMPILER} ${VECTOR_COMPILE_OPTIONS}
+            -fopt-info-vec-optimized=${VECTOR_REPORT_FILE}
+            -c ${src_file} -o "${CMAKE_BINARY_DIR}/CMakeFiles/vector_reports.dir/${src_name}.o"
+        DEPENDS ${src_file}
+        COMMENT "Generating vector report for ${src_name}"
+        VERBATIM
+    )
+
+    # Add each report to the vector_reports target to ensure they're all generated
+    add_custom_target(vector_report_${src_name} DEPENDS "${VECTOR_REPORT_FILE}")
+    add_dependencies(vector_reports vector_report_${src_name})
+endforeach()

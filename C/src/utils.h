@@ -5,10 +5,19 @@ This file contains all function prototypes for utils.cpp
 */
 #pragma once
 
-#include "custom_types.h"
-#include "session.h"
-#include "socket_manager.h"
-#include "buffer_writter.h"
+#include "pch.h"
+//#include "custom_types.h"
+//#include "session.h"
+//#include "socket_manager.h"
+//#include "buffer_writter.h"
+
+// forward declarations
+class ExperimentRuntime;
+class SocketManager;
+class ObservationBuffer;
+class ExperimentRuntime;
+class BufferStruct;
+class Tracker;
 
 // Type aliases
 using TimePoint = std::chrono::system_clock::time_point;
@@ -23,7 +32,7 @@ void ShouldFlushBuffer(ObservationBuffer &observationBuffer, ExperimentRuntime &
 void ParseJSONConfig(SocketManager &sess, ExperimentRuntime &expRuntime, char *argv[]);
 
 // Data handling functions
-auto LoadHydrophonePositions(const std::string &filename) -> Eigen::MatrixXd;
+auto LoadHydrophonePositions(const std::string &filename) -> Eigen::MatrixXf;
 void ClearQueue(std::queue<std::vector<uint8_t>> &q);
 bool WithProbability(double probability);
 auto GetExampleClick() -> std::vector<float>;

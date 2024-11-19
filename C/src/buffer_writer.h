@@ -2,9 +2,6 @@
 #pragma once
 
 #include "pch.h"
-#include "utils.h"
-
-//void WriteArray(const std::span<Eigen::VectorXf> array, const std::span<TimePoint> timestamps, const std::string &filename);
 
 using TimePoint = std::chrono::system_clock::time_point;
 

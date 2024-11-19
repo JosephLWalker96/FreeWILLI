@@ -13,15 +13,15 @@ Example usage:
 */
 
 #include "custom_types.h"
-#include "process_data.h"
-#include "TDOA_estimation.h"
+//#include "process_data.h"
+//#include "TDOA_estimation.h"
 #include "utils.h"
 #include "listener_thread.h"
 #include "socket_manager.h"
 #include "session.h"
 #include "processor_thread.h"
 #include "onnx_model.h"
-
+//#include <iostream>
 // valgrind --log-file=grind2.txt --leak-check=yes --show-possibly-lost=no ./debug/HarpListenDebug self 1045 1240 100 30
 // valgrind --tool=massif --pages-as-heap=yes ./bin/HarpListen self 1045 1240 100 10000
 //  profiling the stack (--stacks=yes) slows down performance significantly
@@ -46,12 +46,12 @@ int main(int argc, char *argv[])
         ParseJSONConfig(socketManager, expRuntime, argv);
 
         // Initialize ONNX model if model path provided
-        /*
-        if (!expRuntime.onnxModelPath.empty()) {
-            std::cout << "loading model" << std::endl;
-            expRuntime.onnxModel = std::make_unique<ONNXModel>(expRuntime.onnxModelPath, expRuntime.onnxModelScaling);
-        }
-        */
+        
+        //if (!expRuntime.onnxModelPath.empty()) {
+        //    std::cout << "loading model" << std::endl;
+        //    expRuntime.onnxModel = std::make_unique<ONNXModel>(expRuntime.onnxModelPath, expRuntime.onnxModelScaling);
+        //}
+        
 
         // Initialize tracker if specified
 
@@ -83,5 +83,7 @@ int main(int argc, char *argv[])
             std::cout << "Unknown problem occurred" << std::endl;
         }
     }
+    //std::cout << "hello " << std::endl;
+
     return 0;
 }

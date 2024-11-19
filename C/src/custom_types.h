@@ -9,11 +9,6 @@ void ProcessSegmentInterleaved(std::span<float> data, Eigen::MatrixXf &channelDa
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-class GCC_Value_Error : public std::runtime_error
-{
-public:
-    GCC_Value_Error(const std::string &message) : std::runtime_error(message) {}
-};
 
 struct ExperimentConfig
 {
@@ -76,13 +71,3 @@ public:
             fftwf_destroy_plan(inverseFFT);
     }
 };
-
-/*
-struct DetectionResult
-{
-    int minPeakIndex = -1;
-    int maxPeakIndex = -1;
-    std::chrono::system_clock::time_point peakTimes;
-    float peakAmplitude;
-};
-*/

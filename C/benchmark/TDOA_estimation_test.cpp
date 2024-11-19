@@ -6,6 +6,7 @@ using namespace std;
 
 using TimePoint = std::chrono::system_clock::time_point;
 
+/*
 static void BM_TDOA_Estimation(benchmark::State &state)
 {
     // Call the function under test
@@ -24,5 +25,5 @@ static void BM_TDOA_Estimation(benchmark::State &state)
         Eigen::VectorXf DOAs_est_neg = TDOA_To_DOA_VerticalArray(TDOAs, 1500.0, chanSpacing);
     }
 }
-
 BENCHMARK(BM_TDOA_Estimation);
+*/

@@ -88,4 +88,6 @@ private:
     void filter_by_indices(std::vector<T> &vec, const std::vector<int> &indices_to_keep);
 };
 
+void TrackerClusterSchedule(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker);
+void ScheduleTrackerBuffer(std::unique_ptr<Tracker> &tracker, std::vector<Eigen::VectorXf> &obsForTracker, const Eigen::VectorXf &DOAs);
 #endif

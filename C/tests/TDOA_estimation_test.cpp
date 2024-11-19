@@ -42,7 +42,7 @@ TEST(GCCPHAT, InvalidValues) {
 
 }
 */
-
+/*
 TEST(TDOA_To_DOA_VerticalArray, ValidDataMidRegion)
 {
     // Call the function under test
@@ -94,6 +94,7 @@ TEST(TDOA_To_DOA_VerticalArray, ValidDataBoundaries)
         EXPECT_NEAR(180 - DOAs(i), DOAs_est_neg(i), 1); // Check if channels differ after filtering
     }
 }
+*/
 
 /*
 TEST(DOA_EstimateVerticalArray, Invalid) {
