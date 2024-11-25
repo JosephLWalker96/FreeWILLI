@@ -1,1 +1,0 @@
-gcc udpserver.c -o udpserver.exe -lws2_32

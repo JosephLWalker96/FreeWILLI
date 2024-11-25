@@ -17,17 +17,13 @@
 #include <iomanip>
 #include <span>
 #include <tuple>
+#include <set>
 
 // System Headers
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-
-// Third-Party Libraries
-// #define EIGEN_VECTORIZE
-// #define EIGEN_VECTORIZE_AVX
-// #define EIGEN_VECTORIZE_AVX2
 
 #include <eigen3/Eigen/Dense>
 #include <fftw3.h>
