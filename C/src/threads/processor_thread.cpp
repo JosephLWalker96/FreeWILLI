@@ -5,6 +5,12 @@
 #include "../algorithms/gcc_phat.h"
 #include "../algorithms/fir_iir_filtering.h"
 #include "../algorithms/threshold_detectors.h"
+#include "../algorithms/IMU_processing.h"
+
+#include "../pch.h"
+#include "../session.h"
+#include "buffer_writer.h"
+#include "tracker.h"
 
 #include "../pch.h"
 #include "../session.h"
@@ -83,6 +89,16 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
                 {
                     initializeOutputFiles(runtimeConfig.detectionOutputFile, runtimeConfig.tracker, currentTimestamp, firmwareConfig.NUM_CHAN);
                 }
+
+                if (firmwareConfig.IMU_BYTE_SIZE > 0)
+                {
+                    auto beforePtr = std::chrono::steady_clock::now();
+                    setRotationMatrix(dataBytes, firmwareConfig.IMU_BYTE_SIZE, sess.rotationMatrix);
+                    auto afterPtr = std::chrono::steady_clock::now();
+                    std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
+                    std::cout << "durationPtr: " << durationPtr.count() << std::endl;
+                    std::cout << sess.rotationMatrix << std::endl;
+                }
             }
 
             /*
@@ -135,8 +151,7 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             // std::cout << "Filter runtime: " << durationFilter.count() << std::endl;
 
             auto beforeGCCW = std::chrono::steady_clock::now();
-            // std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = computeGccPhat(savedFFTs, runtimeConfig.inverseFFT, paddedLength, firmwareConfig.NUM_CHAN, firmwareConfig.SAMPLE_RATE);
-            std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = GCC_PHAT(savedFFTs, runtimeConfig.inverseFFT, 1, paddedLength, firmwareConfig.NUM_CHAN, firmwareConfig.SAMPLE_RATE);
+            std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = computeGccPhat(savedFFTs, runtimeConfig.inverseFFT, paddedLength, firmwareConfig.NUM_CHAN, firmwareConfig.SAMPLE_RATE);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
             std::cout << "GCC time: " << durationGCCW.count() << std::endl;
@@ -162,13 +177,16 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             // Write to buffers
             observationBuffer.appendToBuffer(detResult.peakAmplitude, DOAs[0], DOAs[1], DOAs[2], tdoaVector, XCorrAmps, threshResult.peakTimes);
 
-            // Update tracker buffer and filters with last observation
+            // UpdatetrackerLabel tracker buffer and filters with last observation
+            int trackerLabel = -1;
             if (runtimeConfig.tracker)
             {
                 runtimeConfig.tracker->updateTrackerBuffer(DOAs);
                 if (runtimeConfig.tracker->mIsTrackerInitialized)
                 {
-                    runtimeConfig.tracker->updateKalmanFiltersContinuous(DOAs, threshResult.peakTimes);
+                    trackerLabel = runtimeConfig.tracker->updateKalmanFiltersContinuous(DOAs, threshResult.peakTimes);
+                    saveSpectraForTraining("training_data.csv", trackerLabel, savedFFTs.col(0));
+                    std::cout << "tracker label: " << trackerLabel << std::endl;
                 }
             }
 
@@ -181,17 +199,19 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
                 std::vector<float> predictions = runtimeConfig.onnxModel->runInference(input_tensor_values);
                 auto afterClass = std::chrono::steady_clock::now();
                 std::chrono::duration<double> durationClass = afterClass - beforeClass;
+                /*
                 std::cout << "classifier runtime: " << durationClass.count() << std::endl;
                 for (int i = 0; i < predictions.size(); i++)
                 {
                     std::cout << predictions[i] << " ";
                 }
                 std::cout << std::endl;
+                */
             }
 
             auto endLatency = std::chrono::steady_clock::now();
             std::chrono::duration<double> latencyMeasure = endLatency - beginLatency;
-            std::cout << "Latency: " << latencyMeasure.count() << std::endl;
+            // std::cout << "Latency: " << latencyMeasure.count() << std::endl;
         }
     }
     catch (const GCC_Value_Error &e)

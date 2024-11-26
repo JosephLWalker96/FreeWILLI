@@ -8,7 +8,7 @@ import argparse
 import psutil
 import os
 import sys
-from utils import SetHighPriority, Sleep, Normalize, DuplicateAndShiftChannels, InterleaveData, ScaleData, ConvertToBytes, TDOASimAction
+from utils import * 
 import multiprocessing  # Import multiprocessing module
 
 SetHighPriority(15)  # Set this process to run the program at high priority (nice value = -15)
@@ -26,6 +26,7 @@ parser.add_argument('--cos_shift', action='store_true', help='Pad data variably 
 parser.add_argument('--time_glitch', default=0, type=int, help='Simulate time glitch at specific flag')
 parser.add_argument('--data_glitch', default=0, type=int, help='Simulate data glitch at specific flag')
 parser.add_argument('--tdoa_sim', nargs='?', const=0, type=int, default=False, action=TDOASimAction, help='Channel offset amount')
+parser.add_argument('--imu', action='store_true', help='Read in IMU data from file')
 
 args = parser.parse_args()  # Parsing the arguments
 
@@ -50,6 +51,14 @@ else:
 
 # List all .npy files in the specified directory
 npy_files = sorted([os.path.join(args.data_dir, f) for f in os.listdir(args.data_dir) if f.endswith('.npy')])
+
+IMU_byte_data = 0
+if (args.imu):
+    IMU_byte_data = ReadBinaryData("../../IMU_matlab/202518_stationary.imu")   
+    print("packet size before IMU: ", PACKET_SIZE)
+    PACKET_SIZE = PACKET_SIZE + len(IMU_byte_data[0])
+    print("packet size After IMU: ", PACKET_SIZE)
+print(len(IMU_byte_data))
 
 # Function to process each file
 def process_npy_file(npy_file, args, return_dict):
@@ -140,6 +149,12 @@ while True:
             dataPacket = dataBytes_current[flag * DATA_SIZE:(flag + 1) * DATA_SIZE]
 
         packet = timeHeader + dataPacket
+        
+        if (args.imu):
+            imu_data = IMU_byte_data[flag % len(IMU_byte_data)]
+            imuDataPack = struct.pack("B"*len(imu_data), *imu_data)
+            print(imuDataPack)
+            packet = packet + imuDataPack
 
         if args.time_glitch > 0:
             if args.time_glitch == flag:
@@ -164,6 +179,8 @@ while True:
         Sleep(sleepTime)
 
         flag += 1
+        if flag == 150:
+            adsfa
 
         # Exit the loop if the end is reached and not looping
         if atEnd and not args.loop and not args.cos_shift:

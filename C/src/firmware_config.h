@@ -18,16 +18,19 @@ struct FirmwareConfig
     static constexpr int SAMPLE_RATE = 1e5;       // sample rate in Hz
 
     static constexpr int DATA_SIZE = SAMPS_PER_CHANNEL * NUM_CHAN * BYTES_PER_SAMP; // packet data size (bytes)
-    static constexpr int PACKET_SIZE = DATA_SIZE + HEAD_SIZE;                       // packet size (bytes)
     static constexpr int REQUIRED_BYTES = DATA_SIZE + HEAD_SIZE;
     static constexpr int DATA_BYTES_PER_CHANNEL = SAMPS_PER_CHANNEL * BYTES_PER_SAMP; // number of data bytes per channel (REQUIRED_BYTES - 12) / 4 channels
 
     static constexpr float TIME_WINDOW = 0.01; // fraction of a second to consider when performing cross correlation
     static constexpr int NUM_PACKS_DETECT = static_cast<int>(TIME_WINDOW * 100000 / SAMPS_PER_CHANNEL);
     static constexpr int DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN;
-    
+
     // the number of samples per channel within a dataSegment
     static constexpr int CHANNEL_SIZE = DATA_SEGMENT_LENGTH / NUM_CHAN;
+
+    static constexpr int IMU_BYTE_SIZE = 32;
+
+    static constexpr int PACKET_SIZE = DATA_SIZE + HEAD_SIZE + IMU_BYTE_SIZE; // the total number of bytes in a UDP packet
 
     const std::function<void(std::span<float>, Eigen::MatrixXf &, unsigned int)> ProcessFncPtr = processSegmentInterleaved;
 };

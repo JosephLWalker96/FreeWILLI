@@ -184,7 +184,7 @@ void Tracker::updateKalmanFilters(const std::vector<Eigen::Vector3f> &clusterCen
  * @param observation Current observation vector.
  * @param timepoint Timestamp associated with the observation.
  */
-void Tracker::updateKalmanFiltersContinuous(const Eigen::VectorXf &observation, const TimePoint &timepoint)
+int Tracker::updateKalmanFiltersContinuous(const Eigen::VectorXf &observation, const TimePoint &timepoint)
 {
     int bestMatch = -1;
     float bestDist = 0.14f; // Gating threshold for filter association
@@ -236,6 +236,7 @@ void Tracker::updateKalmanFiltersContinuous(const Eigen::VectorXf &observation, 
             mLastFlushTime = std::chrono::steady_clock::now();
         }
     }
+    return bestMatch;
 }
 
 /**

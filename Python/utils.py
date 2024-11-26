@@ -215,3 +215,45 @@ def ScaleData(dataFlattened, scale, toStretch):
 def ConvertToBytes(dataFlattenedScaled):
     formatString = '>{}H'.format(len(dataFlattenedScaled))          # encode data as big-endian
     return struct.pack(formatString, *dataFlattenedScaled)
+
+
+def ReadBinaryData(filename):
+    """
+    Reads binary data from a file and stores it into a list of byte lists.
+
+    This function reads a binary file, identifies valid 32-byte records with the correct
+    headers ('I' and 'M'), and saves each record as a list of bytes in a list of lists.
+
+    Args:
+        filename (str): Path to the binary file to be read.
+
+    Returns:
+        list[list[int]]: A list of 32-byte records, each represented as a list of integers.
+    """
+    byte_records = []
+
+    try:
+        with open(filename, "rb") as file:
+            while True:
+                # Read the first byte (X)
+                X = file.read(1)
+                if not X:
+                    break  # EOF
+
+                # Check for header 'I'
+                if X == b'I':
+                    # Read the second byte (Y)
+                    Y = file.read(1)
+                    if Y == b'M':
+                        # Read the remaining 30 bytes
+                        record = [ord(X), ord(Y)] + list(file.read(30))
+
+                        # Ensure we read a full 30 bytes
+                        if len(record) == 32:
+                            byte_records.append(record)
+    except FileNotFoundError:
+        print("Error: File not found.")
+    except IOError as e:
+        print(f"Error reading file: {e}")
+
+    return byte_records

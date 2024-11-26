@@ -30,7 +30,7 @@ public:
             int missed_update_threshold = 4, const std::string &outputFile = "",
             std::chrono::seconds clusteringFrequency = 60s, std::chrono::seconds clusteringWindow = 30s);
 
-    void updateKalmanFiltersContinuous(const Eigen::VectorXf &observation, const TimePoint &timepoint);
+    int updateKalmanFiltersContinuous(const Eigen::VectorXf &observation, const TimePoint &timepoint);
 
     void scheduleCluster();
 

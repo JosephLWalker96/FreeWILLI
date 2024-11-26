@@ -48,3 +48,5 @@ std::string convertTimePointToString(const TimePoint &timePoint);
 std::vector<std::string> generateChannelComboLabels(const std::string &labelPrefix, int numChannels);
 
 auto readFirFilterFile(const std::string &filePath) -> std::vector<float>;
+
+void saveSpectraForTraining(const std::string &filename, int label, const Eigen::VectorXcf &frequencyDomainData);

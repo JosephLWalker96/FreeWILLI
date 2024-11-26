@@ -18,6 +18,7 @@
 #include <span>
 #include <tuple>
 #include <set>
+#include <optional>
 
 // System Headers
 #include <netinet/in.h>

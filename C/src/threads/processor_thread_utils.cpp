@@ -583,3 +583,51 @@ std::vector<std::string> generateChannelComboLabels(const std::string &labelPref
 
     return labels;
 }
+
+/**
+ * @brief Save frequency domain data for training.
+ *
+ * @param filename The name of the file to save the data.
+ * @param label The label to save as the first column.
+ * @param frequencyDomainData The frequency domain data (complex values).
+ */
+void saveSpectraForTraining(const std::string &filename, int label, const Eigen::VectorXcf &frequencyDomainData)
+{
+    // Compute the magnitude of the spectra
+    Eigen::VectorXf spectraToSave = frequencyDomainData.array().abs();
+
+    // Check if the file exists
+    std::ifstream fileCheck(filename);
+    bool fileExists = fileCheck.good();
+    fileCheck.close();
+
+    // Open the file in append mode if it exists, or create a new file if it doesn't
+    std::ofstream file(filename, std::ios::out | std::ios::app);
+    if (!file)
+    {
+        std::cerr << "Error: Unable to open file " << filename << " for writing." << std::endl;
+        return;
+    }
+
+    // If the file doesn't exist, write the header
+    if (!fileExists)
+    {
+        file << "label";
+        for (int i = 0; i < spectraToSave.size(); ++i)
+        {
+            file << ",spectra_" << i;
+        }
+        file << "\n";
+    }
+
+    // Write the label and spectra values
+    file << label;
+    for (int i = 0; i < spectraToSave.size(); ++i)
+    {
+        file << "," << std::fixed << std::setprecision(6) << spectraToSave[i];
+    }
+    file << "\n";
+
+    // Close the file
+    file.close();
+}
