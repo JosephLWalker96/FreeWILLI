@@ -5,7 +5,6 @@
 #include "threads/listener_thread.h"
 #include "threads/processor_thread.h"
 #include "io/socket_manager.h"
-#include "ML/onnx_model.h"
 
 // valgrind --log-file=grind2.txt --leak-check=yes --show-possibly-lost=no ./debug/HarpListenDebug self 1045 1240 100 30
 // valgrind --tool=massif --pages-as-heap=yes ./bin/HarpListen self 1045 1240 100 10000
@@ -15,9 +14,9 @@
 
 int main(int argc, char *argv[])
 {
-    printMode(); // print debug or release
+    printMode(); // print debug or release mode
 
-    // Instantiate classes for configuration and socket handling
+    // Instantiate firmware configuration varaibles and socket manager class
     FirmwareConfig firmwareConfig;
     SocketManager socketManager;
 
@@ -27,24 +26,12 @@ int main(int argc, char *argv[])
         Session sess;
         RuntimeConfig runtimeConfig;
 
-        // Initialize the session and experiment
+        // Initialize the socket and populate runtimeConfig entries
         parseJsonConfig(socketManager, runtimeConfig, argv);
 
-        // Initialize ONNX model if model path provided
-        if (!runtimeConfig.onnxModelPath.empty())
-        {
-            runtimeConfig.onnxModel = std::make_unique<ONNXModel>(runtimeConfig.onnxModelPath, runtimeConfig.onnxModelNormalizationPath);
-        }
+        initializeRuntimeObjects(runtimeConfig, firmwareConfig);
 
-        // Initialize tracker if specified
-        if (runtimeConfig.enableTracking)
-        {
-            runtimeConfig.tracker = std::make_unique<Tracker>(0.04f, 15, 4, "",
-                                                              runtimeConfig.trackerClusteringFrequency,
-                                                              runtimeConfig.trackerClusteringWindow);
-        }
-
-        socketManager.restartListener(); // Reset the listener state
+        socketManager.restartListener(); // Reset the socket
 
         runtimeConfig.programStartTime = std::chrono::system_clock::now(); // Start experiment timer
 

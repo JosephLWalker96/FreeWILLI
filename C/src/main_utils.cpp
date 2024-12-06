@@ -2,6 +2,8 @@
 #include "runtime_config.h"
 #include "firmware_config.h"
 #include "pch.h"
+#include "ML/onnx_model.h"
+#include "algorithms/IMU_processor.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -63,4 +65,30 @@ void parseJsonConfig(SocketManager &socketManager, RuntimeConfig &runtimeConfig,
     runtimeConfig.enableTracking = jsonConfig.at("Enable_Tracking").get<bool>();
     runtimeConfig.trackerClusteringFrequency = std::chrono::seconds(jsonConfig.at("Cluster_Frequency_In_Seconds").get<int>());
     runtimeConfig.trackerClusteringWindow = std::chrono::seconds(jsonConfig.at("Cluster_Window_In_Seconds").get<int>());
+
+    runtimeConfig.useImu = jsonConfig.at("Use_IMU").get<bool>();
+}
+
+void initializeRuntimeObjects(RuntimeConfig &runtimeConfig, const FirmwareConfig &firmwareConfig)
+{
+
+    // Initialize ONNX model if model path provided
+    if (!runtimeConfig.onnxModelPath.empty())
+    {
+        runtimeConfig.onnxModel = std::make_unique<ONNXModel>(runtimeConfig.onnxModelPath, runtimeConfig.onnxModelNormalizationPath);
+    }
+
+    // Initialize tracker if specified
+    if (runtimeConfig.enableTracking)
+    {
+        runtimeConfig.tracker = std::make_unique<Tracker>(0.04f, 15, 4, "",
+                                                          runtimeConfig.trackerClusteringFrequency,
+                                                          runtimeConfig.trackerClusteringWindow);
+    }
+
+    // Initialize IMU manager
+    if (runtimeConfig.useImu)
+    {
+        runtimeConfig.imuManager = std::make_unique<ImuProcessor>(firmwareConfig.IMU_BYTE_SIZE);
+    }
 }

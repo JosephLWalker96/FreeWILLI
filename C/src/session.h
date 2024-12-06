@@ -18,8 +18,6 @@ public:
     std::vector<std::chrono::system_clock::time_point> dataTimes; // timestamps of UDP packet
     int detectionCounter = 0;
 
-    Eigen::Matrix3f rotationMatrix;
-
     // Add methods for buffer management
     int pushDataToBuffer(const std::vector<uint8_t> &data)
     {

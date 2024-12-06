@@ -5,7 +5,7 @@
 #include "../algorithms/gcc_phat.h"
 #include "../algorithms/fir_iir_filtering.h"
 #include "../algorithms/threshold_detectors.h"
-#include "../algorithms/IMU_processing.h"
+#include "../algorithms/IMU_processor.h"
 
 #include "../pch.h"
 #include "../session.h"
@@ -90,14 +90,14 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
                     initializeOutputFiles(runtimeConfig.detectionOutputFile, runtimeConfig.tracker, currentTimestamp, firmwareConfig.NUM_CHAN);
                 }
 
-                if (firmwareConfig.IMU_BYTE_SIZE > 0)
+                if (runtimeConfig.imuManager)
                 {
                     auto beforePtr = std::chrono::steady_clock::now();
-                    setRotationMatrix(dataBytes, firmwareConfig.IMU_BYTE_SIZE, sess.rotationMatrix);
+                    runtimeConfig.imuManager->setRotationMatrix(dataBytes);
                     auto afterPtr = std::chrono::steady_clock::now();
                     std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
                     std::cout << "durationPtr: " << durationPtr.count() << std::endl;
-                    std::cout << sess.rotationMatrix << std::endl;
+                    std::cout << runtimeConfig.imuManager->mRotationMatrix << std::endl;
                 }
             }
 

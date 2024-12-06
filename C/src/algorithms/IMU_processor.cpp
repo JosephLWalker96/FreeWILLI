@@ -1,10 +1,44 @@
-#include "IMU_processing.h"
-#include "../pch.h"
+#include "IMU_processor.h"
 
-// Calibration constants
-const float accelerometerCalibration = 2.0f / 32768.0f;
-const float gyroscopeCalibration = 2000.0f / 32768.0f;
-const Eigen::Vector3f magnetometerCalibration(1150.0f / 32768.0f, 1150.0f / 32768.0f, 2250.0f / 32768.0f);
+ImuProcessor::ImuProcessor(int IMU_BYTE_SIZE) : mImuByteSize(IMU_BYTE_SIZE), mRotationMatrix(Eigen::Matrix3f::Identity()) {}
+
+/**
+ * @brief Updates the rotation matrix based on the latest IMU data bytes.
+ *
+ * This function reads raw IMU data from a vector of bytes, constructs a data vector,
+ * calibrates the IMU sensor readings, and computes the rotation matrix using
+ * accelerometer and magnetometer data.
+ *
+ * @param dataBytes     A vector of bytes containing the raw IMU data.
+ * @param imuByteSize   The size in bytes of each IMU data packet.
+ */
+void ImuProcessor::setRotationMatrix(const std::vector<uint8_t> &dataBytes)
+{
+    auto dataVector = getImuDataFromBytes(dataBytes, mImuByteSize);
+
+    if (!dataVector) // if no IMU data is available
+    {
+        return;
+    }
+
+    // Dereference dataVector to access the Eigen::VectorXf
+    Eigen::VectorXf &imuData = *dataVector;
+
+    // Calibrate IMU data
+    calibrateImuData(imuData);
+
+    // Extract magnetometer data from indices 11-13
+    Eigen::Vector3f magnetometerData = imuData.segment<mDataWidth>(mMagnetometerDataIndex);
+
+    // Extract gyroscope data from indices 14-16 (not used here)
+    // Eigen::Vector3f gyroscopeData = imuData.segment<mDataWidth>(mGyroscopeDataIndex);
+
+    // Extract accelerometer data from indices 17-19
+    Eigen::Vector3f accelerometerData = imuData.segment<mDataWidth>(mAccelerometerDataIndex);
+
+    // Calculate rotation matrix using accelerometer and magnetometer data
+    mRotationMatrix = calculateRotationMatrix(accelerometerData, magnetometerData);
+}
 
 /**
  * @brief Extracts and parses IMU data from a byte block.
@@ -17,7 +51,7 @@ const Eigen::Vector3f magnetometerCalibration(1150.0f / 32768.0f, 1150.0f / 3276
  * @param imuByteSize The expected size of the IMU data block in bytes.
  * @return std::optional<Eigen::VectorXf> Parsed IMU data in a 20-element vector, or std::nullopt if the header is invalid.
  */
-auto getImuDataFromBytes(const std::vector<uint8_t> &byteBlock, const int &imuByteSize) -> std::optional<Eigen::VectorXf>
+std::optional<Eigen::VectorXf> ImuProcessor::getImuDataFromBytes(const std::vector<uint8_t> &byteBlock, int imuByteSize)
 {
     Eigen::VectorXf imuData(20); // Reserve space for 20 elements
     std::vector<uint8_t> block(byteBlock.end() - imuByteSize, byteBlock.end());
@@ -65,16 +99,16 @@ auto getImuDataFromBytes(const std::vector<uint8_t> &byteBlock, const int &imuBy
  *        - Indices 14-16: Gyroscope readings (to be calibrated with a scalar).
  *        - Indices 17-19: Accelerometer readings (to be calibrated with a scalar).
  */
-void calibrateImuData(Eigen::VectorXf &imuData)
+void ImuProcessor::calibrateImuData(Eigen::VectorXf &imuData)
 {
     // Apply element-wise calibration to magnetometer data (indices 11 to 13)
-    imuData.segment<3>(11) = imuData.segment<3>(11).cwiseProduct(magnetometerCalibration);
+    imuData.segment<3>(11) = imuData.segment<3>(11).cwiseProduct(mMagnetometerCalibration);
 
     // Apply scalar calibration to gyroscope data (indices 14 to 16)
-    imuData.segment<3>(14) *= gyroscopeCalibration;
+    imuData.segment<3>(14) *= mGyroscopeCalibration;
 
     // Apply scalar calibration to accelerometer data (indices 17 to 19)
-    imuData.segment<3>(17) *= accelerometerCalibration;
+    imuData.segment<3>(17) *= mAccelerometerCalibration;
 }
 
 /**
@@ -91,7 +125,7 @@ void calibrateImuData(Eigen::VectorXf &imuData)
  *         - Column 1 is the East vector (X-axis),
  *         - Column 2 is the Down vector (Z-axis).
  */
-Eigen::Matrix3f calculateRotationMatrix(const Eigen::Vector3f &accelerometerData, const Eigen::Vector3f &magnetometerData)
+Eigen::Matrix3f ImuProcessor::calculateRotationMatrix(const Eigen::Vector3f &accelerometerData, const Eigen::Vector3f &magnetometerData)
 {
     // Normalize accelerometer vector (gravity direction)
     Eigen::Vector3f gravityDirection = accelerometerData.normalized();
@@ -112,44 +146,4 @@ Eigen::Matrix3f calculateRotationMatrix(const Eigen::Vector3f &accelerometerData
     rotationMatrix.col(2) = gravityDirection; // Z-axis (Down)
 
     return rotationMatrix;
-}
-
-/**
- * @brief Updates the rotation matrix based on the latest IMU data bytes.
- *
- * This function reads raw IMU data from a vector of bytes, constructs a data vector,
- * calibrates the IMU sensor readings, and computes the rotation matrix using
- * accelerometer and magnetometer data.
- *
- * @param dataBytes     A vector of bytes containing the raw IMU data.
- * @param imuByteSize   The size in bytes of each IMU data packet.
- * @param rotationMatrix Output rotation matrix to be updated.
- */
-void setRotationMatrix(const std::vector<uint8_t> &dataBytes, const int &IMU_BYTE_SIZE, Eigen::Matrix3f &rotationMatrix)
-{
-
-    auto dataVector = getImuDataFromBytes(dataBytes, IMU_BYTE_SIZE);
-
-    if (!dataVector) // if no IMU data is available
-    {
-        return;
-    }
-
-    // Dereference dataVector to access the Eigen::VectorXf
-    Eigen::VectorXf &imuData = *dataVector;
-
-    // calibrate IMU data
-    calibrateImuData(imuData);
-
-    // Extract magnetometer data from row 0 (first three columns)
-    Eigen::Vector3f magnetometerData = imuData.segment<3>(11);
-
-    // Extract gyroscope data from row 0 (middle three columns)
-    Eigen::Vector3f gyroscopeData = imuData.segment<3>(14);
-
-    // Extract accelerometer data from row 0 (last three columns)
-    Eigen::Vector3f accelerometerData = imuData.segment<3>(17);
-
-    // Calculate rotation matrix using accelerometer and magnetometer data
-    rotationMatrix = calculateRotationMatrix(accelerometerData, magnetometerData);
 }
