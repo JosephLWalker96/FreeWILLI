@@ -15,4 +15,4 @@
 	url = https://github.com/brendangregg/FlameGraph
 [submodule "C/libs/dbscan"]
 	path = C/libs/dbscan
-	url = https://github.com/Eleobert/dbscan.git
+	url = https://github.com/JosephLWalker96/dbscan.git
