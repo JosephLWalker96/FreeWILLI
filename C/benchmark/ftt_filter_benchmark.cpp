@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 #include <fftw3.h>
-#include "../src/utils.h"
+#include "../src/threads/processor_thread_utils.h"
 #include <eigen3/Eigen/Dense>
 #include "../src/TDOA_estimation.h"
 using namespace std;

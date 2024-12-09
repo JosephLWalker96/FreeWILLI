@@ -7,9 +7,10 @@
 //#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
 
-#include "../src/utils.h" // Assuming utils.h includes the definition of restartListener
-#include "../src/custom_types.h"
-#include "../src/process_data.h"
+#include "../src/threads/processor_thread_utils.h"
+#include "../src/runtime_config.h"
+#include "../src/firmware_config.h"
+#include "../src/algorithms/threshold_detectors.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -38,7 +39,7 @@ TEST(ConvertDataTest, ValidData) {
   std::vector<float> dataSegment;
 
   // Call the function under test
-  ConvertAndAppend(dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE);
+  convertAndAppend(dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE);
 
   // Assert that the converted data matches the expectation
   EXPECT_EQ(dataSegment, expectedResult);
@@ -104,7 +105,7 @@ TEST(ThresholdDetectTest, NoPeak) {
   std::vector<TimePoint>& times = testData.second;
 
   // Call ThresholdDetect
-  DetectionResult result = ThresholdDetect(data, times, threshold, 100000);
+  DetectionResult result = detectTimeDomainThreshold(data, times, threshold, 100000);
 
   // Verify no peak detected
   EXPECT_EQ(result.minPeakIndex, -1);
@@ -123,7 +124,7 @@ TEST(ThresholdDetectTest, SinglePeak) {
   std::vector<TimePoint>& times = testData.second;
 
   // Call ThresholdDetect
-  DetectionResult result = ThresholdDetect(data, times, threshold, 100000);
+  DetectionResult result = detectTimeDomainThreshold(data, times, threshold, 100000);
 
   // Verify peak information is correct
   EXPECT_EQ(result.minPeakIndex, peakIndex);
@@ -148,7 +149,7 @@ TEST(ThresholdDetectTest, Infinity) {
   data(peakIndex) = std::numeric_limits<float>::infinity();
 
   // Call ThresholdDetect
-  DetectionResult result = ThresholdDetect(data, times, threshold, 100000);
+  DetectionResult result = detectTimeDomainThreshold(data, times, threshold, 100000);
 
   // Verify peak information is correct
   EXPECT_EQ(result.minPeakIndex, peakIndex);
