@@ -3,37 +3,36 @@
 #include <iostream>
 #include <chrono>
 #include <string>
-//#include <sigpack.h>
-//#include <armadillo> //https://www.uio.no/studier/emner/matnat/fys/FYS4411/v13/guides/installing-armadillo/
 
-
-#include "../src/threads/processor_thread_utils.h"
-#include "../src/runtime_config.h"
-#include "../src/firmware_config.h"
-#include "../src/algorithms/threshold_detectors.h"
+#include "../../src/threads/processor_thread_utils.h"
+#include "../../src/runtime_config.h"
+#include "../../src/firmware_config.h"
+#include "../../src/algorithms/threshold_detectors.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-
 // Helper function to create sample data and timestamps
-std::pair<Eigen::VectorXf, std::vector<TimePoint>> CreateTestData(int size, double peakValue, int peakIndex) {
+std::pair<Eigen::VectorXf, std::vector<TimePoint>> CreateTestData(int size, double peakValue, int peakIndex)
+{
   Eigen::VectorXf data(size);
   data.setZero();
   data(peakIndex) = peakValue;
 
   std::vector<TimePoint> timestamps(size);
   // Set timestamps based on your specific TimePoint implementation (adjust if needed)
-  for (int i = 0; i < size; ++i) {
+  for (int i = 0; i < size; ++i)
+  {
     timestamps[i] = std::chrono::system_clock::now();
   }
   return std::make_pair(data, timestamps);
 }
 
-TEST(ConvertDataTest, ValidData) {
-  std::vector<uint8_t> dataBytes = {0x80, 0x04,0x80, 0x0d,0x80, 0x0e}; // Sample data bytes (modify as needed)
+TEST(ConvertDataTest, ValidData)
+{
+  std::vector<uint8_t> dataBytes = {0x80, 0x04, 0x80, 0x0d, 0x80, 0x0e}; // Sample data bytes (modify as needed)
   unsigned int DATA_SIZE = dataBytes.size();
   unsigned int HEAD_SIZE = 0;
-  std::vector<float> expectedResult = {4.0,13.0,14.0}; // Expected converted value (modify as needed)
+  std::vector<float> expectedResult = {4.0, 13.0, 14.0}; // Expected converted value (modify as needed)
 
   // Create an empty vector to store the converted data
   std::vector<float> dataSegment;
@@ -44,8 +43,6 @@ TEST(ConvertDataTest, ValidData) {
   // Assert that the converted data matches the expectation
   EXPECT_EQ(dataSegment, expectedResult);
 }
-
-
 
 /*
 TEST(ConvertDataTest, NaNValue) {
@@ -94,15 +91,15 @@ TEST(ConvertDataTest, EmptyData) {
 
 */
 
+TEST(ThresholdDetectTest, NoPeak)
+{
 
-TEST(ThresholdDetectTest, NoPeak) {
-  
   // Create data with no peak above threshold
   double threshold = 0.5;
   int dataSize = 100;
   auto testData = CreateTestData(dataSize, 0.2, 50); // Peak value below threshold
-  Eigen::VectorXf& data = testData.first;
-  std::vector<TimePoint>& times = testData.second;
+  Eigen::VectorXf &data = testData.first;
+  std::vector<TimePoint> &times = testData.second;
 
   // Call ThresholdDetect
   DetectionResult result = detectTimeDomainThreshold(data, times, threshold, 100000);
@@ -113,15 +110,16 @@ TEST(ThresholdDetectTest, NoPeak) {
   EXPECT_EQ(result.peakAmplitude, 0);
 }
 
-TEST(ThresholdDetectTest, SinglePeak) {
+TEST(ThresholdDetectTest, SinglePeak)
+{
   // Create data with a single peak above threshold
   double threshold = 0.5;
   int dataSize = 100;
   double peakValue = 0.8;
   int peakIndex = 30;
   auto testData = CreateTestData(dataSize, peakValue, peakIndex);
-  Eigen::VectorXf& data = testData.first;
-  std::vector<TimePoint>& times = testData.second;
+  Eigen::VectorXf &data = testData.first;
+  std::vector<TimePoint> &times = testData.second;
 
   // Call ThresholdDetect
   DetectionResult result = detectTimeDomainThreshold(data, times, threshold, 100000);
@@ -136,15 +134,16 @@ TEST(ThresholdDetectTest, SinglePeak) {
   // EXPECT_LT(std::chrono::duration_cast<std::chrono::microseconds>(result.peakTimes[0] - expectedPeakTime).count(), 100); // Tolerance of 100 microseconds
 }
 
-TEST(ThresholdDetectTest, Infinity) {
+TEST(ThresholdDetectTest, Infinity)
+{
   // Create data with a single peak above threshold
   double threshold = 0.5;
   int dataSize = 100;
   double peakValue = 0.8;
   int peakIndex = 30;
   auto testData = CreateTestData(dataSize, peakValue, peakIndex);
-  Eigen::VectorXf& data = testData.first;
-  std::vector<TimePoint>& times = testData.second;
+  Eigen::VectorXf &data = testData.first;
+  std::vector<TimePoint> &times = testData.second;
 
   data(peakIndex) = std::numeric_limits<float>::infinity();
 

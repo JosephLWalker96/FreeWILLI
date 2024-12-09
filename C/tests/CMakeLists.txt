@@ -1,5 +1,17 @@
 # Create the test executable
-add_executable(UnitTests process_data_test.cpp TDOA_estimation_test.cpp utils_test.cpp)
+#add_executable(UnitTests process_data_test.cpp TDOA_estimation_test.cpp utils_test.cpp)
+
+
+
+# Recursively find all .cpp files in the tests directory
+file(GLOB_RECURSE TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+
+# Add the UnitTests target with all found test sources
+add_executable(UnitTests ${TEST_SOURCES})
+
+
+
+
 
 # Include directories properly set
 target_include_directories(UnitTests PRIVATE
