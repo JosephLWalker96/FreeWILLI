@@ -128,8 +128,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # the following line sets a variable `DEBUG` that
     # can be accessed in all cpp files in the project
     target_compile_definitions(HarpListen PRIVATE DEBUG)
-    target_compile_definitions(UnitTests PRIVATE DEBUG)
-    target_compile_definitions(Benchmark PRIVATE DEBUG)
+    #target_compile_definitions(UnitTests PRIVATE DEBUG)
+    #target_compile_definitions(Benchmark PRIVATE DEBUG)
 
     # Set the output directory for the executable
     set_property(TARGET HarpListen PROPERTY OUTPUT_NAME HarpListenDebug)
@@ -161,8 +161,8 @@ else ()
     message(STATUS "Building tests in Release mode.")
     if(CMAKE_CROSSCOMPILING)
         set_property(TARGET HarpListen PROPERTY OUTPUT_NAME HarpListenX)
-        set_property(TARGET UnitTests PROPERTY OUTPUT_NAME UnitTestsX)
-        set_property(TARGET Benchmark PROPERTY OUTPUT_NAME BenchmarkX)
+        #set_property(TARGET UnitTests PROPERTY OUTPUT_NAME UnitTestsX)
+        #set_property(TARGET Benchmark PROPERTY OUTPUT_NAME BenchmarkX)
     endif()
     # Set the output directory for the executable
     set_target_properties(HarpListen PROPERTIES

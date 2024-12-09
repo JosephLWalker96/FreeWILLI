@@ -35,8 +35,12 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
         Eigen::VectorXcf filterFreq;
         std::vector<float> paddedFilterWeights;
 
-        initializeFilterWeights(runtimeConfig.filterWeightsPath, firmwareConfig.CHANNEL_SIZE, filterFreq, paddedFilterWeights);
-        int paddedLength = paddedFilterWeights.size();
+        int paddedLength = firmwareConfig.CHANNEL_SIZE;
+        if (!runtimeConfig.filterWeightsPath.empty())
+        {
+            initializeFilterWeights(runtimeConfig.filterWeightsPath, firmwareConfig.CHANNEL_SIZE, filterFreq, paddedFilterWeights);
+            paddedLength = paddedFilterWeights.size();
+        }
         int fftOutputSize = (paddedLength / 2) + 1;
 
         static Eigen::MatrixXf channelData(paddedLength, firmwareConfig.NUM_CHAN);
@@ -82,7 +86,11 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
 
                 if (!dataError) [[likely]]
                 {
+                    auto beforeConvert = std::chrono::steady_clock::now();
                     convertAndAppend(sess.dataSegment, dataBytes, firmwareConfig.DATA_SIZE, firmwareConfig.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
+                    auto afterConvert = std::chrono::steady_clock::now();
+                    std::chrono::duration<double> durationConvert = afterConvert - beforeConvert;
+                    std::cout << "convertAndAppend: " << durationConvert.count() << std::endl;
                 }
 
                 if ((runtimeConfig.detectionOutputFile).empty()) [[unlikely]]
@@ -113,6 +121,7 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             auto afterPtr = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
             // std::cout << "durationPtr: " << durationPtr.count() << std::endl;
+            std::cout << "data segment size: " << sess.dataSegment.size() << std::endl;
 
             if (runtimeConfig.tracker)
             {

@@ -25,8 +25,11 @@ void performFrequencyDomainFIRFiltering(
     fftwf_execute(forwardFftPlan);
 
     // Apply the frequency domain filter to each channel
-    for (int channelIndex = 0; channelIndex < numChannels; channelIndex++)
+    if (frequencyDomainFilter.size() > 0)
     {
-        filteredFrequencyData.col(channelIndex) = filteredFrequencyData.col(channelIndex).array() * frequencyDomainFilter.array();
+        for (int channelIndex = 0; channelIndex < numChannels; channelIndex++)
+        {
+            filteredFrequencyData.col(channelIndex) = filteredFrequencyData.col(channelIndex).array() * frequencyDomainFilter.array();
+        }
     }
 }

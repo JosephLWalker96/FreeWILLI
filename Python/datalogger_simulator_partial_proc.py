@@ -58,7 +58,7 @@ if (args.imu):
     print("packet size before IMU: ", PACKET_SIZE)
     PACKET_SIZE = PACKET_SIZE + len(IMU_byte_data[0])
     print("packet size After IMU: ", PACKET_SIZE)
-print(len(IMU_byte_data))
+    print(len(IMU_byte_data))
 
 # Function to process each file
 def process_npy_file(npy_file, args, return_dict):
@@ -179,8 +179,10 @@ while True:
         Sleep(sleepTime)
 
         flag += 1
-        if flag == 150:
-            adsfa
+
+        # using this to test IMU functionality
+        #if flag == 150:
+        #    adsfa
 
         # Exit the loop if the end is reached and not looping
         if atEnd and not args.loop and not args.cos_shift:

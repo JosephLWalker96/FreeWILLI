@@ -28,7 +28,7 @@ struct FirmwareConfig
     // the number of samples per channel within a dataSegment
     static constexpr int CHANNEL_SIZE = DATA_SEGMENT_LENGTH / NUM_CHAN;
 
-    static constexpr int IMU_BYTE_SIZE = 32;
+    static constexpr int IMU_BYTE_SIZE = 0;
 
     static constexpr int PACKET_SIZE = DATA_SIZE + HEAD_SIZE + IMU_BYTE_SIZE; // the total number of bytes in a UDP packet
 

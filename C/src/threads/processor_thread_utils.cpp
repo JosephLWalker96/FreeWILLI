@@ -293,7 +293,9 @@ void waitForData(Session &sess, ObservationBuffer &observationBuffer, RuntimeCon
  * @param dataSize The size of the data to process (excluding the header).
  * @param headerSize The size of the header to skip at the beginning of the data bytes.
  */
-void convertAndAppend(std::vector<float> &dataSegment, std::span<uint8_t> dataBytes, const int &dataSize, const int &headerSize)
+/*
+template <typename Alloc>
+void convertAndAppend(std::vector<float, Alloc> &dataSegment, std::span<uint8_t> dataBytes, const int &dataSize, const int &headerSize)
 {
     for (size_t i = 0; i < dataSize; i += 2)
     {
@@ -303,7 +305,7 @@ void convertAndAppend(std::vector<float> &dataSegment, std::span<uint8_t> dataBy
         dataSegment.push_back(value);
     }
 }
-
+*/
 /**
  * @brief Generates a timestamp from raw data bytes.
  *
@@ -392,8 +394,8 @@ bool checkForDataErrors(Session &session, std::vector<uint8_t> &dataBytes, const
  * @param channelMatrix A reference to an Eigen matrix to store the separated channel data. Each column represents a channel.
  * @param numChannels The number of channels in the interleaved data.
  */
-void processSegmentInterleaved(std::span<float> interleavedData, Eigen::MatrixXf &channelMatrix,
-                               const int numChannels)
+void processSegmentInterleavedOld(std::span<float> interleavedData, Eigen::MatrixXf &channelMatrix,
+                                  const int numChannels)
 {
     // Calculate the number of samples per channel
     size_t numSamples = interleavedData.size() / numChannels;
@@ -417,6 +419,43 @@ void processSegmentInterleaved(std::span<float> interleavedData, Eigen::MatrixXf
     }
 }
 
+void processSegmentInterleaved(std::span<float> interleavedData, Eigen::MatrixXf &channelMatrix, const int numChannels)
+{
+    size_t totalSamples = interleavedData.size();
+    size_t numSamples = totalSamples / numChannels;
+
+    channelMatrix.resize(numSamples, numChannels);
+
+    const float *inputData = interleavedData.data();
+
+    for (int channel = 0; channel < numChannels; ++channel)
+    {
+        float *outPtr = &channelMatrix(0, channel);
+        const float *inPtr = inputData + channel;
+
+        size_t i = 0;
+        for (; i + 4 <= numSamples; i += 4)
+        {
+            // Gather the elements
+            float t0 = inPtr[i * (size_t)numChannels];
+            float t1 = inPtr[(i + 1) * (size_t)numChannels];
+            float t2 = inPtr[(i + 2) * (size_t)numChannels];
+            float t3 = inPtr[(i + 3) * (size_t)numChannels];
+
+            float32x2_t low = vld1_f32(&t0);  // loads t0,t1
+            float32x2_t high = vld1_f32(&t2); // loads t2,t3
+            float32x4_t vec = vcombine_f32(low, high);
+
+            vst1q_f32(&outPtr[i], vec);
+        }
+
+        // Handle remainder (not a multiple of 4)
+        for (; i < numSamples; ++i)
+        {
+            outPtr[i] = inPtr[i * (size_t)numChannels];
+        }
+    }
+}
 /**
  * @brief Writes error-causing timestamps and associated data bytes to the standard error stream.
  *
@@ -537,7 +576,7 @@ bool shouldTerminateProgram(const RuntimeConfig &runtimeConfig, const TimePoint 
  * @param timePoint A `TimePoint` object representing the time to be converted.
  * @return A string representing the formatted date and time with microseconds.
  */
-std::string convertTimePointToString(const TimePoint &timePoint)
+std::string convertTimePointToString(const std::chrono::system_clock::time_point &timePoint)
 {
     // Convert TimePoint to time_t to get calendar time
     std::time_t calendarTime = std::chrono::system_clock::to_time_t(timePoint);
@@ -545,14 +584,14 @@ std::string convertTimePointToString(const TimePoint &timePoint)
 
     // Format the calendar time (year, month, day, hour, minute, second)
     std::ostringstream formattedTimeStream;
-    formattedTimeStream << std::put_time(utcTime, "%Y-%m-%d %H:%M:%S");
+    formattedTimeStream << std::put_time(utcTime, "%y%m%d_%H%M%S");
 
     // Extract the microseconds from the TimePoint
     auto durationSinceEpoch = timePoint.time_since_epoch();
     auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(durationSinceEpoch) % 1000000;
 
     // Add the microseconds to the formatted time string
-    formattedTimeStream << "." << std::setw(6) << std::setfill('0') << microseconds.count(); // Zero-pad to 6 digits
+    formattedTimeStream << "_" << std::setw(6) << std::setfill('0') << microseconds.count(); // Zero-pad to 6 digits
 
     return formattedTimeStream.str();
 }
