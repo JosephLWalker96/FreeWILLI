@@ -86,7 +86,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: brew install fftw openblas eigen nlohmann-json
+        run: brew install fftw openblas eigen nlohmann-json libomp
 
       - name: Download ONNX Runtime
         run: |
