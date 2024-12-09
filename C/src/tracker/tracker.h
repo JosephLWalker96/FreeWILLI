@@ -2,7 +2,7 @@
 #include "../pch.h"
 #include "../algorithms/kalman_filter.h"
 #include "/home/harp/Documents/Embedded_miniHarp/C/libs/dbscan/dbscan.hpp"
-
+#include "../../libs/dbscan/dbscan.hpp"
 using namespace std::chrono_literals;
 using TimePoint = std::chrono::system_clock::time_point;
 
