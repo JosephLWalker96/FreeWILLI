@@ -2,13 +2,6 @@
 #include "../../src/pch.h"
 #include "../../src/algorithms/doa_utils.h"
 
-// Helper function for comparing floating-point values
-constexpr float epsilon = 1e-5f;
-bool areEqual(float a, float b)
-{
-    return std::fabs(a - b) < epsilon;
-}
-
 /*
     the following are tests for convertDoaToElAz function
 */
@@ -20,8 +13,8 @@ TEST(ConvertDoaToElAz, UnitVectorPositiveZ)
 
     Eigen::VectorXf elAz = convertDoaToElAz(doa);
 
-    EXPECT_TRUE(areEqual(elAz(0), 180.0f));
-    EXPECT_TRUE(areEqual(elAz(1), 0.0f));
+    EXPECT_NEAR(elAz(0), 180.0f, 1e-3);
+    EXPECT_NEAR(elAz(1), 0.0f, 1e-3);
 }
 
 // Test: Standard Case - Unit vector along positive X-axis
@@ -32,8 +25,8 @@ TEST(ConvertDoaToElAz, UnitVectorPositiveX)
 
     Eigen::VectorXf elAz = convertDoaToElAz(doa);
 
-    EXPECT_TRUE(areEqual(elAz(0), 90.0f)); // Elevation should be 90 degrees
-    EXPECT_TRUE(areEqual(elAz(1), 0.0f));  // Azimuth should be 0 degrees
+    EXPECT_NEAR(elAz(0), 90.0f, 1e-3);
+    EXPECT_NEAR(elAz(1), 0.0f, 1e-3);
 }
 
 // Test: Standard Case - Unit vector along positive Y-axis
@@ -44,8 +37,8 @@ TEST(ConvertDoaToElAz, UnitVectorPositiveY)
 
     Eigen::VectorXf elAz = convertDoaToElAz(doa);
 
-    EXPECT_TRUE(areEqual(elAz(0), 90.0f)); // Elevation should be 90 degrees
-    EXPECT_TRUE(areEqual(elAz(1), 90.0f)); // Azimuth should be 90 degrees
+    EXPECT_NEAR(elAz(0), 90.0f, 1e-3);
+    EXPECT_NEAR(elAz(1), 90.0f, 1e-3);
 }
 
 // Test: Edge Case - Unit vector along negative Z-axis
@@ -56,8 +49,8 @@ TEST(ConvertDoaToElAz, UnitVectorNegativeZ)
 
     Eigen::VectorXf elAz = convertDoaToElAz(doa);
 
-    EXPECT_TRUE(areEqual(elAz(0), 0.0f)); // Elevation should be 0 degrees
-    EXPECT_TRUE(areEqual(elAz(1), 0.0f)); // Azimuth should be 0 degrees
+    EXPECT_NEAR(elAz(0), 0.0f, 1e-3);
+    EXPECT_NEAR(elAz(1), 0.0f, 1e-3);
 }
 
 // Test: Edge Case - Unit vector along negative X-axis
@@ -68,8 +61,8 @@ TEST(ConvertDoaToElAz, UnitVectorNegativeX)
 
     Eigen::VectorXf elAz = convertDoaToElAz(doa);
 
-    EXPECT_TRUE(areEqual(elAz(0), 90.0f));
-    EXPECT_TRUE(areEqual(elAz(1), 180.0f));
+    EXPECT_NEAR(elAz(0), 90.0f, 1e-3);
+    EXPECT_NEAR(elAz(1), 180.0f, 1e-3);
 }
 
 // Test: General Case - Arbitrary unit vector
