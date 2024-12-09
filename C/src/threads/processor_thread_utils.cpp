@@ -394,7 +394,7 @@ bool checkForDataErrors(Session &session, std::vector<uint8_t> &dataBytes, const
  * @param channelMatrix A reference to an Eigen matrix to store the separated channel data. Each column represents a channel.
  * @param numChannels The number of channels in the interleaved data.
  */
-void processSegmentInterleavedOld(std::span<float> interleavedData, Eigen::MatrixXf &channelMatrix,
+void processSegmentInterleaved(std::span<float> interleavedData, Eigen::MatrixXf &channelMatrix,
                                   const int numChannels)
 {
     // Calculate the number of samples per channel
@@ -419,7 +419,8 @@ void processSegmentInterleavedOld(std::span<float> interleavedData, Eigen::Matri
     }
 }
 
-void processSegmentInterleaved(std::span<float> interleavedData, Eigen::MatrixXf &channelMatrix, const int numChannels)
+/*
+void processSegmentInterleavedNEW(std::span<float> interleavedData, Eigen::MatrixXf &channelMatrix, const int numChannels)
 {
     size_t totalSamples = interleavedData.size();
     size_t numSamples = totalSamples / numChannels;
@@ -456,6 +457,8 @@ void processSegmentInterleaved(std::span<float> interleavedData, Eigen::MatrixXf
         }
     }
 }
+*/
+
 /**
  * @brief Writes error-causing timestamps and associated data bytes to the standard error stream.
  *
