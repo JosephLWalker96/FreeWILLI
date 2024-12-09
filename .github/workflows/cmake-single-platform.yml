@@ -92,7 +92,8 @@ jobs:
         run: |
           echo "LDFLAGS=-L/opt/homebrew/opt/libomp/lib" >> $GITHUB_ENV
           echo "CPPFLAGS=-I/opt/homebrew/opt/libomp/include" >> $GITHUB_ENV
-          echo "PATH=/opt/homebrew/opt/libomp/bin:$PATH" >> $GITHUB_ENV
+          echo "CMAKE_CXX_FLAGS=-Xpreprocessor -fopenmp $CPPFLAGS" >> $GITHUB_ENV
+          echo "CMAKE_EXE_LINKER_FLAGS=$LDFLAGS -lomp" >> $GITHUB_ENV
       
       - name: Download ONNX Runtime
         run: |
@@ -112,17 +113,17 @@ jobs:
           
       - name: Include submodules
         run: git submodule update --init --recursive
-
+      
       - name: Configure CMake
         working-directory: ${{github.workspace}}/C
-        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
-        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-        #run: cmake -B ${{github.workspace}}/C/build -S ${{github.workspace}}/C -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        run: cmake -B ${{github.workspace}}/C/build -S ${{github.workspace}}/C \
-           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_C_COMPILER=/usr/bin/clang \ 
-           -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
-           -DCMAKE_CXX_FLAGS="$CPPFLAGS -Xpreprocessor -fopenmp" \
-           -DCMAKE_EXE_LINKER_FLAGS="$LDFLAGS -lomp"
+        run: |
+          mkdir -p build
+          cmake -B ${{github.workspace}}/C/build -S ${{github.workspace}}/C \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=/usr/bin/clang \
+            -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+            -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" \
+            -DCMAKE_EXE_LINKER_FLAGS="$CMAKE_EXE_LINKER_FLAGS"
            
       #run: cmake -B ${{github.workspace}}/C/build -S ${{github.workspace}}/C -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
