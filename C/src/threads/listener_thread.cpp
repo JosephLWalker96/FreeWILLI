@@ -65,9 +65,8 @@ void udpListener(Session &sess, ISocketManager &socketManager, const int PACKET_
             // socketManager.setReceiveBufferSize(bytesReceived);
 
             const std::vector<uint8_t> &dataBytes = socketManager.getReceivedData();
-            
+
             int queueSize = sess.pushDataToBuffer(dataBytes);
-            std::cout << "dataBytes: " << dataBytes.size() << std::endl;
 
             packetCounter += 1;
             if (packetCounter % printInterval == 0)

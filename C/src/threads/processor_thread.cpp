@@ -90,7 +90,7 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
                     convertAndAppend(sess.dataSegment, dataBytes, firmwareConfig.DATA_SIZE, firmwareConfig.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
                     auto afterConvert = std::chrono::steady_clock::now();
                     std::chrono::duration<double> durationConvert = afterConvert - beforeConvert;
-                    std::cout << "convertAndAppend: " << durationConvert.count() << std::endl;
+                    // std::cout << "convertAndAppend: " << durationConvert.count() << std::endl;
                 }
 
                 if ((runtimeConfig.detectionOutputFile).empty()) [[unlikely]]
@@ -121,7 +121,6 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             auto afterPtr = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
             // std::cout << "durationPtr: " << durationPtr.count() << std::endl;
-            std::cout << "data segment size: " << sess.dataSegment.size() << std::endl;
 
             if (runtimeConfig.tracker)
             {
