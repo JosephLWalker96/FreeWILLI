@@ -26,6 +26,9 @@ public:
     float amplitudeDetectionThreshold = 100.0f; // 28.0f;
     float speedOfSound = 1482.965459;
 
+    std::string udpIp; 
+    int udpPort;
+
     std::string filterWeightsPath = "";
     std::string receiverPositionsPath = "";
     std::string onnxModelPath = "";
