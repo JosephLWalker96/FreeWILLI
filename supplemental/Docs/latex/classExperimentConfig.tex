@@ -1,0 +1,76 @@
+\hypertarget{classExperimentConfig}{}\doxysection{Experiment\+Config Class Reference}
+\label{classExperimentConfig}\index{ExperimentConfig@{ExperimentConfig}}
+\doxysubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a17b9532ed47e417933af903b84c6c275}\label{classExperimentConfig_a17b9532ed47e417933af903b84c6c275}} 
+const std\+::function$<$ void(std\+::span$<$ float $>$, Eigen\+::\+Matrix\+Xf \&, unsigned int)$>$ {\bfseries Process\+Fnc\+Ptr} = Process\+Segment\+Interleaved
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a0cc9867b238022467e1509e1de0da3f2}\label{classExperimentConfig_a0cc9867b238022467e1509e1de0da3f2}} 
+std\+::unique\+\_\+ptr$<$ \mbox{\hyperlink{classONNXModel}{ONNXModel}} $>$ {\bfseries onnx\+Model}
+\end{DoxyCompactItemize}
+\doxysubsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a4478ff61004cfaef08e14b1c1b276375}\label{classExperimentConfig_a4478ff61004cfaef08e14b1c1b276375}} 
+static constexpr int {\bfseries HEAD\+\_\+\+SIZE} = 12
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a3afec8644eeb4a1e51a4b5556dab6eff}\label{classExperimentConfig_a3afec8644eeb4a1e51a4b5556dab6eff}} 
+static constexpr int {\bfseries NUM\+\_\+\+CHAN} = 4
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a29280d8a9ad90c41239e0ba6e1940f68}\label{classExperimentConfig_a29280d8a9ad90c41239e0ba6e1940f68}} 
+static constexpr int {\bfseries SAMPS\+\_\+\+PER\+\_\+\+CHANNEL} = 124
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a9fa0402f5d68d4aa1a02f712180dd7dd}\label{classExperimentConfig_a9fa0402f5d68d4aa1a02f712180dd7dd}} 
+static constexpr int {\bfseries BYTES\+\_\+\+PER\+\_\+\+SAMP} = 2
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a05cd3c032880a5c1ed96361da034bb06}\label{classExperimentConfig_a05cd3c032880a5c1ed96361da034bb06}} 
+static constexpr int {\bfseries MICRO\+\_\+\+INCR} = 1240
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a13ff287a1db91c95f1a7e9bde572c2a2}\label{classExperimentConfig_a13ff287a1db91c95f1a7e9bde572c2a2}} 
+static constexpr int {\bfseries SAMPLE\+\_\+\+RATE} = 1e5
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a01a65f03c1c69d1f4ec49c5c3737384c}\label{classExperimentConfig_a01a65f03c1c69d1f4ec49c5c3737384c}} 
+static constexpr int {\bfseries DATA\+\_\+\+SIZE} = SAMPS\+\_\+\+PER\+\_\+\+CHANNEL $\ast$ NUM\+\_\+\+CHAN $\ast$ BYTES\+\_\+\+PER\+\_\+\+SAMP
+\item 
+\mbox{\Hypertarget{classExperimentConfig_af71c0cef552f3c51c7437e0ae5ad2ad4}\label{classExperimentConfig_af71c0cef552f3c51c7437e0ae5ad2ad4}} 
+static constexpr int {\bfseries PACKET\+\_\+\+SIZE} = DATA\+\_\+\+SIZE + HEAD\+\_\+\+SIZE
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a31533b0b9fe916efbf9eed5fcdafd24f}\label{classExperimentConfig_a31533b0b9fe916efbf9eed5fcdafd24f}} 
+static constexpr int {\bfseries REQUIRED\+\_\+\+BYTES} = DATA\+\_\+\+SIZE + HEAD\+\_\+\+SIZE
+\item 
+\mbox{\Hypertarget{classExperimentConfig_ad54dc45a7c13683dab9a0746aab82c08}\label{classExperimentConfig_ad54dc45a7c13683dab9a0746aab82c08}} 
+static constexpr int {\bfseries DATA\+\_\+\+BYTES\+\_\+\+PER\+\_\+\+CHANNEL} = SAMPS\+\_\+\+PER\+\_\+\+CHANNEL $\ast$ BYTES\+\_\+\+PER\+\_\+\+SAMP
+\item 
+\mbox{\Hypertarget{classExperimentConfig_afb35fe085a688c143da0ceff5a579792}\label{classExperimentConfig_afb35fe085a688c143da0ceff5a579792}} 
+static constexpr float {\bfseries TIME\+\_\+\+WINDOW} = 0.\+01
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a0c327f64b945f9a584242af2e0a696a1}\label{classExperimentConfig_a0c327f64b945f9a584242af2e0a696a1}} 
+static constexpr int {\bfseries NUM\+\_\+\+PACKS\+\_\+\+DETECT} = static\+\_\+cast$<$int$>$(TIME\+\_\+\+WINDOW $\ast$ 100000 / SAMPS\+\_\+\+PER\+\_\+\+CHANNEL)
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a06ffa98631b928cd814455f3003755d7}\label{classExperimentConfig_a06ffa98631b928cd814455f3003755d7}} 
+static constexpr int {\bfseries DATA\+\_\+\+SEGMENT\+\_\+\+LENGTH} = NUM\+\_\+\+PACKS\+\_\+\+DETECT $\ast$ SAMPS\+\_\+\+PER\+\_\+\+CHANNEL $\ast$ NUM\+\_\+\+CHAN
+\item 
+\mbox{\Hypertarget{classExperimentConfig_aae1c2443fd3673005c99cbfeccd3e9ac}\label{classExperimentConfig_aae1c2443fd3673005c99cbfeccd3e9ac}} 
+static constexpr float {\bfseries speed\+Of\+Sound} = 1482.\+965459
+\item 
+\mbox{\Hypertarget{classExperimentConfig_ab5c3f0d250e07c0e0b16c4593631c8f6}\label{classExperimentConfig_ab5c3f0d250e07c0e0b16c4593631c8f6}} 
+static constexpr int {\bfseries interp} = 1
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a5536a065a6f2d92eff650e457023a5e7}\label{classExperimentConfig_a5536a065a6f2d92eff650e457023a5e7}} 
+static constexpr const char $\ast$ {\bfseries filter\+Weights} = \char`\"{}filters/highpass\+\_\+taps@101\+\_\+cutoff@20k\+\_\+window@hamming\+\_\+fs@100k.\+txt\char`\"{}
+\item 
+\mbox{\Hypertarget{classExperimentConfig_ac1c2cb127cff7a1eeb3fa2b5df50cf0f}\label{classExperimentConfig_ac1c2cb127cff7a1eeb3fa2b5df50cf0f}} 
+static constexpr const char $\ast$ {\bfseries receiver\+Positions} = \char`\"{}../Data/SOCAL\+\_\+\+H\+\_\+72\+\_\+\+HS\+\_\+harp4ch\+Par\+\_\+rec\+Pos.\+txt\char`\"{}
+\item 
+\mbox{\Hypertarget{classExperimentConfig_a2c0fe32886b28c3b41c73a1b82213bcd}\label{classExperimentConfig_a2c0fe32886b28c3b41c73a1b82213bcd}} 
+static constexpr const char $\ast$ {\bfseries onnx\+Model\+Path} = \char`\"{}../Test\+Onnx/model\+\_\+quantized\+\_\+static.\+onnx\char`\"{}
+\item 
+\mbox{\Hypertarget{classExperimentConfig_aa126950d421aaa76afe6b4827f6273c3}\label{classExperimentConfig_aa126950d421aaa76afe6b4827f6273c3}} 
+static constexpr const char $\ast$ {\bfseries onnx\+Model\+Scaling} = \char`\"{}../Test\+Onnx/scaler\+\_\+params.\+json\char`\"{}
+\end{DoxyCompactItemize}
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+C/src/custom\+\_\+types.\+h\end{DoxyCompactItemize}

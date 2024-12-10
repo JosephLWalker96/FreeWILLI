@@ -1,18 +1,18 @@
-[submodule "C/third_party/googletest"]
-	path = C/third_party/googletest
+[submodule "listener_program/third_party/googletest"]
+	path = listener_program/third_party/googletest
 	url = https://github.com/google/googletest.git
-[submodule "C/libs/googletest"]
-	path = C/libs/googletest
+[submodule "listener_program/libs/googletest"]
+	path = listener_program/libs/googletest
 	url = https://github.com/google/googletest.git
-[submodule "C/libs/benchmark"]
-	path = C/libs/benchmark
+[submodule "listener_program/libs/benchmark"]
+	path = listener_program/libs/benchmark
 	url = https://github.com/google/benchmark.git
-[submodule "C/C/libs/FlameGraph"]
-	path = C/C/libs/FlameGraph
+[submodule "listener_program/listener_program/libs/FlameGraph"]
+	path = listener_program/listener_program/libs/FlameGraph
 	url = https://github.com/brendangregg/FlameGraph
-[submodule "C/libs/FlameGraph"]
-	path = C/libs/FlameGraph
+[submodule "listener_program/libs/FlameGraph"]
+	path = listener_program/libs/FlameGraph
 	url = https://github.com/brendangregg/FlameGraph
-[submodule "C/libs/dbscan"]
-	path = C/libs/dbscan
+[submodule "listener_program/libs/dbscan"]
+	path = listener_program/libs/dbscan
 	url = https://github.com/JosephLWalker96/dbscan.git
