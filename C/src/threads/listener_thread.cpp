@@ -1,5 +1,5 @@
-
 #include "../io/socket_manager.h"
+#include "../io/isocket_manager.h"
 #include "../session.h"
 #include "../pch.h"
 
@@ -37,32 +37,37 @@ void logPacketStatistics(int packetCounter, int printInterval, std::chrono::stea
  *
  * @throws std::runtime_error if there is an error receiving data from the socket or if the buffer overflows.
  */
-void udpListener(Session &sess, SocketManager &socketManager, const int PACKET_SIZE)
+void udpListener(Session &sess, ISocketManager &socketManager, const int PACKET_SIZE)
 {
-
     try
     {
         struct sockaddr_in addr;
         socklen_t addrLength = sizeof(addr);
         int bytesReceived;
         constexpr int printInterval = 500;
-        const int receiveSize = PACKET_SIZE + 1; // + 1 to detect if more data than expected is being received
-        int queueSize;
+        const int receiveSize = PACKET_SIZE + 1; // +1 to detect overflow
+
+        // We let the SocketManager handle resizing internally as it receives data
+        socketManager.setReceiveBufferSize(receiveSize);
+
         auto startPacketTime = std::chrono::steady_clock::now();
-        auto endPacketTime = startPacketTime;
-        std::chrono::duration<double> durationPacketTime; // stores the average amount of time (seconds) between successive UDP packets, averaged over 'printInterval' packets
-        std::vector<uint8_t> dataBytes(receiveSize);
 
         while (!sess.errorOccurred)
         {
-
-            bytesReceived = recvfrom(socketManager.mDatagramSocket, dataBytes.data(), receiveSize, 0, (struct sockaddr *)&addr, &addrLength);
+            // Receive data
+            bytesReceived = socketManager.receiveData(0, (struct sockaddr *)&addr, &addrLength);
 
             if (bytesReceived == -1)
-                throw std::runtime_error("Error in recvfrom: bytesReceived is -1");
+                throw std::runtime_error("Error in receiveData: bytesReceived is -1");
 
-            dataBytes.resize(bytesReceived); // Adjust size based on actual bytes received
-            queueSize = sess.pushDataToBuffer(dataBytes);
+            // The data is already resized in the SocketManager after reception,
+            // or we can resize here if needed (commented out because SocketManager does it):
+            // socketManager.setReceiveBufferSize(bytesReceived);
+
+            const std::vector<uint8_t> &dataBytes = socketManager.getReceivedData();
+            
+            int queueSize = sess.pushDataToBuffer(dataBytes);
+            std::cout << "dataBytes: " << dataBytes.size() << std::endl;
 
             packetCounter += 1;
             if (packetCounter % printInterval == 0)
@@ -72,7 +77,7 @@ void udpListener(Session &sess, SocketManager &socketManager, const int PACKET_S
             }
 
             if (queueSize > 1000)
-            { // check if buffer has grown to an unacceptable size
+            {
                 throw std::runtime_error("Buffer overflowing \n");
             }
         }
@@ -80,8 +85,7 @@ void udpListener(Session &sess, SocketManager &socketManager, const int PACKET_S
     catch (const std::exception &e)
     {
         std::cerr << "Error occured in UDP Listener Thread: \n";
-
-        std::stringstream msg; // compose message to dispatch
+        std::stringstream msg;
         msg << e.what() << std::endl;
         std::cerr << msg.str();
 

@@ -18,17 +18,22 @@ int main(int argc, char *argv[])
 
     // Instantiate firmware configuration varaibles and socket manager class
     FirmwareConfig firmwareConfig;
-    SocketManager socketManager;
+    
+    std::string jsonFilePath = argv[1];
+
 
     // Main processing loop
     while (true)
     {
         Session sess;
         RuntimeConfig runtimeConfig;
+        runtimeConfig.programRuntime = std::chrono::seconds(std::stoi(argv[2]));
 
         // Initialize the socket and populate runtimeConfig entries
-        parseJsonConfig(socketManager, runtimeConfig, argv);
-
+        parseJsonConfig(runtimeConfig, jsonFilePath);
+        
+        SocketManager socketManager(runtimeConfig.udpPort, runtimeConfig.udpIp);
+        
         initializeRuntimeObjects(runtimeConfig, firmwareConfig);
 
         socketManager.restartListener(); // Reset the socket

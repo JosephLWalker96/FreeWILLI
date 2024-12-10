@@ -32,9 +32,8 @@ void printMode()
  * @param argv Command-line arguments, where `argv[1]` is the JSON file path and `argv[2]` is the program runtime in seconds.
  * @throws std::runtime_error If the JSON file cannot be opened or required fields are missing.
  */
-void parseJsonConfig(SocketManager &socketManager, RuntimeConfig &runtimeConfig, char *argv[])
+void parseJsonConfig(RuntimeConfig &runtimeConfig, const std::string& jsonFilePath)
 {
-    std::string jsonFilePath = argv[1];
     std::ifstream inputFile(jsonFilePath);
     if (!inputFile.is_open())
     {
@@ -45,18 +44,17 @@ void parseJsonConfig(SocketManager &socketManager, RuntimeConfig &runtimeConfig,
     inputFile >> jsonConfig;
 
     // Configure SocketManager parameters
-    socketManager.mUdpIp = jsonConfig.at("IPAddress").get<std::string>();
-    if (socketManager.mUdpIp == "self")
+    runtimeConfig.udpIp = jsonConfig.at("IPAddress").get<std::string>();
+    if (runtimeConfig.udpIp == "self")
     {
-        socketManager.mUdpIp = "127.0.0.1";
+        runtimeConfig.udpIp = "127.0.0.1";
     }
-    socketManager.mUdpPort = jsonConfig.at("Port").get<int>();
+    runtimeConfig.udpPort = jsonConfig.at("Port").get<int>();
 
     // Configure RuntimeConfig parameters
     runtimeConfig.speedOfSound = jsonConfig.at("SpeedOfSound").get<float>();
     runtimeConfig.energyDetectionThreshold = jsonConfig.at("EnergyDetectionThreshold").get<float>();
     runtimeConfig.amplitudeDetectionThreshold = jsonConfig.at("AmplitudeDetectionThreshold").get<float>();
-    runtimeConfig.programRuntime = std::chrono::seconds(std::stoi(argv[2]));
     runtimeConfig.filterWeightsPath = jsonConfig.at("FilterWeights").get<std::string>();
     runtimeConfig.receiverPositionsPath = jsonConfig.at("ReceiverPositions").get<std::string>();
     runtimeConfig.onnxModelPath = jsonConfig.at("ONNX_model_path").get<std::string>();

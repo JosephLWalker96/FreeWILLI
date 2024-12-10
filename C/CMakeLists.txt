@@ -103,15 +103,27 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/libs/dbscan)
 # Add the test and benchmark directories
 if (ENABLE_TEST)
     message(STATUS "Compiling Unit Tests")
-    
-    # Set the build options to skip Google Mock
-    set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
-    set(INSTALL_GMOCK OFF CACHE BOOL "" FORCE)
+
+    # Enable Google Mock and Google Test
+    set(BUILD_GMOCK ON CACHE BOOL "" FORCE)
+    set(INSTALL_GMOCK ON CACHE BOOL "" FORCE)
     set(BUILD_GTEST ON CACHE BOOL "" FORCE)
     set(INSTALL_GTEST ON CACHE BOOL "" FORCE)
-    
+
+    # Add Google Test and Google Mock to the project
     add_subdirectory(${PROJECT_SOURCE_DIR}/libs/googletest)
+    
+    # Add your tests directory
     add_subdirectory(${PROJECT_SOURCE_DIR}/tests)
+
+    # Explicitly add include directories to UnitTests target
+    target_include_directories(UnitTests PRIVATE
+        ${PROJECT_SOURCE_DIR}/libs/googletest/googletest/include
+        ${PROJECT_SOURCE_DIR}/libs/googletest/googlemock/include
+    )
+
+    # Link libraries for UnitTests
+    target_link_libraries(UnitTests PRIVATE gmock gmock_main gtest gtest_main pthread)
 endif()
 if(ENABLE_BENCHMARK)
     message(STATUS "Compiling Benchmark Tests")
@@ -128,8 +140,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # the following line sets a variable `DEBUG` that
     # can be accessed in all cpp files in the project
     target_compile_definitions(HarpListen PRIVATE DEBUG)
-    #target_compile_definitions(UnitTests PRIVATE DEBUG)
-    #target_compile_definitions(Benchmark PRIVATE DEBUG)
+    target_compile_definitions(UnitTests PRIVATE DEBUG)
+    target_compile_definitions(Benchmark PRIVATE DEBUG)
 
     # Set the output directory for the executable
     set_property(TARGET HarpListen PROPERTY OUTPUT_NAME HarpListenDebug)

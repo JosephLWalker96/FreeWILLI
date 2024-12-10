@@ -1,6 +1,6 @@
 #pragma once
 
 class Session;
-class SocketManager;
+class ISocketManager;
 
-void udpListener(Session &sess, SocketManager &socketManager, const int PACKET_SIZE);
+void udpListener(Session &sess, ISocketManager &socketManager, const int PACKET_SIZE);
