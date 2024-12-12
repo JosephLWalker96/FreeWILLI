@@ -9,13 +9,9 @@
 
 #include "../pch.h"
 #include "../session.h"
-#include "buffer_writer.h"
-#include "tracker.h"
+#include "../io/buffer_writer.h"
+#include "../tracker/tracker.h"
 
-#include "../pch.h"
-#include "../session.h"
-#include "buffer_writer.h"
-#include "tracker.h"
 #include "processor_thread_utils.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
@@ -62,6 +58,8 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
 
         // Container for pulling bytes from the buffer
         std::vector<uint8_t> dataBytes;
+
+        GCC_PHAT computeTDOAs(paddedLength, firmwareConfig.NUM_CHAN, firmwareConfig.SAMPLE_RATE);
 
         std::cout << "Ready to process data..." << std::endl;
         while (!sess.errorOccurred)
@@ -159,7 +157,8 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             // std::cout << "Filter runtime: " << durationFilter.count() << std::endl;
 
             auto beforeGCCW = std::chrono::steady_clock::now();
-            std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = computeGccPhat(savedFFTs, runtimeConfig.inverseFFT, paddedLength, firmwareConfig.NUM_CHAN, firmwareConfig.SAMPLE_RATE);
+            // std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = computeGccPhat(savedFFTs, runtimeConfig.inverseFFT, paddedLength, firmwareConfig.NUM_CHAN, firmwareConfig.SAMPLE_RATE);
+            std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = computeTDOAs.process(savedFFTs);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
             std::cout << "GCC time: " << durationGCCW.count() << std::endl;

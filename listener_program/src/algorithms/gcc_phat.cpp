@@ -1,136 +1,134 @@
 #include "gcc_phat.h"
-#include <fftw3.h>
+
+Eigen::VectorXcf GCC_PHAT::mNormalizedCrossSpectra;
+Eigen::VectorXf GCC_PHAT::mCrossCorrBuffer;
+
+void GCC_PHAT::initialize(int paddedLength)
+{
+    if (mNormalizedCrossSpectra.size() == 0)
+    { // Prevent reinitialization
+        mNormalizedCrossSpectra = Eigen::VectorXcf::Zero(paddedLength);
+        mCrossCorrBuffer = Eigen::VectorXf::Zero(paddedLength);
+    }
+}
 
 /**
- * @brief Computes the Generalized Cross-Correlation with Phase Transform (GCC-PHAT) between pairs of signals.
+ * @brief Constructs a GCC_PHAT instance.
  *
- * @param savedFfts A reference to an Eigen matrix containing the Fourier Transform of the FIR-filtered signals.
- *                  Each column represents a signal.
- * @param inverseFftPlan FFTW plan for inverse FFT computations.
- * @param paddedLength Length of the FFT or padding applied to the signals.
- * @param numChannels Number of input signal channels.
- * @param sampleRate Sampling rate of the signals in Hz.
- *
- * @return A tuple containing:
- *         - Eigen::VectorXf: Estimated time delays of arrival (TDOA) for all unique signal pairs.
- *         - Eigen::VectorXf: Peak cross-correlation values for each signal pair.
+ * @param paddedLength Length of zero-padding applied to the signals for FFT.
  */
-auto computeGccPhat(const Eigen::MatrixXcf &savedFfts, fftwf_plan &inverseFftPlan,
-                    int &paddedLength, const int &numChannels, const int &sampleRate)
-    -> std::tuple<Eigen::VectorXf, Eigen::VectorXf>
+GCC_PHAT::GCC_PHAT(int paddedLength, int numChannels, int sampleRate)
+    : mPaddedLength(paddedLength),
+      mNumChannels(numChannels),
+      mSampleRate(sampleRate)
 {
+    GCC_PHAT::initialize(paddedLength);
 
-    int fftLength = savedFfts.col(0).size();
-    int numTdoas = numChannels * (numChannels - 1) / 2;
-    Eigen::VectorXf tdoaEstimates(numTdoas);
-    Eigen::VectorXf crossCorrPeaks(numTdoas);
+    mNumTdoas = numChannels * (numChannels - 1) / 2;
+    mMaxShift = paddedLength / 2; // change this if we have knowledge of max time offset
 
-    // Static buffers for efficient memory reuse
-    static Eigen::VectorXcf normalizedCrossSpectra(fftLength);
-    static Eigen::VectorXf crossCorrBuffer(paddedLength);
+    mInverseFftPlan = fftwf_plan_dft_c2r_1d(
+        paddedLength,
+        reinterpret_cast<fftwf_complex *>(mNormalizedCrossSpectra.data()),
+        mCrossCorrBuffer.data(),
+        FFTW_ESTIMATE);
+}
 
-    // Initialize FFTW plan if not already set
-    if (inverseFftPlan == nullptr)
+/**
+ * @brief Destructor for GCC_PHAT. Cleans up FFTW resources.
+ */
+GCC_PHAT::~GCC_PHAT()
+{
+    if (mInverseFftPlan != nullptr)
     {
-        inverseFftPlan = fftwf_plan_dft_c2r_1d(
-            paddedLength,
-            reinterpret_cast<fftwf_complex *>(normalizedCrossSpectra.data()),
-            crossCorrBuffer.data(),
-            FFTW_ESTIMATE);
-        normalizedCrossSpectra.setZero();
-        crossCorrBuffer.setZero();
+        fftwf_destroy_plan(mInverseFftPlan);
     }
+}
+
+/**
+ * @brief Compute TDOAs using GCC-PHAT method.
+ */
+std::tuple<Eigen::VectorXf, Eigen::VectorXf> GCC_PHAT::process(const Eigen::MatrixXcf &savedFfts)
+{
+    int fftLength = static_cast<int>(savedFfts.col(0).size());
+
+    Eigen::VectorXf tdoaEstimates(mNumTdoas);
+    Eigen::VectorXf crossCorrPeaks(mNumTdoas);
 
     int pairCounter = 0;
-    for (int signal1Index = 0; signal1Index < numChannels - 1; ++signal1Index)
+    for (int signal1Index = 0; signal1Index < mNumChannels - 1; ++signal1Index)
     {
-        for (int signal2Index = signal1Index + 1; signal2Index < numChannels; ++signal2Index)
+        for (int signal2Index = signal1Index + 1; signal2Index < mNumChannels; ++signal2Index)
         {
-            // Retrieve signals
             const auto &signal1 = savedFfts.col(signal1Index);
             const auto &signal2 = savedFfts.col(signal2Index);
 
-            calculateNormalizedCrossSpectra(signal1, signal2, normalizedCrossSpectra);
+            // Compute normalized cross-spectra
+            calculateNormalizedCrossSpectra(signal1, signal2);
 
-            // Perform the inverse FFT to compute the cross-correlation
-            fftwf_execute(inverseFftPlan);
+            // Perform the inverse FFT to compute cross-correlation
+            fftwf_execute(mInverseFftPlan);
 
-            // Rearrange cross-correlation data for TDOA estimation
-            // Process the cross-correlation data and compute TDOA
+            // Estimate TDOA from the computed cross-correlation
             std::tie(tdoaEstimates(pairCounter), crossCorrPeaks(pairCounter)) =
-                estimateTdoaAndPeak(crossCorrBuffer, paddedLength, sampleRate);
+                estimateTdoaAndPeak();
 
             ++pairCounter;
         }
     }
+
     return std::make_tuple(tdoaEstimates, crossCorrPeaks);
 }
 
 /**
  * @brief Computes the normalized cross-spectrum of two signals.
  *
- * @param inputSignal1 The first input signal in the frequency domain, represented as a column of FFT coefficients.
- * @param inputSignal2 The second input signal in the frequency domain, represented as a column of FFT coefficients.
- *
- * @throws std::runtime_error If the cross-spectrum contains invalid values (e.g., infinity or NaN).
+ * @param inputSignal1 The first input signal in frequency domain.
+ * @param inputSignal2 The second input signal in frequency domain.
  */
-void calculateNormalizedCrossSpectra(const Eigen::VectorXcf &inputSignal1,
-                                     const Eigen::VectorXcf &inputSignal2,
-                                     Eigen::VectorXcf &normalizedCrossSpectra)
+void GCC_PHAT::calculateNormalizedCrossSpectra(const Eigen::VectorXcf &inputSignal1,
+                                               const Eigen::VectorXcf &inputSignal2)
 {
 
-    // Compute the cross-spectrum of the two signals
+    // Compute cross-spectrum
     Eigen::VectorXcf crossSpectrum = inputSignal1.array() * inputSignal2.conjugate().array();
 
-    // Compute the magnitude of the cross-spectrum and replace zero values with one to avoid division by zero
+    // Compute magnitude and handle zeros
     Eigen::VectorXf crossSpectrumMagnitude = crossSpectrum.cwiseAbs();
     crossSpectrumMagnitude = crossSpectrumMagnitude.unaryExpr([](float magnitude)
-                                                              { return magnitude == 0.0f ? 1.0f : magnitude; });
+                                                              { return (magnitude == 0.0f) ? 1.0f : magnitude; });
 
-    // Validate that all values in the cross-spectrum are finite
+    // Validate that all values are finite
     if (!crossSpectrumMagnitude.allFinite())
     {
         throw std::runtime_error("Cross-spectrum contains invalid values (inf or NaN).");
     }
 
-    // Normalize the cross-spectrum to compute the phase transform
-    normalizedCrossSpectra = crossSpectrum.array() / crossSpectrumMagnitude.array();
+    // Normalize to get phase transform
+    mNormalizedCrossSpectra = crossSpectrum.array() / crossSpectrumMagnitude.array();
 }
 
 /**
- * @brief Processes the cross-correlation buffer to estimate the time delay of arrival (TDOA)
- *        and find the peak cross-correlation value.
+ * @brief Processes the cross-correlation buffer to estimate TDOA and find the peak value.
  *
- * @param crossCorrelationBuffer The cross-correlation values computed from the inverse FFT.
- * @param bufferLength The total length of the padded cross-correlation buffer.
- * @param samplingRate The sampling rate of the signals in Hz.
- *
- * @return A tuple containing:
- *         - float: The estimated time delay of arrival (TDOA) in seconds.
- *         - float: The peak cross-correlation value.
+ * @param bufferLength Total length of the padded cross-correlation buffer.
+ * @param samplingRate Sampling rate in Hz.
+ * @return A tuple (tdoaInSeconds, peakValue).
  */
-std::tuple<float, float> estimateTdoaAndPeak(const Eigen::VectorXf &crossCorrelationBuffer,
-                                             int bufferLength, int samplingRate)
+std::tuple<float, float> GCC_PHAT::estimateTdoaAndPeak()
 {
-    // Compute the maximum shift range
-    int maxShift = bufferLength / 2;
 
-    // Rearrange the cross-correlation data for linear TDOA interpretation
-    Eigen::VectorXf rearrangedCrossCorrelation(2 * maxShift);
-    rearrangedCrossCorrelation.head(maxShift) = crossCorrelationBuffer.tail(maxShift);
-    rearrangedCrossCorrelation.tail(maxShift) = crossCorrelationBuffer.head(maxShift);
-    // Eigen::VectorXf back = crossCorrelationBuffer.tail(maxShift);
-    // Eigen::VectorXf front = crossCorrelationBuffer.head(maxShift);
-    // Eigen::VectorXf rearrangedCrossCorrelation(maxShift * 2);
-    // rearrangedCrossCorrelation << back, front;
+    // Rearrange cross-correlation data
+    Eigen::VectorXf rearrangedCrossCorrelation(2 * mMaxShift);
+    rearrangedCrossCorrelation.head(mMaxShift) = mCrossCorrBuffer.tail(mMaxShift);
+    rearrangedCrossCorrelation.tail(mMaxShift) = mCrossCorrBuffer.head(mMaxShift);
 
-    // Identify the peak cross-correlation value and its index
+    // Identify the peak
     Eigen::Index peakIndex;
     float peakValue = rearrangedCrossCorrelation.maxCoeff(&peakIndex);
 
-    // Calculate the time delay corresponding to the peak index
-    double shift = static_cast<double>(peakIndex) - maxShift;
-    double tdoa = shift / samplingRate;
+    double shift = static_cast<double>(peakIndex) - mMaxShift;
+    double tdoa = shift / static_cast<double>(mSampleRate);
 
     return {static_cast<float>(tdoa), peakValue};
 }

@@ -29,7 +29,6 @@ public:
     std::string onnxModelNormalizationPath = "";
 
     fftwf_plan forwardFFT = nullptr;
-    fftwf_plan inverseFFT = nullptr;
 
     std::unique_ptr<ONNXModel> onnxModel = nullptr;
 
@@ -38,18 +37,4 @@ public:
     std::chrono::seconds trackerClusteringWindow = 30s;
 
     std::unique_ptr<ImuProcessor> imuManager = nullptr;
-
-    // Constructor to initialize plans, runtime-specific methods here
-    RuntimeConfig()
-    {
-        // Initialize FFT plans dynamically, if needed
-    }
-
-    ~RuntimeConfig()
-    {
-        if (forwardFFT)
-            fftwf_destroy_plan(forwardFFT);
-        if (inverseFFT)
-            fftwf_destroy_plan(inverseFFT);
-    }
 };

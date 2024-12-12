@@ -1,14 +1,33 @@
 #pragma once
 #include "../pch.h"
 
-std::tuple<float, float> estimateTdoaAndPeak(const Eigen::VectorXf &crossCorrelationBuffer,
-                                             int bufferLength, int samplingRate);
+class GCC_PHAT
+{
+public:
+    GCC_PHAT(int paddedLength, int numChannels, int sampleRate);
 
-void calculateNormalizedCrossSpectra(const Eigen::VectorXcf &inputSignal1,
-                                     const Eigen::VectorXcf &inputSignal2,
-                                     Eigen::VectorXcf &normalizedCrossSpectra);
+    ~GCC_PHAT();
 
-auto computeGccPhat(const Eigen::MatrixXcf &savedFfts, fftwf_plan &inverseFftPlan,
-                    int &paddedLength,
-                    const int &numChannels, const int &sampleRate)
-    -> std::tuple<Eigen::VectorXf, Eigen::VectorXf>;
+    std::tuple<Eigen::VectorXf, Eigen::VectorXf> process(const Eigen::MatrixXcf &savedFfts);
+
+private:
+    static void initialize(int paddedLength); // Helper to initialize static members
+
+    void calculateNormalizedCrossSpectra(const Eigen::VectorXcf &inputSignal1,
+                                         const Eigen::VectorXcf &inputSignal2);
+
+    std::tuple<float, float> estimateTdoaAndPeak();
+
+    fftwf_plan mInverseFftPlan;
+    int mPaddedLength;
+
+    int mMaxShift;
+
+    // Reusable buffers
+    static Eigen::VectorXcf mNormalizedCrossSpectra;
+    static Eigen::VectorXf mCrossCorrBuffer;
+
+    int mNumChannels;
+    int mNumTdoas;
+    int mSampleRate;
+};
