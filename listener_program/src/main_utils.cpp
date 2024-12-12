@@ -32,7 +32,7 @@ void printMode()
  * @param argv Command-line arguments, where `argv[1]` is the JSON file path and `argv[2]` is the program runtime in seconds.
  * @throws std::runtime_error If the JSON file cannot be opened or required fields are missing.
  */
-void parseJsonConfig(RuntimeConfig &runtimeConfig, const std::string& jsonFilePath)
+void parseJsonConfig(FirmwareConfig &firmwareConfig, RuntimeConfig &runtimeConfig, const std::string &jsonFilePath)
 {
     std::ifstream inputFile(jsonFilePath);
     if (!inputFile.is_open())
@@ -44,49 +44,45 @@ void parseJsonConfig(RuntimeConfig &runtimeConfig, const std::string& jsonFilePa
     inputFile >> jsonConfig;
 
     // Configure SocketManager parameters
-    runtimeConfig.udpIp = jsonConfig.at("IPAddress").get<std::string>();
-    if (runtimeConfig.udpIp == "self")
+    std::string udpIp = jsonConfig.at("IPAddress").get<std::string>();
+    if (udpIp == "self")
     {
-        runtimeConfig.udpIp = "127.0.0.1";
+        udpIp = "127.0.0.1";
     }
-    runtimeConfig.udpPort = jsonConfig.at("Port").get<int>();
+    int udpPort = jsonConfig.at("Port").get<int>();
+
+    runtimeConfig.socketManger = std::make_unique<SocketManager>(udpPort, udpIp);
 
     // Configure RuntimeConfig parameters
     runtimeConfig.speedOfSound = jsonConfig.at("SpeedOfSound").get<float>();
     runtimeConfig.energyDetectionThreshold = jsonConfig.at("EnergyDetectionThreshold").get<float>();
     runtimeConfig.amplitudeDetectionThreshold = jsonConfig.at("AmplitudeDetectionThreshold").get<float>();
-    runtimeConfig.filterWeightsPath = jsonConfig.at("FilterWeights").get<std::string>();
+
+    // filtering
+    std::string filterWeightsPath = jsonConfig.at("FilterWeights").get<std::string>();
+    runtimeConfig.filter = std::make_unique<FrequencyDomainStrategy>(filterWeightsPath, runtimeConfig.channelData, firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
+
     runtimeConfig.receiverPositionsPath = jsonConfig.at("ReceiverPositions").get<std::string>();
-    runtimeConfig.onnxModelPath = jsonConfig.at("ONNX_model_path").get<std::string>();
-    runtimeConfig.onnxModelNormalizationPath = jsonConfig.at("ONNX_model_normalization").get<std::string>();
 
-    runtimeConfig.enableTracking = jsonConfig.at("Enable_Tracking").get<bool>();
-    runtimeConfig.trackerClusteringFrequency = std::chrono::seconds(jsonConfig.at("Cluster_Frequency_In_Seconds").get<int>());
-    runtimeConfig.trackerClusteringWindow = std::chrono::seconds(jsonConfig.at("Cluster_Window_In_Seconds").get<int>());
-
-    runtimeConfig.useImu = jsonConfig.at("Use_IMU").get<bool>();
-}
-
-void initializeRuntimeObjects(RuntimeConfig &runtimeConfig, const FirmwareConfig &firmwareConfig)
-{
-
-    // Initialize ONNX model if model path provided
-    if (!runtimeConfig.onnxModelPath.empty())
+    if (jsonConfig.at("Enable_Tracking").get<bool>())
     {
-        runtimeConfig.onnxModel = std::make_unique<ONNXModel>(runtimeConfig.onnxModelPath, runtimeConfig.onnxModelNormalizationPath);
-    }
-
-    // Initialize tracker if specified
-    if (runtimeConfig.enableTracking)
-    {
+        std::chrono::seconds trackerClusteringFrequency = std::chrono::seconds(jsonConfig.at("Cluster_Frequency_In_Seconds").get<int>());
+        std::chrono::seconds trackerClusteringWindow = std::chrono::seconds(jsonConfig.at("Cluster_Window_In_Seconds").get<int>());
         runtimeConfig.tracker = std::make_unique<Tracker>(0.04f, 15, 4, "",
-                                                          runtimeConfig.trackerClusteringFrequency,
-                                                          runtimeConfig.trackerClusteringWindow);
+                                                          trackerClusteringFrequency,
+                                                          trackerClusteringWindow);
     }
 
-    // Initialize IMU manager
-    if (runtimeConfig.useImu)
+    if (jsonConfig.at("Use_IMU").get<bool>())
     {
         runtimeConfig.imuManager = std::make_unique<ImuProcessor>(firmwareConfig.IMU_BYTE_SIZE);
+    }
+
+    // Initialize ONNX model if model path provided
+    std::string onnxModelPath = jsonConfig.at("ONNX_model_path").get<std::string>();
+    if (!onnxModelPath.empty())
+    {
+        std::string onnxModelNormalizationPath = jsonConfig.at("ONNX_model_normalization").get<std::string>();
+        runtimeConfig.onnxModel = std::make_unique<ONNXModel>(onnxModelPath, onnxModelNormalizationPath);
     }
 }

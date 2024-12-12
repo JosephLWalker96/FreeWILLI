@@ -29,9 +29,8 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
     try
     {
 
-        static Eigen::MatrixXf channelData(1, firmwareConfig.NUM_CHAN); // time domain data (inputs)
-        FrequencyDomainStrategy myFilter(runtimeConfig.filterWeightsPath, channelData, firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
-        int paddedLength = myFilter.mPaddedLength;
+        // FrequencyDomainStrategy myFilter(runtimeConfig.filterWeightsPath, channelData, firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
+        int paddedLength = runtimeConfig.filter->mPaddedLength;
 
         Eigen::MatrixXf hydrophonePositions = getHydrophoneRelativePositions(runtimeConfig.receiverPositionsPath);
 
@@ -104,7 +103,7 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             auto beginLatency = std::chrono::steady_clock::now();
 
             auto beforePtr = std::chrono::steady_clock::now();
-            firmwareConfig.ProcessFncPtr(sess.dataSegment, channelData, firmwareConfig.NUM_CHAN);
+            firmwareConfig.ProcessFncPtr(sess.dataSegment, runtimeConfig.channelData, firmwareConfig.NUM_CHAN);
             auto afterPtr = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
             // std::cout << "durationPtr: " << durationPtr.count() << std::endl;
@@ -114,7 +113,7 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
                 runtimeConfig.tracker->scheduleCluster();
             }
 
-            DetectionResult threshResult = detectTimeDomainThreshold(channelData.col(0), sess.dataTimes,
+            DetectionResult threshResult = detectTimeDomainThreshold(runtimeConfig.channelData.col(0), sess.dataTimes,
                                                                      runtimeConfig.amplitudeDetectionThreshold, firmwareConfig.SAMPLE_RATE);
             if (threshResult.maxPeakIndex < 0)
             {
@@ -133,9 +132,10 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             // std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
 
             // std::cout << "before filt " << &channelData << std::endl;
-            myFilter.apply();
+            // myFilter.apply();
+            runtimeConfig.filter->apply();
             // std::cout << "after filt " << &channelData << std::endl;
-            Eigen::MatrixXcf savedFFTs = myFilter.getFrequencyDomainData();
+            Eigen::MatrixXcf savedFFTs = runtimeConfig.filter->getFrequencyDomainData();
 
             DetectionResult detResult = detectFrequencyDomainThreshold(savedFFTs.col(0), sess.dataTimes,
                                                                        runtimeConfig.energyDetectionThreshold, firmwareConfig.SAMPLE_RATE);

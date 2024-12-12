@@ -7,6 +7,4 @@ class SocketManager;
 
 void printMode();
 
-void parseJsonConfig(RuntimeConfig &runtimeConfig, const std::string& jsonFilePath);
-
-void initializeRuntimeObjects(RuntimeConfig &runtimeConfig, const FirmwareConfig &firmwareConfig);
+void parseJsonConfig(FirmwareConfig &firmwareConfig, RuntimeConfig &runtimeConfig, const std::string &jsonFilePath);
