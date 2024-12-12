@@ -222,30 +222,6 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             // std::cout << "Latency: " << latencyMeasure.count() << std::endl;
         }
     }
-    catch (const GCC_Value_Error &e)
-    {
-
-        std::stringstream msg; // compose message to dispatch
-        msg << e.what() << std::endl;
-        std::cerr << msg.str();
-
-        try
-        {
-            writeDataToCerr(sess.dataTimes, sess.dataBytesSaved);
-        }
-        catch (...)
-        {
-            std::cerr << "failed to write data to cerr \n";
-        }
-        sess.errorOccurred = true;
-    }
-    catch (const std::ios_base::failure &e)
-    {
-        std::stringstream msg; // compose message to dispatch
-        msg << e.what() << std::endl;
-        std::cerr << msg.str();
-        std::exit(1);
-    }
     catch (const std::exception &e)
     {
         std::cerr << "Error occured in data processor thread: \n";
@@ -261,8 +237,8 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
         catch (...)
         {
             std::cerr << "failed to write data to cerr \n";
+            sess.errorOccurred = true;
         }
         sess.errorOccurred = true;
-        std::cerr << "End of catch statement\n";
     }
 }

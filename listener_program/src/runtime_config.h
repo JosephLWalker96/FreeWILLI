@@ -8,12 +8,6 @@
 using TimePoint = std::chrono::system_clock::time_point;
 using namespace std::chrono_literals;
 
-class GCC_Value_Error : public std::runtime_error
-{
-public:
-    GCC_Value_Error(const std::string &message) : std::runtime_error(message) {}
-};
-
 class RuntimeConfig
 {
 public:
@@ -26,7 +20,7 @@ public:
     float amplitudeDetectionThreshold = 100.0f; // 28.0f;
     float speedOfSound = 1482.965459;
 
-    std::string udpIp; 
+    std::string udpIp;
     int udpPort;
 
     std::string filterWeightsPath = "";

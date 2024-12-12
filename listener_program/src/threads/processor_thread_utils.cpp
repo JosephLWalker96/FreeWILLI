@@ -1,9 +1,8 @@
 #include "../pch.h"
 #include "processor_thread_utils.h"
 #include "../tracker/tracker.h"
-#include "svd_utils.h"
-// #include "utils.h"
-#include "buffer_writer.h"
+#include "../algorithms/linear_algebra_utils.h"
+#include "../io/buffer_writer.h"
 #include "../session.h"
 
 /**
@@ -395,7 +394,7 @@ bool checkForDataErrors(Session &session, std::vector<uint8_t> &dataBytes, const
  * @param numChannels The number of channels in the interleaved data.
  */
 void processSegmentInterleaved(std::span<float> interleavedData, Eigen::MatrixXf &channelMatrix,
-                                  const int numChannels)
+                               const int numChannels)
 {
     // Calculate the number of samples per channel
     size_t numSamples = interleavedData.size() / numChannels;
