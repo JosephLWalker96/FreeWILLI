@@ -28,8 +28,6 @@ public:
     std::string onnxModelPath = "";
     std::string onnxModelNormalizationPath = "";
 
-    fftwf_plan forwardFFT = nullptr;
-
     std::unique_ptr<ONNXModel> onnxModel = nullptr;
 
     std::unique_ptr<Tracker> tracker = nullptr;

@@ -3,7 +3,8 @@
 
 #include "../algorithms/doa_utils.h"
 #include "../algorithms/gcc_phat.h"
-#include "../algorithms/fir_iir_filtering.h"
+// #include "../algorithms/fir_iir_filtering.h"
+#include "../algorithms/fir_filter.h"
 #include "../algorithms/threshold_detectors.h"
 #include "../algorithms/IMU_processor.h"
 
@@ -27,22 +28,10 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
 {
     try
     {
-        // Initialization
-        Eigen::VectorXcf filterFreq;
-        std::vector<float> paddedFilterWeights;
 
-        int paddedLength = firmwareConfig.CHANNEL_SIZE;
-        if (!runtimeConfig.filterWeightsPath.empty())
-        {
-            initializeFilterWeights(runtimeConfig.filterWeightsPath, firmwareConfig.CHANNEL_SIZE, filterFreq, paddedFilterWeights);
-            paddedLength = paddedFilterWeights.size();
-        }
-        int fftOutputSize = (paddedLength / 2) + 1;
-
-        static Eigen::MatrixXf channelData(paddedLength, firmwareConfig.NUM_CHAN);
-        static Eigen::MatrixXcf savedFFTs(fftOutputSize, firmwareConfig.NUM_CHAN);
-
-        setupFftPlans(paddedLength, fftOutputSize, firmwareConfig.NUM_CHAN, channelData, savedFFTs, runtimeConfig.forwardFFT);
+        static Eigen::MatrixXf channelData(1, firmwareConfig.NUM_CHAN); // time domain data (inputs)
+        FrequencyDomainStrategy myFilter(runtimeConfig.filterWeightsPath, channelData, firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
+        int paddedLength = myFilter.mPaddedLength;
 
         Eigen::MatrixXf hydrophonePositions = getHydrophoneRelativePositions(runtimeConfig.receiverPositionsPath);
 
@@ -133,13 +122,20 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             }
 
             // auto beforeFilter = std::chrono::steady_clock::now();
+            /*
             performFrequencyDomainFIRFiltering(
                 channelData,              // Zero-padded time-domain data
                 filterFreq,               // Frequency domain filter (FIR taps in freq domain)
                 runtimeConfig.forwardFFT, // FFT plan
                 savedFFTs);               // Output of FFT transformed time-domain data
+            */
             // auto afterFilter = std::chrono::steady_clock::now();
             // std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
+
+            // std::cout << "before filt " << &channelData << std::endl;
+            myFilter.apply();
+            // std::cout << "after filt " << &channelData << std::endl;
+            Eigen::MatrixXcf savedFFTs = myFilter.getFrequencyDomainData();
 
             DetectionResult detResult = detectFrequencyDomainThreshold(savedFFTs.col(0), sess.dataTimes,
                                                                        runtimeConfig.energyDetectionThreshold, firmwareConfig.SAMPLE_RATE);
