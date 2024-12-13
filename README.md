@@ -63,7 +63,7 @@ sudo cp -r onnxruntime-osx-arm64-1.19.2/include/* /usr/local/include/onnxruntime
 sudo cp -r onnxruntime-osx-arm64-1.19.2/lib/* /usr/local/lib/
 ```
 
-### Build program
+### Build program (Ubuntu/Debian & macOS)
 
 1. Clone the repository:
 
@@ -86,6 +86,10 @@ cd listener_program/
 rm -r out/ && mkdir out/ && cd out
 cmake ..
 make -j$(nproc)
+```
+
+4. Run the binary:
+```bash
 cd ..
 ./bin/HarpListen config_files/volumetric.json 50000
 ```
