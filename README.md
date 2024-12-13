@@ -82,9 +82,10 @@ git submodule update --init --recursive
 
 3. Build the program:
 ```bash
+cd listener_program/
 rm -r out/ && mkdir out/ && cd out
 cmake ..
-make -j20
+make -j$(nproc)
 cd ..
 ./bin/HarpListen config_files/volumetric.json 50000
 ```
