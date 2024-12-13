@@ -24,6 +24,7 @@ The repository is organized as follows:
 
 ### Prerequisites
 
+- **CMake**: A build system generator used to configure and build the project across multiple platforms.
 - **BLAS**: Used for optimized linear algebra routines.
 - **FFTW3**: Required for performing fast Fourier transforms.
 - **Eigen**: Used for advanced linear algebra operations, such as matrix manipulations and decompositions.
@@ -31,15 +32,30 @@ The repository is organized as follows:
 - **ONNX Runtime**: Used for running machine learning models in the program.
 
 ### Installing Dependencies on Ubuntu/Debian
-1. Install the required libraries using apt:
+1. Example Installing CMake 3.29.7 on Linux x86
+Use wget to download the precompiled binary from the official CMake website:
+```bash
+wget https://github.com/Kitware/CMake/releases/download/v3.29.7/cmake-3.29.7-linux-x86_64.sh
+```
 
+Make the downloaded file executable and run it to install CMake:
+```bash
+chmod +x cmake-3.29.7-linux-x86_64.sh
+sudo ./cmake-3.29.7-linux-x86_64.sh --skip-license --prefix=/usr/local
+```
+
+Confirm the installed version of CMake:
+```bash
+cmake --version
+```
+
+2. Install the required libraries using apt:
 ```bash
 sudo apt-get update
 sudo apt-get install -y libfftw3-dev libblas-dev libeigen3-dev nlohmann-json3-dev
 ```
 
-2. Download and install ONNX Runtime
-
+3. Download and install ONNX Runtime
 ```bash
 wget https://github.com/microsoft/onnxruntime/releases/download/v1.14.1/onnxruntime-linux-x64-1.14.1.tgz
 tar -xzf onnxruntime-linux-x64-1.14.1.tgz
@@ -48,8 +64,31 @@ sudo cp -r onnxruntime-linux-x64-1.14.1/lib/* /usr/local/lib/
 ```
 
 ### Installing Dependencies on macOS
-1. Install the required libraries using brew:
+1. Example Installing CMake 3.29.7 on macOS
+Use curl to download the precompiled binary from the official CMake website:
+```bash
+curl -L -o cmake-3.29.7-macos-universal.dmg https://github.com/Kitware/CMake/releases/download/v3.29.7/cmake-3.29.7-macos-universal.dmg
+```
 
+Mount the .dmg file to access the installer:
+```bash
+hdiutil attach cmake-3.29.7-macos-universal.dmg
+```
+
+Open the mounted volume and drag the CMake application to your preferred location (e.g., /Applications
+
+Add CMake to PATH
+```bash
+sudo "/Applications/CMake.app/Contents/bin/cmake" /usr/local/bin/cmake
+```
+
+Confirm the installed version of CMake:
+```bash
+cmake --version
+```
+
+
+1. Install the required libraries using brew:
 ```bash
 brew install fftw openblas eigen nlohmann-json libomp
 ```
