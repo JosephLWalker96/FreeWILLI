@@ -120,19 +120,6 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
                 continue;
             }
 
-            // auto beforeFilter = std::chrono::steady_clock::now();
-            /*
-            performFrequencyDomainFIRFiltering(
-                channelData,              // Zero-padded time-domain data
-                filterFreq,               // Frequency domain filter (FIR taps in freq domain)
-                runtimeConfig.forwardFFT, // FFT plan
-                savedFFTs);               // Output of FFT transformed time-domain data
-            */
-            // auto afterFilter = std::chrono::steady_clock::now();
-            // std::chrono::duration<double> durationFilter = afterFilter - beforeFilter;
-
-            // std::cout << "before filt " << &channelData << std::endl;
-            // myFilter.apply();
             runtimeConfig.filter->apply();
             // std::cout << "after filt " << &channelData << std::endl;
             Eigen::MatrixXcf savedFFTs = runtimeConfig.filter->getFrequencyDomainData();
@@ -161,8 +148,8 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
 
             Eigen::VectorXf tdoaVector = std::get<0>(tdoasAndXCorrAmps);
             Eigen::VectorXf XCorrAmps = std::get<1>(tdoasAndXCorrAmps);
-            // std::cout << "TDOAs: " << tdoaVector.transpose() << std::endl;
-            //  std::cout << "GCC time: " << durationGCCW.count() << std::endl;
+            std::cout << "TDOAs: " << tdoaVector.transpose() << std::endl;
+            std::cout << "GCC time: " << durationGCCW.count() << std::endl;
 
             // auto beforeDOA = std::chrono::steady_clock::now();
             Eigen::VectorXf DOAs = computeDoaFromTdoa(P, U, runtimeConfig.speedOfSound, tdoaVector, rankOfH);

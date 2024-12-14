@@ -48,10 +48,13 @@ void FrequencyDomainStrategy::apply()
         throw std::runtime_error("Error: FFTW plan is not initialized.");
     }
     fftwf_execute(mForwardFftPlan);
+
+    
     for (int channelIndex = 0; channelIndex < mNumChannels; channelIndex++)
     {
         mSavedFFTs.col(channelIndex) = mSavedFFTs.col(channelIndex).array() * mFilterFreq.array();
     }
+    
 }
 
 auto FrequencyDomainStrategy::readFirFilterFile(const std::string &filePath) -> std::vector<float>
