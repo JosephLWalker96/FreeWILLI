@@ -191,6 +191,89 @@ void convertAndAppend(std::vector<float, Alloc> &dataSegment, std::span<uint8_t>
     }
 }
 */
+
+/*
+void convertAndAppend(Eigen::MatrixXf &channelMatrix, 
+                      std::span<uint8_t> dataBytes, 
+                      int dataSize, 
+                      int headerSize)
+{
+    // Each sample = 2 bytes
+    const size_t numSamples = dataSize / 2;
+    const size_t numRows = channelMatrix.rows();
+    const size_t oldCols = channelMatrix.cols();
+
+    // Calculate how many new columns are needed
+    const size_t newCols = (numSamples + numRows - 1) / numRows;
+
+    // Resize the matrix to accommodate these new columns
+    channelMatrix.conservativeResize(numRows, oldCols + newCols);
+
+    // Pointer to the start of the Eigen matrix's data (column-major layout)
+    float* __restrict__ matrixPtr = channelMatrix.data();
+
+    // Pointer to incoming samples (skipping the header)
+    const uint8_t* __restrict__ inPtr = dataBytes.data() + headerSize;
+
+    // Compute the offset where the new columns begin
+    const size_t startOffset = oldCols * numRows;  
+
+    // Single-pass conversion & storage
+    // We'll write each sample directly into the correct memory location.
+    #pragma omp simd
+    for (size_t i = 0; i < numSamples; ++i)
+    {
+        // Convert 2-byte sample to float
+        uint16_t sample = (static_cast<uint16_t>(inPtr[2 * i]) << 8) | inPtr[2 * i + 1];
+        float value = static_cast<float>(sample) - 32768.0f;
+
+        // Column-major: matrixPtr[col * numRows + row]
+        // row = i % numRows, col = oldCols + i / numRows
+        // => memory offset = startOffset + i
+        matrixPtr[startOffset + i] = value;
+    }
+}
+*/
+void convertAndAppend(Eigen::MatrixXf &channelMatrix, 
+                      std::span<uint8_t> dataBytes, 
+                      int dataSize, 
+                      int headerSize,
+                      int &counter)
+{
+    // Each sample = 2 bytes
+    const size_t numSamples = dataSize / 2;
+    const size_t numRows = channelMatrix.rows();
+
+    // Calculate how many columns the new data will occupy
+    const size_t newCols = (numSamples + numRows - 1) / numRows;
+
+    // Pointer to the start of the Eigen matrix's data (column-major layout)
+    float* __restrict__ matrixPtr = channelMatrix.data();
+
+    // Pointer to incoming samples (skipping the header)
+    const uint8_t* __restrict__ inPtr = dataBytes.data() + headerSize;
+
+    // Compute the offset where the new columns begin based on the counter
+    const size_t startOffset = counter * numRows;
+
+    // Single-pass conversion & storage
+    // We'll write each sample directly into the correct memory location.
+    #pragma omp simd
+    for (size_t i = 0; i < numSamples; ++i)
+    {
+        // Convert 2-byte sample to float
+        uint16_t sample = (static_cast<uint16_t>(inPtr[2 * i]) << 8) | inPtr[2 * i + 1];
+        float value = static_cast<float>(sample) - 32768.0f;
+
+        // Write to matrix at the computed offset
+        matrixPtr[startOffset + i] = value;
+    }
+
+    // Increment the counter by the number of columns written
+    counter += newCols;
+}
+
+
 /**
  * @brief Generates a timestamp from raw data bytes.
  *

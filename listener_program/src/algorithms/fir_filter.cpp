@@ -24,8 +24,9 @@ FrequencyDomainStrategy::FrequencyDomainStrategy(const std::string &filterWeight
 
     std::cout << "Padded size: " << mPaddedLength << std::endl;
     initializeFilterWeights(filterWeights);
-    channelData.resize(mPaddedLength, numChannels);
+    channelData.resize(numChannels, mPaddedLength);
     // Create forward FFT plan for channel data
+    /*
     mForwardFftPlan = fftwf_plan_many_dft_r2c(
         1,                                                    // Rank of the transform (1D)
         &mPaddedLength,                                       // Pointer to the size of the transform
@@ -39,6 +40,21 @@ FrequencyDomainStrategy::FrequencyDomainStrategy(const std::string &filterWeight
         1,                                                    // Stride between successive elements in output
         fftOutputSize,                                        // Stride between successive channels in output
         FFTW_ESTIMATE);                                       // Flag to measure and optimize the plan
+    */
+    mForwardFftPlan = fftwf_plan_many_dft_r2c(
+        1,                                         // Rank of the transform (1D)
+        &mPaddedLength,                            // Pointer to the size of the transform
+        numChannels,                               // Number of transforms (channels)
+        channelData.data(),                        // Input data pointer
+        nullptr,                                   // No embedding
+        numChannels,                               // Input stride: elements of a single transform are spaced by numChannels
+        1,                                         // Input distance: distance between the start of consecutive transforms
+        reinterpret_cast<fftwf_complex *>(mSavedFFTs.data()), // Output data pointer
+        nullptr,                                   // No embedding
+        1,                                         // Output stride
+        fftOutputSize,                             // Output distance
+        FFTW_ESTIMATE                              // Flag to measure and optimize the plan
+    );
 }
 
 void FrequencyDomainStrategy::apply()
@@ -49,11 +65,12 @@ void FrequencyDomainStrategy::apply()
     }
     fftwf_execute(mForwardFftPlan);
 
-    
+    /* 
     for (int channelIndex = 0; channelIndex < mNumChannels; channelIndex++)
     {
         mSavedFFTs.col(channelIndex) = mSavedFFTs.col(channelIndex).array() * mFilterFreq.array();
     }
+    */
     
 }
 

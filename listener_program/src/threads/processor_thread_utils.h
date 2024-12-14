@@ -35,6 +35,8 @@ void waitForData(Session &sess, ObservationBuffer &observationBuffer, RuntimeCon
 template <typename Alloc>
 void convertAndAppend(std::vector<float, Alloc> &dataSegment, std::span<uint8_t> dataBytes, const int &dataSize, const int &headerSize)
 {
+// Hint the compiler to vectorize
+#pragma omp simd
     for (size_t i = 0; i < dataSize; i += 2)
     {
         float value = static_cast<float>(static_cast<uint16_t>(dataBytes[headerSize + i]) << 8) +
@@ -44,7 +46,7 @@ void convertAndAppend(std::vector<float, Alloc> &dataSegment, std::span<uint8_t>
     }
 }
 */
-
+/*
 template <typename Alloc>
 void convertAndAppend(std::vector<float, Alloc> &dataSegment, std::span<uint8_t> dataBytes,
                       const int &dataSize, const int &headerSize)
@@ -73,6 +75,12 @@ void convertAndAppend(std::vector<float, Alloc> &dataSegment, std::span<uint8_t>
         outPtr[i] = value;
     }
 }
+*/
+void convertAndAppend(Eigen::MatrixXf &channelMatrix, 
+                      std::span<uint8_t> dataBytes, 
+                      int dataSize, 
+                      int headerSize,
+                      int& counter);
 
 TimePoint generateTimestamp(std::vector<uint8_t> &dataBytes, const int numChannels);
 

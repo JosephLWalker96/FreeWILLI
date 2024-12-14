@@ -55,8 +55,8 @@ public:
     std::atomic<bool> errorOccurred = false;
     std::queue<std::vector<uint8_t>> dataBuffer;
     std::vector<std::vector<uint8_t>> dataBytesSaved;
-    // std::vector<float> dataSegment;
-    std::vector<float, AlignedAllocator<float, 16>> dataSegment;
+    std::vector<float> dataSegment;
+    // std::vector<float, AlignedAllocator<float, 16>> dataSegment;
     std::vector<std::chrono::system_clock::time_point> dataTimes; // timestamps of UDP packet
     int detectionCounter = 0;
 

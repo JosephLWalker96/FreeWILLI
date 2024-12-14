@@ -50,15 +50,18 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
         GCC_PHAT computeTDOAs(paddedLength, firmwareConfig.NUM_CHAN, firmwareConfig.SAMPLE_RATE);
 
         std::cout << "Ready to process data..." << std::endl;
+        std::chrono::duration<double> durationConvert;
         while (!sess.errorOccurred)
         {
 
             sess.dataTimes.clear();
             sess.dataSegment.clear();
             sess.dataBytesSaved.clear();
+            int columnCounter = 0;
             TimePoint currentTimestamp;
 
-            while (sess.dataSegment.size() < firmwareConfig.DATA_SEGMENT_LENGTH)
+            //while (sess.dataSegment.size() < firmwareConfig.DATA_SEGMENT_LENGTH)
+            while (sess.dataTimes.size() < 8)
             {
 
                 auto startLoop = std::chrono::system_clock::now();
@@ -73,10 +76,9 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
                 if (!dataError) [[likely]]
                 {
                     auto beforeConvert = std::chrono::steady_clock::now();
-                    convertAndAppend(sess.dataSegment, dataBytes, firmwareConfig.DATA_SIZE, firmwareConfig.HEAD_SIZE); // bytes data is decoded and appended to sess.dataSegment
+                    convertAndAppend(runtimeConfig.channelData, dataBytes, firmwareConfig.DATA_SIZE, firmwareConfig.HEAD_SIZE, columnCounter); // bytes data is decoded and appended to sess.dataSegment
                     auto afterConvert = std::chrono::steady_clock::now();
-                    std::chrono::duration<double> durationConvert = afterConvert - beforeConvert;
-                    // std::cout << "convertAndAppend: " << durationConvert.count() << std::endl;
+                    durationConvert = afterConvert - beforeConvert;
                 }
 
                 if ((runtimeConfig.detectionOutputFile).empty()) [[unlikely]]
@@ -100,27 +102,33 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
              *   now apply energy detector.
              */
 
-            auto beginLatency = std::chrono::steady_clock::now();
+            //auto beginLatency = std::chrono::steady_clock::now();
 
-            auto beforePtr = std::chrono::steady_clock::now();
-            firmwareConfig.ProcessFncPtr(sess.dataSegment, runtimeConfig.channelData, firmwareConfig.NUM_CHAN);
-            auto afterPtr = std::chrono::steady_clock::now();
-            std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
+            //auto beforePtr = std::chrono::steady_clock::now();
+            //firmwareConfig.ProcessFncPtr(sess.dataSegment, runtimeConfig.channelData, firmwareConfig.NUM_CHAN);
+            //auto afterPtr = std::chrono::steady_clock::now();
+            //std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
             // std::cout << "durationPtr: " << durationPtr.count() << std::endl;
+
+            std::cout << "convertAndAppendOut: " << durationConvert.count() << std::endl;
 
             if (runtimeConfig.tracker)
             {
                 runtimeConfig.tracker->scheduleCluster();
             }
 
-            DetectionResult threshResult = detectTimeDomainThreshold(runtimeConfig.channelData.col(0), sess.dataTimes,
+            DetectionResult threshResult = detectTimeDomainThreshold(runtimeConfig.channelData.row(0), sess.dataTimes,
                                                                      runtimeConfig.amplitudeDetectionThreshold, firmwareConfig.SAMPLE_RATE);
             if (threshResult.maxPeakIndex < 0)
             {
                 continue;
             }
 
+            auto beforeFilt = std::chrono::steady_clock::now();
             runtimeConfig.filter->apply();
+            auto afterFilt = std::chrono::steady_clock::now();
+            std::chrono::duration<double> durationFilt = afterFilt - beforeFilt;
+            std::cout << "durationFilt: " << durationFilt.count() << std::endl;
             // std::cout << "after filt " << &channelData << std::endl;
             Eigen::MatrixXcf savedFFTs = runtimeConfig.filter->getFrequencyDomainData();
 
@@ -140,7 +148,6 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             // std::cout << "Filter runtime: " << durationFilter.count() << std::endl;
 
             auto beforeGCCW = std::chrono::steady_clock::now();
-            // std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = computeGccPhat(savedFFTs, runtimeConfig.inverseFFT, paddedLength, firmwareConfig.NUM_CHAN, firmwareConfig.SAMPLE_RATE);
             std::tuple<Eigen::VectorXf, Eigen::VectorXf> tdoasAndXCorrAmps = computeTDOAs.process(savedFFTs);
             auto afterGCCW = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationGCCW = afterGCCW - beforeGCCW;
@@ -200,7 +207,7 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             }
 
             auto endLatency = std::chrono::steady_clock::now();
-            std::chrono::duration<double> latencyMeasure = endLatency - beginLatency;
+            //std::chrono::duration<double> latencyMeasure = endLatency - beginLatency;
             // std::cout << "Latency: " << latencyMeasure.count() << std::endl;
         }
     }

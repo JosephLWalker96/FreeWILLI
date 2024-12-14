@@ -34,7 +34,6 @@ Eigen::MatrixXf precomputePseudoInverse(const Eigen::JacobiSVD<Eigen::MatrixXf> 
         }
     }
 
-    // Compute P = V * Sigma^+
     Eigen::MatrixXf precomputedMatrix = rightSingularVectors * sigmaPseudoInverse;
     return precomputedMatrix;
 }
