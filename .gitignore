@@ -13,3 +13,4 @@ deployment_files/*
 out/
 TestOnnx/val_spectra.json
 build-cross/
+.DS_Store
