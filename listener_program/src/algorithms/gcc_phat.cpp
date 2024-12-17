@@ -63,7 +63,8 @@ std::tuple<Eigen::VectorXf, Eigen::VectorXf> GCC_PHAT::process(const Eigen::Matr
         {
             const auto &signal1 = savedFfts.col(signal1Index);
             const auto &signal2 = savedFfts.col(signal2Index);
-            std::cout << "signal1 length: " << signal1.size() << std::endl;
+            //std::cout << "signal1 length: " << signal1.size() << std::endl;
+            //std::cout << "signal1: " << signal1.head(10) << std::endl;
 
             // Compute normalized cross-spectra
             calculateNormalizedCrossSpectra(signal1, signal2);
@@ -99,7 +100,6 @@ void GCC_PHAT::calculateNormalizedCrossSpectra(const Eigen::VectorXcf &inputSign
     Eigen::VectorXf crossSpectrumMagnitude = crossSpectrum.cwiseAbs();
     crossSpectrumMagnitude = crossSpectrumMagnitude.unaryExpr([](float magnitude)
                                                               { return (magnitude == 0.0f) ? 1.0f : magnitude; });
-
     // Validate that all values are finite
     if (!crossSpectrumMagnitude.allFinite())
     {

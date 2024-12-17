@@ -11,6 +11,8 @@
 
 using TimePoint = std::chrono::system_clock::time_point;
 
+FirmwareConfig firmwareConfig;
+
 // Helper function to create sample data and timestamps
 std::pair<Eigen::VectorXf, std::vector<TimePoint>> CreateTestData(int size, double peakValue, int peakIndex)
 {
@@ -26,70 +28,85 @@ std::pair<Eigen::VectorXf, std::vector<TimePoint>> CreateTestData(int size, doub
   }
   return std::make_pair(data, timestamps);
 }
-/*
+
 TEST(ConvertDataTest, ValidData)
 {
-  std::vector<uint8_t> dataBytes = {0x80, 0x04, 0x80, 0x0d, 0x80, 0x0e}; // Sample data bytes (modify as needed)
-  unsigned int DATA_SIZE = dataBytes.size();
-  unsigned int HEAD_SIZE = 0;
-  std::vector<float> expectedResult = {4.0, 13.0, 14.0}; // Expected converted value (modify as needed)
 
-  // Create an empty vector to store the converted data
-  std::vector<float> dataSegment;
+    // Constants
+    constexpr int HEADER_SIZE = 12;
+    constexpr int CONTENT_SIZE = 8;
+    constexpr int BYTES_PER_SAMP = 2;
+    constexpr int SAMPLE_OFFSET = 32768; // Assuming SAMPLE_OFFSET is 32768 as used in the conversion
 
-  // Call the function under test
-  convertAndAppend(dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE);
+    // Create 12 header bytes algorithmically (e.g., sequential values starting from 0)
+    std::vector<uint8_t> headerBytes(HEADER_SIZE);
+    uint8_t headerValue = 0;
+    std::generate(headerBytes.begin(), headerBytes.end(), [&headerValue]() { return headerValue++; });
 
-  // Assert that the converted data matches the expectation
-  EXPECT_EQ(dataSegment, expectedResult);
-}
+    // Create 8 content bytes
+    std::vector<uint8_t> contentBytes = {0x80, 0x04, 0x80, 0x0d, 0x80, 0x0e, 0x80, 0x12}; // Example content
 
-/*
-TEST(ConvertDataTest, NaNValue) {
-  // Prepare test data with NaN value
-  std::vector<uint8_t> dataBytes = {0xFF, 0xFF, 0x03, 0x04}; // Sample data with NaN (modify as needed)
-  unsigned int DATA_SIZE = dataBytes.size();
-  unsigned int HEAD_SIZE = 0;
+    // Combine header and content bytes
+    std::vector<uint8_t> dataBytes;
+    dataBytes.insert(dataBytes.end(), headerBytes.begin(), headerBytes.end());
+    dataBytes.insert(dataBytes.end(), contentBytes.begin(), contentBytes.end());
 
-  // Create an empty vector to store the converted data
-  std::vector<double> dataSegment;
+    // Validate dataBytes size
+    ASSERT_EQ(dataBytes.size(), HEADER_SIZE + CONTENT_SIZE);
 
-  // Expect a runtime_error to be thrown for NaN
-  EXPECT_THROW({ ConvertData(dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE); }, std::runtime_error);
-}
+    // Expected results
+    Eigen::MatrixXf expectedResult(4, 1); // 4 rows, 1 column for this example
+    expectedResult << 4.0f, 13.0f, 14.0f, 18.0f; // Expected converted values for the content bytes
 
-TEST(ConvertDataTest, InfValue) {
-  // Prepare test data with Inf value
-  std::vector<uint8_t> dataBytes = {0xFF, 0x7F, 0x03, 0x04}; // Sample data with positive Inf (modify as needed)
-  unsigned int DATA_SIZE = dataBytes.size();
-  unsigned int HEAD_SIZE = 0;
+    // Initialize the matrix with sufficient rows and columns
+    Eigen::MatrixXf dataSegment(4, 1); // 4 rows, 1 column for this example
+    dataSegment.setZero();             // Initialize all values to zero
 
-  // Create an empty vector to store the converted data
-  std::vector<double> dataSegment;
+    // Set up the counter
+    int counter = 0;
 
-  // Expect a runtime_error to be thrown for Inf
-  EXPECT_THROW({ ConvertData(dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE); }, std::runtime_error);
+    // Call the function under test
+    firmwareConfig.convertAndInsertData(dataSegment, std::span<uint8_t>(dataBytes), counter, HEADER_SIZE, CONTENT_SIZE, BYTES_PER_SAMP, SAMPLE_OFFSET);
+
+    // Assert that the converted data matches the expectation
+    EXPECT_TRUE(dataSegment.isApprox(expectedResult));
 }
 
 TEST(ConvertDataTest, EmptyData) {
-  // Prepare empty data
-  std::vector<uint8_t> dataBytes;
-  unsigned int DATA_SIZE = dataBytes.size();
-  unsigned int HEAD_SIZE = 0;
-  std::vector<double> expectedResult; // Empty expected result
+    // Constants
+    constexpr int HEADER_SIZE = 12;
+    constexpr int CONTENT_SIZE = 0; // No content bytes
+    constexpr int BYTES_PER_SAMP = 2;
+    constexpr int SAMPLE_OFFSET = 32768;
 
-  // Create an empty vector to store the converted data
-  std::vector<double> dataSegment;
+    // Create empty header and content bytes
+    std::vector<uint8_t> headerBytes(HEADER_SIZE);
+    std::vector<uint8_t> contentBytes(CONTENT_SIZE);
 
-  // Call the function under test
-  ConvertData(dataSegment, dataBytes, DATA_SIZE, HEAD_SIZE);
+    // Combine header and content bytes
+    std::vector<uint8_t> dataBytes;
+    dataBytes.insert(dataBytes.end(), headerBytes.begin(), headerBytes.end());
+    dataBytes.insert(dataBytes.end(), contentBytes.begin(), contentBytes.end());
 
-  // Assert that the converted data is empty
-  EXPECT_EQ(dataSegment, expectedResult);
+    // Initialize the matrix
+    Eigen::MatrixXf dataSegment(1, 1); // Minimal matrix size
+    dataSegment.setZero();             // Initialize all values to zero
+
+    // Expected result
+    Eigen::MatrixXf expectedResult(1, 1);
+    expectedResult.setZero(); // Expect an empty result
+
+    // Set up the counter
+    int counter = 0;
+
+    // Call the function under test
+    firmwareConfig.convertAndInsertData(dataSegment, std::span<uint8_t>(dataBytes), counter, HEADER_SIZE, CONTENT_SIZE, BYTES_PER_SAMP, SAMPLE_OFFSET);
+
+    // Assert that the converted data is empty
+    EXPECT_TRUE(dataSegment.isApprox(expectedResult));
 }
 
 
-*/
 
 TEST(ThresholdDetectTest, NoPeak)
 {

@@ -1,32 +1,8 @@
 message(STATUS "Cross-compiling for ARM (Raspberry Pi Zero 2W)")
 
-# Set Raspberry Pi 64-bit specific flags
-# add_compile_options(-mcpu=cortex-a53 -O3)
-# Specify flags for NEON SIMD support and armv8-a architecture 
-# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=cortex-a53") 
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=cortex-a53") 
-
-
-#set(ENABLE_TEST FALSE)  # Disable tests for cross-compiling
-#set(ENABLE_BENCHMARK FALSE)
-
 # Ensure CMake searches the correct paths within the sysroot
 set(CMAKE_PREFIX_PATH ${CMAKE_SYSROOT}/usr ${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu ${CMAKE_SYSROOT}/usr/include)
 set(CMAKE_LIBRARY_PATH ${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu ${CMAKE_SYSROOT}/lib/aarch64-linux-gnu)
-
-# Find OpenBLAS
-find_library(OPENBLAS_LIBRARIES 
-NAMES openblas openblasp-r0.3.21
-PATHS ${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/ 
-    ${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/openblas-pthread/
-NO_DEFAULT_PATH)
-
-if (OPENBLAS_LIBRARIES)
-list(APPEND THIRD_PARTY_LIBRARIES ${OPENBLAS_LIBRARIES})
-message(STATUS "OpenBLAS libraries (cross-compiling): ${OPENBLAS_LIBRARIES}")
-else()
-message(FATAL_ERROR "OpenBLAS libraries not found!")
-endif()
 
 # Find FFTW3
 find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED PATHS ${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/ NO_DEFAULT_PATH)
@@ -74,6 +50,3 @@ if (FFTWF_INCLUDE_DIRS)
     list(APPEND THIRD_PARTY_INCLUDE_DIRS ${FFTWF_INCLUDE_DIRS})
     message(STATUS "FFTWf include dirs (cross-compiling): ${FFTWF_INCLUDE_DIRS}")
 endif()
-
-
-

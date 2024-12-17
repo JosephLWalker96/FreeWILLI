@@ -173,7 +173,7 @@ else ()
     message(STATUS "Building tests in Release mode.")
     if(CMAKE_CROSSCOMPILING)
         set_property(TARGET HarpListen PROPERTY OUTPUT_NAME HarpListenX)
-        #set_property(TARGET UnitTests PROPERTY OUTPUT_NAME UnitTestsX)
+        set_property(TARGET UnitTests PROPERTY OUTPUT_NAME UnitTestsX)
         #set_property(TARGET Benchmark PROPERTY OUTPUT_NAME BenchmarkX)
     endif()
     # Set the output directory for the executable

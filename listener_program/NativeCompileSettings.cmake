@@ -1,18 +1,3 @@
-# SET THIRD PARTY LIBRARIES AND INCLUDE DIRECTORIES
-#set(THIRD_PARTY_LIBRARIES)
-#set(THIRD_PARTY_INCLUDE_DIRS)
-
-# LAPACK
-find_package(LAPACK REQUIRED)
-if (LAPACK_LIBRARIES)
-    list(APPEND THIRD_PARTY_LIBRARIES ${LAPACK_LIBRARIES})
-    message(STATUS "LAPACK libraries: ${LAPACK_LIBRARIES}")
-endif ()
-if (LAPACK_INCLUDE_DIRS)
-    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${LAPACK_INCLUDE_DIRS})
-    message(STATUS "LAPACK include dirs: ${LAPACK_INCLUDE_DIRS}")
-endif()
-
 
 # FFTW3
 find_library(FFTW_LIBRARIES NAMES fftw3 REQUIRED)
@@ -25,12 +10,6 @@ endif ()
 if (FFTW_INCLUDE_DIRS)
     list(APPEND THIRD_PARTY_INCLUDE_DIRS ${FFTW_INCLUDE_DIRS})
 endif()
-
-
-# Set the path to the ONNX Runtime library and include directories
-#set(ONNXRUNTIME_ROOT_DIR "/usr/local/onnxruntime")
-#set(ONNXRUNTIME_INCLUDE_DIRS "${ONNXRUNTIME_ROOT_DIR}/include")
-#set(ONNXRUNTIME_LIBRARY_DIR "${ONNXRUNTIME_ROOT_DIR}/lib")
 
 # Find the ONNX Runtime library using the specified path
 find_library(ONNXRUNTIME_LIBRARIES NAMES onnxruntime PATHS ${ONNXRUNTIME_LIBRARY_DIR} REQUIRED)
@@ -59,19 +38,6 @@ if (FFTWF_INCLUDE_DIRS)
     list(APPEND THIRD_PARTY_INCLUDE_DIRS ${FFTWF_INCLUDE_DIRS})
     message(STATUS "FFTWf include dirs: ${FFTWF_INCLUDE_DIRS}")
 endif()
-
-# BLAS
-find_package(BLAS REQUIRED)
-if (BLAS_LIBRARIES)
-    list(APPEND THIRD_PARTY_LIBRARIES ${BLAS_LIBRARIES})
-    message(STATUS "BLAS libraries: ${BLAS_LIBRARIES}")
-endif ()
-if (BLAS_INCLUDE_DIRS)
-    list(APPEND THIRD_PARTY_INCLUDE_DIRS ${BLAS_INCLUDE_DIRS})
-    message(STATUS "BLAS include dirs: ${BLAS_INCLUDE_DIRS}")
-endif()
-
-
 
 # Get system information
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")

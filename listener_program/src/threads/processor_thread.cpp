@@ -24,13 +24,17 @@ using TimePoint = std::chrono::system_clock::time_point;
  * @param firmwareConfig Reference to an FirmwareConfig object containing configuration details.
  * @param runtimeConfig Reference to an ExperimentRuntime object containing runtime-specific details.
  */
-void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig &runtimeConfig)
+void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, RuntimeConfig &runtimeConfig)
 {
     try
     {
 
-        // FrequencyDomainStrategy myFilter(runtimeConfig.filterWeightsPath, channelData, firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
-        int paddedLength = runtimeConfig.filter->mPaddedLength;
+        int paddedLength = runtimeConfig.filter->getPaddedLength();
+        std::cout << "paddedLength: " << paddedLength << std::endl;
+
+        runtimeConfig.channelData.resize(firmwareConfig.NUM_CHAN, paddedLength);
+        runtimeConfig.channelData.setZero();
+        runtimeConfig.filter->initialize(runtimeConfig.channelData);
 
         Eigen::MatrixXf hydrophonePositions = getHydrophoneRelativePositions(runtimeConfig.receiverPositionsPath);
 
@@ -46,6 +50,7 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
 
         // Container for pulling bytes from the buffer
         std::vector<uint8_t> dataBytes;
+        
 
         GCC_PHAT computeTDOAs(paddedLength, firmwareConfig.NUM_CHAN, firmwareConfig.SAMPLE_RATE);
 
@@ -54,32 +59,37 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
         while (!sess.errorOccurred)
         {
 
-            sess.dataTimes.clear();
-            sess.dataSegment.clear();
-            sess.dataBytesSaved.clear();
-            int columnCounter = 0;
+            runtimeConfig.dataTimes.clear();
+            runtimeConfig.dataBytesSaved.clear();
             TimePoint currentTimestamp;
 
-            //while (sess.dataSegment.size() < firmwareConfig.DATA_SEGMENT_LENGTH)
-            while (sess.dataTimes.size() < 8)
-            {
+            for (int nthPacketInSegment = 0; nthPacketInSegment < firmwareConfig.NUM_PACKS_DETECT; nthPacketInSegment++){
 
                 auto startLoop = std::chrono::system_clock::now();
                 waitForData(sess, observationBuffer, runtimeConfig, dataBytes);
 
-                sess.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
+                runtimeConfig.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
 
                 currentTimestamp = generateTimestamp(dataBytes, firmwareConfig.NUM_CHAN);
-                sess.dataTimes.push_back(currentTimestamp);
-                bool dataError = checkForDataErrors(sess, dataBytes, firmwareConfig.MICRO_INCR, previousTimeSet, previousTime, firmwareConfig.PACKET_SIZE);
+                runtimeConfig.dataTimes.push_back(currentTimestamp);
+                bool dataError = checkForDataErrors(sess, dataBytes, firmwareConfig.MICRO_INCR, previousTimeSet, previousTime, currentTimestamp, firmwareConfig.PACKET_SIZE);
 
-                if (!dataError) [[likely]]
+                if (dataError) [[unlikely]]
                 {
-                    auto beforeConvert = std::chrono::steady_clock::now();
-                    convertAndAppend(runtimeConfig.channelData, dataBytes, firmwareConfig.DATA_SIZE, firmwareConfig.HEAD_SIZE, columnCounter); // bytes data is decoded and appended to sess.dataSegment
-                    auto afterConvert = std::chrono::steady_clock::now();
-                    durationConvert = afterConvert - beforeConvert;
+                    std::stringstream errorMsg;
+                    errorMsg << "Error: Time not incremented by " << firmwareConfig.MICRO_INCR << std::endl;
+                    std::cerr << errorMsg.str();
+                    writeDataToCerr(runtimeConfig.dataTimes, runtimeConfig.dataBytesSaved);
+                    runtimeConfig.dataTimes.clear();
+                    runtimeConfig.dataBytesSaved.clear();
+                    previousTime = std::chrono::time_point<std::chrono::system_clock>::min();
+                    previousTimeSet = false;
                 }
+
+                auto beforeConvert = std::chrono::steady_clock::now();
+                firmwareConfig.convertAndInsertData(runtimeConfig.channelData, dataBytes, nthPacketInSegment); // bytes data is decoded and appended to sess.dataSegment
+                auto afterConvert = std::chrono::steady_clock::now();
+                durationConvert = afterConvert - beforeConvert;
 
                 if ((runtimeConfig.detectionOutputFile).empty()) [[unlikely]]
                 {
@@ -104,35 +114,53 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
 
             //auto beginLatency = std::chrono::steady_clock::now();
 
-            //auto beforePtr = std::chrono::steady_clock::now();
-            //firmwareConfig.ProcessFncPtr(sess.dataSegment, runtimeConfig.channelData, firmwareConfig.NUM_CHAN);
-            //auto afterPtr = std::chrono::steady_clock::now();
-            //std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
-            // std::cout << "durationPtr: " << durationPtr.count() << std::endl;
-
-            std::cout << "convertAndAppendOut: " << durationConvert.count() << std::endl;
-
             if (runtimeConfig.tracker)
             {
                 runtimeConfig.tracker->scheduleCluster();
             }
 
-            DetectionResult threshResult = detectTimeDomainThreshold(runtimeConfig.channelData.row(0), sess.dataTimes,
+            //std::cout << "channel 1 samples" << runtimeConfig.channelData.row(0).head(10) << std::endl;
+             
+            std::cout << "time row1 head" << runtimeConfig.channelData.row(0).head(5) << std::endl;
+            //std::cout << "time row2 head" << runtimeConfig.channelData.row(1).head(5) << std::endl;
+            //std::cout << "time row3 head" << runtimeConfig.channelData.row(2).head(5) << std::endl;
+            //std::cout << "time row4 head" << runtimeConfig.channelData.row(3).head(5) << std::endl;
+
+            std::cout << "time row1 tail" << runtimeConfig.channelData.row(0).tail(5) << std::endl;
+            //std::cout << "time row2 tail" << runtimeConfig.channelData.row(1).tail(5) << std::endl;
+            //std::cout << "time row3 tail" << runtimeConfig.channelData.row(2).tail(5) << std::endl;
+            //std::cout << "time row4 tail" << runtimeConfig.channelData.row(3).tail(5) << std::endl;
+            
+
+            DetectionResult threshResult = detectTimeDomainThreshold(runtimeConfig.channelData.row(0), runtimeConfig.dataTimes,
                                                                      runtimeConfig.amplitudeDetectionThreshold, firmwareConfig.SAMPLE_RATE);
             if (threshResult.maxPeakIndex < 0)
             {
                 continue;
             }
 
+            //std::cout << "BeforeFilt: " << std::endl;
             auto beforeFilt = std::chrono::steady_clock::now();
-            runtimeConfig.filter->apply();
+            runtimeConfig.filter->apply(runtimeConfig.channelData);
             auto afterFilt = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFilt = afterFilt - beforeFilt;
-            std::cout << "durationFilt: " << durationFilt.count() << std::endl;
+            //std::cout << "durationFilt: " << durationFilt.count() << std::endl;
             // std::cout << "after filt " << &channelData << std::endl;
             Eigen::MatrixXcf savedFFTs = runtimeConfig.filter->getFrequencyDomainData();
+            
+            std::cout << "savedFFTs col1 head" << savedFFTs.col(0).head(5) << std::endl;
+            //std::cout << "savedFFTs col2 head" << savedFFTs.col(1).head(5) << std::endl;
+            //std::cout << "savedFFTs col3 head" << savedFFTs.col(2).head(5) << std::endl;
+            //std::cout << "savedFFTs col4 head" << savedFFTs.col(3).head(5) << std::endl;
 
-            DetectionResult detResult = detectFrequencyDomainThreshold(savedFFTs.col(0), sess.dataTimes,
+            std::cout << "savedFFTs col1 tail" << savedFFTs.col(0).tail(5) << std::endl;
+            //std::cout << "savedFFTs col2 tail" << savedFFTs.col(1).tail(5) << std::endl;
+            //std::cout << "savedFFTs col3 tail" << savedFFTs.col(2).tail(5) << std::endl;
+            //std::cout << "savedFFTs col4 tail" << savedFFTs.col(3).tail(5) << std::endl;
+            //std::exit(0);
+            
+
+            DetectionResult detResult = detectFrequencyDomainThreshold(savedFFTs.col(0), runtimeConfig.dataTimes,
                                                                        runtimeConfig.energyDetectionThreshold, firmwareConfig.SAMPLE_RATE);
 
             if (detResult.maxPeakIndex < 0)
@@ -141,7 +169,7 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             }
 
             /*
-             *  Pulse detected. Now process the channels filtering, TDOA & DOA estimation.
+             *  Pulse detected. Now process the channels according to runtimeConfig settings.
              */
 
             sess.detectionCounter++;
@@ -157,7 +185,6 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
             Eigen::VectorXf XCorrAmps = std::get<1>(tdoasAndXCorrAmps);
             std::cout << "TDOAs: " << tdoaVector.transpose() << std::endl;
             std::cout << "GCC time: " << durationGCCW.count() << std::endl;
-
             // auto beforeDOA = std::chrono::steady_clock::now();
             Eigen::VectorXf DOAs = computeDoaFromTdoa(P, U, runtimeConfig.speedOfSound, tdoaVector, rankOfH);
 
@@ -221,7 +248,7 @@ void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig 
 
         try
         {
-            writeDataToCerr(sess.dataTimes, sess.dataBytesSaved);
+            writeDataToCerr(runtimeConfig.dataTimes, runtimeConfig.dataBytesSaved);
         }
         catch (...)
         {

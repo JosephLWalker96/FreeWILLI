@@ -136,13 +136,13 @@ void hydrophoneMatrixDecomposition(const Eigen::MatrixXf hydrophonePositions, Ei
 /**
  * @brief Waits for and retrieves data from the session buffer, with periodic buffer flushing.
  *
- * @param sess Reference to the Session object for managing the shared buffer.
+ * @param sess Reference to the SharedDataManager object for managing resources shared across threads.
  * @param observationBuffer Reference to the ObservationBuffer for managing flushed observations.
  * @param runtimeConfig Reference to the RuntimeConfig object for runtime details.
  * @param startLoop The start time of the current loop iteration.
  * @param dataBytes Reference to the vector that will hold the retrieved data bytes.
  */
-void waitForData(Session &sess, ObservationBuffer &observationBuffer, RuntimeConfig &runtimeConfig,
+void waitForData(SharedDataManager &sess, ObservationBuffer &observationBuffer, RuntimeConfig &runtimeConfig,
                  std::vector<uint8_t> &dataBytes)
 {
     while (true)
@@ -170,108 +170,6 @@ void waitForData(Session &sess, ObservationBuffer &observationBuffer, RuntimeCon
     }
 }
 
-/**
- * @brief Converts raw data bytes to float values and appends them to the provided data segment.
- *
- * @param dataSegment A vector of floats where the converted data will be stored.
- * @param dataBytes A span of raw data bytes to be converted.
- * @param dataSize The size of the data to process (excluding the header).
- * @param headerSize The size of the header to skip at the beginning of the data bytes.
- */
-/*
-template <typename Alloc>
-void convertAndAppend(std::vector<float, Alloc> &dataSegment, std::span<uint8_t> dataBytes, const int &dataSize, const int &headerSize)
-{
-    for (size_t i = 0; i < dataSize; i += 2)
-    {
-        float value = static_cast<float>(static_cast<uint16_t>(dataBytes[headerSize + i]) << 8) +
-                      static_cast<float>(dataBytes[headerSize + i + 1]);
-        value -= 32768.0f;
-        dataSegment.push_back(value);
-    }
-}
-*/
-
-/*
-void convertAndAppend(Eigen::MatrixXf &channelMatrix, 
-                      std::span<uint8_t> dataBytes, 
-                      int dataSize, 
-                      int headerSize)
-{
-    // Each sample = 2 bytes
-    const size_t numSamples = dataSize / 2;
-    const size_t numRows = channelMatrix.rows();
-    const size_t oldCols = channelMatrix.cols();
-
-    // Calculate how many new columns are needed
-    const size_t newCols = (numSamples + numRows - 1) / numRows;
-
-    // Resize the matrix to accommodate these new columns
-    channelMatrix.conservativeResize(numRows, oldCols + newCols);
-
-    // Pointer to the start of the Eigen matrix's data (column-major layout)
-    float* __restrict__ matrixPtr = channelMatrix.data();
-
-    // Pointer to incoming samples (skipping the header)
-    const uint8_t* __restrict__ inPtr = dataBytes.data() + headerSize;
-
-    // Compute the offset where the new columns begin
-    const size_t startOffset = oldCols * numRows;  
-
-    // Single-pass conversion & storage
-    // We'll write each sample directly into the correct memory location.
-    #pragma omp simd
-    for (size_t i = 0; i < numSamples; ++i)
-    {
-        // Convert 2-byte sample to float
-        uint16_t sample = (static_cast<uint16_t>(inPtr[2 * i]) << 8) | inPtr[2 * i + 1];
-        float value = static_cast<float>(sample) - 32768.0f;
-
-        // Column-major: matrixPtr[col * numRows + row]
-        // row = i % numRows, col = oldCols + i / numRows
-        // => memory offset = startOffset + i
-        matrixPtr[startOffset + i] = value;
-    }
-}
-*/
-void convertAndAppend(Eigen::MatrixXf &channelMatrix, 
-                      std::span<uint8_t> dataBytes, 
-                      int dataSize, 
-                      int headerSize,
-                      int &counter)
-{
-    // Each sample = 2 bytes
-    const size_t numSamples = dataSize / 2;
-    const size_t numRows = channelMatrix.rows();
-
-    // Calculate how many columns the new data will occupy
-    const size_t newCols = (numSamples + numRows - 1) / numRows;
-
-    // Pointer to the start of the Eigen matrix's data (column-major layout)
-    float* __restrict__ matrixPtr = channelMatrix.data();
-
-    // Pointer to incoming samples (skipping the header)
-    const uint8_t* __restrict__ inPtr = dataBytes.data() + headerSize;
-
-    // Compute the offset where the new columns begin based on the counter
-    const size_t startOffset = counter * numRows;
-
-    // Single-pass conversion & storage
-    // We'll write each sample directly into the correct memory location.
-    #pragma omp simd
-    for (size_t i = 0; i < numSamples; ++i)
-    {
-        // Convert 2-byte sample to float
-        uint16_t sample = (static_cast<uint16_t>(inPtr[2 * i]) << 8) | inPtr[2 * i + 1];
-        float value = static_cast<float>(sample) - 32768.0f;
-
-        // Write to matrix at the computed offset
-        matrixPtr[startOffset + i] = value;
-    }
-
-    // Increment the counter by the number of columns written
-    counter += newCols;
-}
 
 
 /**
@@ -322,24 +220,14 @@ TimePoint generateTimestamp(std::vector<uint8_t> &dataBytes, const int numChanne
  * @return True if errors are found, false otherwise.
  * @throws std::runtime_error if the data packet size is incorrect.
  */
-bool checkForDataErrors(Session &session, std::vector<uint8_t> &dataBytes, const int microIncrement, bool &isPreviousTimeSet,
-                        TimePoint &previousTime, const int packetSize)
+bool checkForDataErrors(SharedDataManager &session, std::vector<uint8_t> &dataBytes, const int microIncrement, bool &isPreviousTimeSet,
+                        TimePoint &previousTime, TimePoint &currentTime,const int packetSize)
 {
-    auto currentTime = session.dataTimes.back();
+    //auto currentTime = session.dataTimes.back();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - previousTime).count();
 
     if (isPreviousTimeSet && (elapsedTime != microIncrement))
     {
-        std::stringstream errorMsg;
-        errorMsg << "Error: Time not incremented by " << microIncrement << ". Elapsed time: " << elapsedTime << std::endl;
-
-        std::cerr << errorMsg.str();
-        writeDataToCerr(session.dataTimes, session.dataBytesSaved);
-        session.dataTimes.clear();
-        session.dataSegment.clear();
-        session.dataBytesSaved.clear();
-        previousTime = std::chrono::time_point<std::chrono::system_clock>::min();
-        isPreviousTimeSet = false;
         return true;
     }
     else if (dataBytes.size() != packetSize)
@@ -355,77 +243,6 @@ bool checkForDataErrors(Session &session, std::vector<uint8_t> &dataBytes, const
     return false;
 }
 
-/**
- * @brief Processes interleaved data into separate channels.
- *
- * @param interleavedData A span of floats containing interleaved data from multiple channels.
- * @param channelMatrix A reference to an Eigen matrix to store the separated channel data. Each column represents a channel.
- * @param numChannels The number of channels in the interleaved data.
- */
-void processSegmentInterleaved(std::span<float> interleavedData, Eigen::MatrixXf &channelMatrix,
-                               const int numChannels)
-{
-    // Calculate the number of samples per channel
-    size_t numSamples = interleavedData.size() / numChannels;
-
-#ifdef __ARM_NEON
-    // Add ARM NEON-specific optimization code here, if applicable
-#else
-    // Add non-ARM implementation or fallback code here, if necessary
-#endif
-
-    // Ensure the channelMatrix has the correct dimensions
-    // channelMatrix.resize(numSamples, numChannels); // Uncomment if resizing is required
-
-    // Iterate through the interleaved data and assign values to the corresponding channel matrix entries
-    for (unsigned int channel = 0; channel < numChannels; ++channel)
-    {
-        for (size_t sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex)
-        {
-            channelMatrix(sampleIndex, channel) = interleavedData[sampleIndex * numChannels + channel];
-        }
-    }
-}
-
-/*
-void processSegmentInterleavedNEW(std::span<float> interleavedData, Eigen::MatrixXf &channelMatrix, const int numChannels)
-{
-    size_t totalSamples = interleavedData.size();
-    size_t numSamples = totalSamples / numChannels;
-
-    channelMatrix.resize(numSamples, numChannels);
-
-    const float *inputData = interleavedData.data();
-
-    for (int channel = 0; channel < numChannels; ++channel)
-    {
-        float *outPtr = &channelMatrix(0, channel);
-        const float *inPtr = inputData + channel;
-
-        size_t i = 0;
-        for (; i + 4 <= numSamples; i += 4)
-        {
-            // Gather the elements
-            float t0 = inPtr[i * (size_t)numChannels];
-            float t1 = inPtr[(i + 1) * (size_t)numChannels];
-            float t2 = inPtr[(i + 2) * (size_t)numChannels];
-            float t3 = inPtr[(i + 3) * (size_t)numChannels];
-
-            float32x2_t low = vld1_f32(&t0);  // loads t0,t1
-            float32x2_t high = vld1_f32(&t2); // loads t2,t3
-            float32x4_t vec = vcombine_f32(low, high);
-
-            vst1q_f32(&outPtr[i], vec);
-        }
-
-        // Handle remainder (not a multiple of 4)
-        for (; i < numSamples; ++i)
-        {
-            outPtr[i] = inPtr[i * (size_t)numChannels];
-        }
-    }
-}
-*/
 
 /**
  * @brief Writes error-causing timestamps and associated data bytes to the standard error stream.

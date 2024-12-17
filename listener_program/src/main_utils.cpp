@@ -4,6 +4,7 @@
 #include "pch.h"
 #include "ML/onnx_model.h"
 #include "algorithms/IMU_processor.h"
+#include "algorithms/fir_filter.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -60,7 +61,15 @@ void parseJsonConfig(FirmwareConfig &firmwareConfig, RuntimeConfig &runtimeConfi
 
     // filtering
     std::string filterWeightsPath = jsonConfig.at("FilterWeights").get<std::string>();
-    runtimeConfig.filter = std::make_unique<FrequencyDomainStrategy>(filterWeightsPath, runtimeConfig.channelData, firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
+    
+    if (filterWeightsPath.empty()){
+        std::cout << "no filter" << std::endl;
+        runtimeConfig.filter = std::make_unique<FrequencyDomainNoFilterStrategy>(firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
+    }
+    else{
+        runtimeConfig.filter = std::make_unique<FrequencyDomainFilterStrategy>(filterWeightsPath, firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
+        std::cout << "using filter" << std::endl;
+    }
 
     runtimeConfig.receiverPositionsPath = jsonConfig.at("ReceiverPositions").get<std::string>();
 
