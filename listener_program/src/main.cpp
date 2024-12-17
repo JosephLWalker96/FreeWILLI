@@ -8,6 +8,17 @@
 
 int main(int argc, char *argv[])
 {
+#ifdef EIGEN_USE_BLAS
+    std::cout << "BLAS support is enabled in Eigen." << std::endl;
+#else
+    std::cout << "BLAS support is NOT enabled in Eigen." << std::endl;
+#endif
+
+#ifdef EIGEN_USE_LAPACKE
+    std::cout << "LAPACK support is enabled in Eigen." << std::endl;
+#else
+    std::cout << "LAPACK support is NOT enabled in Eigen." << std::endl;
+#endif
     printMode(); // print debug or release mode
 
     // Instantiate firmware configuration varaibles
@@ -16,7 +27,7 @@ int main(int argc, char *argv[])
     // Main processing loop
     while (true)
     {
-        Session sess;
+        SharedDataManager sess;
         RuntimeConfig runtimeConfig;
         runtimeConfig.programRuntime = std::chrono::seconds(std::stoi(argv[2])); // program run duration
 

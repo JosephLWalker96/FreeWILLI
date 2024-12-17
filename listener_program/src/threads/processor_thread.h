@@ -1,4 +1,4 @@
 
 #pragma once
 
-void dataProcessor(Session &sess, FirmwareConfig &firmwareConfig, RuntimeConfig &runtimeConfig);
+void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, RuntimeConfig &runtimeConfig);

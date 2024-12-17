@@ -25,8 +25,13 @@ public:
 
     std::string receiverPositionsPath = "";
 
+
+    // Buffer objects
+    std::vector<std::vector<uint8_t>> dataBytesSaved;
+    std::vector<std::chrono::system_clock::time_point> dataTimes; // timestamps of UDP packet
+
     std::unique_ptr<SocketManager> socketManger = nullptr;
-    std::unique_ptr<FrequencyDomainStrategy> filter = nullptr;
+    std::unique_ptr<IFrequencyDomainStrategy> filter = nullptr;
     std::unique_ptr<ONNXModel> onnxModel = nullptr;
     std::unique_ptr<Tracker> tracker = nullptr;
     std::unique_ptr<ImuProcessor> imuManager = nullptr;

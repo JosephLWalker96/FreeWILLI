@@ -1,5 +1,5 @@
 {
-    "cmake.sourceDirectory": "${workspaceFolder}/C",
+    "cmake.sourceDirectory": "/home/harp/Documents/Embedded_miniHarp/listener_program",
     "cmake.configureOnOpen": true,
     "files.exclude": {
         "**/build": true

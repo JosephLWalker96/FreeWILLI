@@ -2,10 +2,14 @@
     "IPAddress": "self",
     "Port": 1045,
     "SpeedOfSound": 1500.0,
-    "EnergyDetectionThreshold": 20,
-    "AmplitudeDetectionThreshold": 100,
-    "FilterWeights": "filters/highpass_taps@101_cutoff@20k_window@hamming_fs@100k.txt",
+    "EnergyDetectionThreshold": 100,
+    "AmplitudeDetectionThreshold": 1,
+    "FilterWeights": "",
     "ReceiverPositions": "receiver_pos/SOCAL_H_72_HS_harp4chPar_VLA.txt",
     "ONNX_model_path": "",
-    "ONNX_model_normalization": "../TestOnnx/scaler_params.json"
+    "ONNX_model_normalization": "../../TestOnnx/scaler_params.json",
+    "Enable_Tracking": false,
+    "Cluster_Frequency_In_Seconds": 60,
+    "Cluster_Window_In_Seconds": 30,
+    "Use_IMU": false
 }
