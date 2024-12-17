@@ -1,5 +1,6 @@
 Presentations/
-ML_models/
+ML_models/*
+!ML_models/model_quantized_static.onnx
 Private/
 simulator_data/
 __pycache__/
