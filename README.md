@@ -25,7 +25,6 @@ The repository is organized as follows:
 ### Prerequisites
 
 - **CMake**: A build system generator used to configure and build the project across multiple platforms.
-- **BLAS**: Used for optimized linear algebra routines.
 - **FFTW3**: Required for performing fast Fourier transforms.
 - **Eigen**: Used for advanced linear algebra operations, such as matrix manipulations and decompositions.
 - **nlohmann-json**: A JSON library for parsing and managing configuration files.
@@ -52,7 +51,7 @@ cmake --version
 2. Install the required libraries using apt:
 ```bash
 sudo apt-get update
-sudo apt-get install -y libfftw3-dev libblas-dev libeigen3-dev nlohmann-json3-dev
+sudo apt-get install -y build-essential libfftw3-dev libeigen3-dev nlohmann-json3-dev
 ```
 
 3. Download and install ONNX Runtime
@@ -90,7 +89,7 @@ cmake --version
 
 1. Install the required libraries using brew:
 ```bash
-brew install fftw openblas eigen nlohmann-json libomp
+brew install fftw eigen nlohmann-json
 ```
 
 2. Download and install ONNX Runtime
@@ -107,8 +106,8 @@ sudo cp -r onnxruntime-osx-arm64-1.19.2/lib/* /usr/local/lib/
 1. Clone the repository:
 
 ``` bash
-git clone https://github.com/JosephLWalker96/embedded-miniharp.git
-cd embedded-miniharp
+git clone https://github.com/JosephLWalker96/Embedded_miniHarp.git
+cd Embedded_miniHarp
 ```
 
 2. Initialize and Update Submodules:
@@ -122,7 +121,7 @@ git submodule update --init --recursive
 3. Build the program:
 ```bash
 cd listener_program/
-rm -r out/ && mkdir out/ && cd out
+mkdir out/ && cd out
 cmake ..
 make -j$(nproc)
 ```
