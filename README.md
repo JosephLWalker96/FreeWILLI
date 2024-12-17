@@ -1,5 +1,9 @@
 # Overview
-The aim of the Embedded mimiHARP project is to provide highly optimized C++ software that supports a broad range of data processing functionalities for underwater passive acoustics. This repo consists of two main programs:
+### Free software for Whale Identification and Localization with Low-power Implementation:
+
+The Free WILLI project aims to deliver high-performance C++ software for soft real-time, low-power underwater passive acoustic array data processing. It supports automated multi-target tracking from small volumetric four-channel hydrophone arrays and offers integrated functionality for neural network inference. Designed for efficiency and flexibility, the system enables advanced acoustic analyses on resource-constrained devices.
+
+This repo consists of two main programs:
 
 1. **HarpListen**: A multi-target tracking application for receiving and processing acoustic data.
 
