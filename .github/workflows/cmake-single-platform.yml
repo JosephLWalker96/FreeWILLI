@@ -37,41 +37,41 @@ jobs:
       run: git submodule update --init --recursive
 
     - name: Configure CMake
-      working-directory: ${{github.workspace}}/C
+      working-directory: ${{github.workspace}}/listener_program
       run: |
         # Create the build directory
         mkdir -p build
         # Run CMake configuration
-        cmake -B ${{github.workspace}}/C/build -S ${{github.workspace}}/C \
+        cmake -B ${{github.workspace}}/listener_program/build -S ${{github.workspace}}/listener_program \
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} \
           -DCMAKE_C_COMPILER=/usr/bin/gcc \
           -DCMAKE_CXX_COMPILER=/usr/bin/g++
 
     #- name: Build
-    #  working-directory: ${{github.workspace}}/C
+    #  working-directory: ${{github.workspace}}/listener_program
     #  # Build your program with the given configuration
-    #  run: cmake --build ${{github.workspace}}/C/build --config ${{env.BUILD_TYPE}}
+    #  run: cmake --build ${{github.workspace}}/listener_program/build --config ${{env.BUILD_TYPE}}
 
     - name: Build
-      working-directory: ${{github.workspace}}/C
+      working-directory: ${{github.workspace}}/listener_program
       run: |
         # Get the number of available cores
         CORES=$(nproc)
         # Build your program with all available cores
-        cmake --build ${{github.workspace}}/C/build --config ${{env.BUILD_TYPE}} -- -j$CORES
+        cmake --build ${{github.workspace}}/listener_program/build --config ${{env.BUILD_TYPE}} -- -j$CORES
 
     - name: Clean Up Build Directory
-      working-directory: ${{github.workspace}}/C
+      working-directory: ${{github.workspace}}/listener_program
       run: rm -rf build
       
     - name: Test
-      working-directory: ${{github.workspace}}/C/bin
+      working-directory: ${{github.workspace}}/listener_program/bin
       # Execute tests defined by the CMake configuration.
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ./UnitTests
 
     #- name: Benchmark
-    #  working-directory: ${{github.workspace}}/C/bin
+    #  working-directory: ${{github.workspace}}/listener_program/bin
     #  # Execute tests defined by the CMake configuration.
     #  # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
     #  run: ./Benchmark
@@ -119,39 +119,39 @@ jobs:
         run: git submodule update --init --recursive
       
       - name: Configure CMake
-        working-directory: ${{github.workspace}}/C
+        working-directory: ${{github.workspace}}/listener_program
         run: |
           mkdir -p build
-          cmake -B ${{github.workspace}}/C/build -S ${{github.workspace}}/C \
+          cmake -B ${{github.workspace}}/listener_program/build -S ${{github.workspace}}/listener_program \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_C_COMPILER=/usr/bin/clang \
             -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
             -DCMAKE_CXX_FLAGS="-Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include" \
             -DCMAKE_EXE_LINKER_FLAGS="-L/opt/homebrew/opt/libomp/lib -lomp"
            
-      #run: cmake -B ${{github.workspace}}/C/build -S ${{github.workspace}}/C -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+      #run: cmake -B ${{github.workspace}}/listener_program/build -S ${{github.workspace}}/listener_program -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
 
       #- name: Build
-      #  working-directory: ${{github.workspace}}/C
+      #  working-directory: ${{github.workspace}}/listener_program
       #  # Build your program with the given configuration
-      #  run: cmake --build ${{github.workspace}}/C/build --config ${{env.BUILD_TYPE}}
+      #  run: cmake --build ${{github.workspace}}/listener_program/build --config ${{env.BUILD_TYPE}}
 
       - name: Build
-        working-directory: ${{github.workspace}}/C
+        working-directory: ${{github.workspace}}/listener_program
         run: |
           # Get the number of available cores
           CORES=$(sysctl -n hw.ncpu)
           # Build your program with all available cores
-          cmake --build ${{github.workspace}}/C/build --config ${{env.BUILD_TYPE}}
+          cmake --build ${{github.workspace}}/listener_program/build --config ${{env.BUILD_TYPE}}
 
       - name: Test
-        working-directory: ${{github.workspace}}/C/bin
+        working-directory: ${{github.workspace}}/listener_program/bin
         # Execute tests defined by the CMake configuration.
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
         run: ./UnitTests
 
      # - name: Benchmark
-     #   working-directory: ${{github.workspace}}/C/bin
+     #   working-directory: ${{github.workspace}}/listener_program/bin
      #   # Execute tests defined by the CMake configuration.
      #   # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
      #   run: ./Benchmark
