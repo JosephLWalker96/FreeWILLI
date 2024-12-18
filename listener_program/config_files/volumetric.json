@@ -1,6 +1,7 @@
 {
     "IPAddress": "self",
     "Port": 1045,
+    "Firmware_with_IMU": false,
     "SpeedOfSound": 1482.965459,
     "EnergyDetectionThreshold": 100,
     "AmplitudeDetectionThreshold": 1,
@@ -10,6 +11,5 @@
     "ONNX_model_normalization": "../../TestOnnx/scaler_params.json",
     "Enable_Tracking": false,
     "Cluster_Frequency_In_Seconds": 60,
-    "Cluster_Window_In_Seconds": 30,
-    "Use_IMU": false
+    "Cluster_Window_In_Seconds": 30
 }

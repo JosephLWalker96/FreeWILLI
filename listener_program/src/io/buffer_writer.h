@@ -32,10 +32,13 @@ public:
     void appendToBuffer(const float peakAmp, const float doaX, const float doaY,
                         const float doaZ, const Eigen::VectorXf &tdoaVector,
                         const Eigen::VectorXf &xCorrAmps, const TimePoint &peakTime);
-    bool timeToFlushBuffer(RuntimeConfig &runtimeConfig, const TimePoint &startLoop);
+    void flushBufferIfNecessary(RuntimeConfig &runtimeConfig);
 
+    void initializeOutputFile(std::string &outputFile, const int numChannels);
 private:
     void appendBufferToFile(const std::string &outputFile);
+
+std::vector<std::string> generateChannelComboLabels(const std::string &labelPrefix, int numChannels);
 
     std::chrono::milliseconds mFlushInterval;
     size_t mBufferSizeThreshold;

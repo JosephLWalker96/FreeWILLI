@@ -5,6 +5,86 @@ ObservationBuffer::ObservationBuffer()
       mBufferSizeThreshold(1000),
       mLastFlushTime(std::chrono::steady_clock::now()) {}
 
+
+/**
+ * @brief Initializes an output file for storing computed values.
+ *
+ * This function generates an output file name based on the current timestamp and initializes the file
+ * for writing. It writes column headers to the file, including labels for PeakTime, Amplitude, DOA, TDOA,
+ * and XCorr.
+ *
+ * @param outputFile A reference to a string where the output file name will be stored.
+ * @param numChannels The number of channels in the data, used to generate TDOA and XCorr labels.
+ * @throws std::runtime_error If the file cannot be opened for writing.
+ */
+void ObservationBuffer::initializeOutputFile(std::string &outputFile, const int numChannels)
+{
+
+    std::cout << "Created and writing to file: " << outputFile << std::endl;
+
+    std::ofstream file(outputFile, std::ofstream::out | std::ofstream::trunc);
+    if (!file.is_open())
+    {
+        throw std::runtime_error("Error: Unable to open file for writing: " + outputFile);
+    }
+
+    std::vector<std::string> columnNames = {
+        "PeakTime",
+        "Amplitude",
+        "DOA_x",
+        "DOA_y",
+        "DOA_z"};
+
+    // Generate TDOA and XCorr labels
+    std::vector<std::string> tdoaLabels = generateChannelComboLabels("TDOA", numChannels);
+    std::vector<std::string> xcorrLabels = generateChannelComboLabels("XCorr", numChannels);
+
+    // Combine all column names
+    columnNames.insert(columnNames.end(), tdoaLabels.begin(), tdoaLabels.end());
+    columnNames.insert(columnNames.end(), xcorrLabels.begin(), xcorrLabels.end());
+
+    // Write the column names to the file, separated by commas
+    for (size_t i = 0; i < columnNames.size(); ++i)
+    {
+        file << columnNames[i];
+        if (i < columnNames.size() - 1)
+            file << ",";
+    }
+    file << std::endl;
+
+    file.close();
+}
+
+
+
+/**
+ * @brief Generates a vector of labels with a given prefix for channel combinations.
+ *
+ * This function generates a list of labels based on the specified prefix and channel count.
+ * Each label represents a unique combination of channels, encoded as "prefixXY" where X
+ * and Y are the signal and reference channel numbers.
+ *
+ * @param labelPrefix A string prefix to prepend to each generated label.
+ * @param numChannels The total number of channels for which labels are generated.
+ * @return A vector of strings containing the generated labels.
+ */
+std::vector<std::string> ObservationBuffer::generateChannelComboLabels(const std::string &labelPrefix, int numChannels)
+{
+    std::vector<std::string> labels;
+
+    // Generate labels for all unique channel combinations
+    for (int signalChannel = 1; signalChannel < numChannels; ++signalChannel)
+    {
+        for (int referenceChannel = signalChannel + 1; referenceChannel <= numChannels; ++referenceChannel)
+        {
+            labels.push_back(labelPrefix + std::to_string(signalChannel * 10 + referenceChannel));
+        }
+    }
+
+    return labels;
+}
+
+
 /**
  * @brief Writes the buffer data to the output file and resets the flush time.
  */
@@ -117,17 +197,20 @@ void ObservationBuffer::appendBufferToFile(const std::string &outputFile)
 /**
  * @brief Determines if the buffer should be flushed based on its size or time since the last flush.
  */
-bool ObservationBuffer::timeToFlushBuffer(RuntimeConfig &runtimeConfig, const TimePoint &startLoop)
+void ObservationBuffer::flushBufferIfNecessary(RuntimeConfig &runtimeConfig)
 {
     int bufferSize = mBuffer.mPeakTimes.size();
 
     if (bufferSize == 0)
     {
-        return false;
+        return;
     }
 
     auto timeSinceLastFlush = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - mLastFlushTime);
 
-    return (bufferSize >= mBufferSizeThreshold || mFlushInterval <= timeSinceLastFlush);
+    if(bufferSize >= mBufferSizeThreshold || mFlushInterval <= timeSinceLastFlush){
+        write(runtimeConfig.detectionOutputFile);
+        clearBuffer();
+    }
 }

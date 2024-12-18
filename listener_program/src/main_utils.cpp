@@ -81,11 +81,12 @@ void parseJsonConfig(FirmwareConfig &firmwareConfig, RuntimeConfig &runtimeConfi
                                                           trackerClusteringFrequency,
                                                           trackerClusteringWindow);
     }
-
-    if (jsonConfig.at("Use_IMU").get<bool>())
+    
+    if (jsonConfig.at("Firmware_with_IMU").get<bool>())
     {
-        runtimeConfig.imuManager = std::make_unique<ImuProcessor>(firmwareConfig.IMU_BYTE_SIZE);
+        firmwareConfig.imuManager = std::make_unique<ImuProcessor>(firmwareConfig.IMU_BYTE_SIZE);
     }
+    
 
     // Initialize ONNX model if model path provided
     std::string onnxModelPath = jsonConfig.at("ONNX_model_path").get<std::string>();

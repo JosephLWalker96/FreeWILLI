@@ -3,13 +3,13 @@
 
 #include "../algorithms/doa_utils.h"
 #include "../algorithms/gcc_phat.h"
-// #include "../algorithms/fir_iir_filtering.h"
+#include "../algorithms/hydrophone_position_processing.h"
 #include "../algorithms/fir_filter.h"
 #include "../algorithms/threshold_detectors.h"
 #include "../algorithms/IMU_processor.h"
 
 #include "../pch.h"
-#include "../session.h"
+#include "../shared_data_manager.h"
 #include "../io/buffer_writer.h"
 #include "../tracker/tracker.h"
 
@@ -66,53 +66,61 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
             for (int nthPacketInSegment = 0; nthPacketInSegment < firmwareConfig.NUM_PACKS_DETECT; nthPacketInSegment++){
 
                 auto startLoop = std::chrono::system_clock::now();
-                waitForData(sess, observationBuffer, runtimeConfig, dataBytes);
-
+                waitForData(sess, dataBytes);
+                
                 runtimeConfig.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
 
-                currentTimestamp = generateTimestamp(dataBytes, firmwareConfig.NUM_CHAN);
+                currentTimestamp = firmwareConfig.generateTimestamp(dataBytes, firmwareConfig.NUM_CHAN);
                 runtimeConfig.dataTimes.push_back(currentTimestamp);
-                bool dataError = checkForDataErrors(sess, dataBytes, firmwareConfig.MICRO_INCR, previousTimeSet, previousTime, currentTimestamp, firmwareConfig.PACKET_SIZE);
 
-                if (dataError) [[unlikely]]
-                {
-                    std::stringstream errorMsg;
-                    errorMsg << "Error: Time not incremented by " << firmwareConfig.MICRO_INCR << std::endl;
-                    std::cerr << errorMsg.str();
-                    writeDataToCerr(runtimeConfig.dataTimes, runtimeConfig.dataBytesSaved);
-                    runtimeConfig.dataTimes.clear();
-                    runtimeConfig.dataBytesSaved.clear();
-                    previousTime = std::chrono::time_point<std::chrono::system_clock>::min();
-                    previousTimeSet = false;
-                }
+                firmwareConfig.throwIfDataErrors(dataBytes, firmwareConfig.MICRO_INCR, previousTimeSet, previousTime, currentTimestamp, firmwareConfig.PACKET_SIZE);
+
+                previousTime = currentTimestamp;
+                previousTimeSet = true;
 
                 auto beforeConvert = std::chrono::steady_clock::now();
                 firmwareConfig.convertAndInsertData(runtimeConfig.channelData, dataBytes, nthPacketInSegment); // bytes data is decoded and appended to sess.dataSegment
                 auto afterConvert = std::chrono::steady_clock::now();
                 durationConvert = afterConvert - beforeConvert;
 
-                if ((runtimeConfig.detectionOutputFile).empty()) [[unlikely]]
-                {
-                    initializeOutputFiles(runtimeConfig.detectionOutputFile, runtimeConfig.tracker, currentTimestamp, firmwareConfig.NUM_CHAN);
-                }
 
-                if (runtimeConfig.imuManager)
+                if (firmwareConfig.imuManager)
                 {
                     auto beforePtr = std::chrono::steady_clock::now();
-                    runtimeConfig.imuManager->setRotationMatrix(dataBytes);
+                    firmwareConfig.imuManager->setRotationMatrix(dataBytes);
                     auto afterPtr = std::chrono::steady_clock::now();
                     std::chrono::duration<double> durationPtr = afterPtr - beforePtr;
-                    std::cout << "durationPtr: " << durationPtr.count() << std::endl;
-                    std::cout << runtimeConfig.imuManager->mRotationMatrix << std::endl;
+                    std::cout << "Set rotation matrix time: " << durationPtr.count() << std::endl;
+                    std::cout << firmwareConfig.imuManager->mRotationMatrix << std::endl;
                 }
             }
 
             /*
              *   Exited inner loop - dataSegment has been filled to 'DATA_SEGMENT_LENGTH' length
-             *   now apply energy detector.
              */
 
-            //auto beginLatency = std::chrono::steady_clock::now();
+            auto processingTimeBegin = std::chrono::steady_clock::now();
+
+            if ((runtimeConfig.detectionOutputFile).empty()) [[unlikely]]
+            {
+                std::string outputFile = "deployment_files/" + convertTimePointToString(currentTimestamp);
+                runtimeConfig.detectionOutputFile = outputFile;
+
+                if (runtimeConfig.tracker)
+                {
+                    runtimeConfig.tracker->mOutputfile = outputFile + "_tracker";
+                }
+                observationBuffer.initializeOutputFile(outputFile, firmwareConfig.NUM_CHAN);
+            }
+
+            if (shouldTerminateProgram(runtimeConfig))
+            {
+                observationBuffer.write(runtimeConfig.detectionOutputFile);
+                std::cout << "Terminating program... duration reached \n";
+                std::exit(0);
+            }
+
+            observationBuffer.flushBufferIfNecessary(runtimeConfig);
 
             if (runtimeConfig.tracker)
             {
@@ -121,12 +129,12 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
 
             //std::cout << "channel 1 samples" << runtimeConfig.channelData.row(0).head(10) << std::endl;
              
-            std::cout << "time row1 head" << runtimeConfig.channelData.row(0).head(5) << std::endl;
+            //std::cout << "time row1 head" << runtimeConfig.channelData.row(0).head(5) << std::endl;
             //std::cout << "time row2 head" << runtimeConfig.channelData.row(1).head(5) << std::endl;
             //std::cout << "time row3 head" << runtimeConfig.channelData.row(2).head(5) << std::endl;
             //std::cout << "time row4 head" << runtimeConfig.channelData.row(3).head(5) << std::endl;
 
-            std::cout << "time row1 tail" << runtimeConfig.channelData.row(0).tail(5) << std::endl;
+            //std::cout << "time row1 tail" << runtimeConfig.channelData.row(0).tail(5) << std::endl;
             //std::cout << "time row2 tail" << runtimeConfig.channelData.row(1).tail(5) << std::endl;
             //std::cout << "time row3 tail" << runtimeConfig.channelData.row(2).tail(5) << std::endl;
             //std::cout << "time row4 tail" << runtimeConfig.channelData.row(3).tail(5) << std::endl;
@@ -148,12 +156,12 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
             // std::cout << "after filt " << &channelData << std::endl;
             Eigen::MatrixXcf savedFFTs = runtimeConfig.filter->getFrequencyDomainData();
             
-            std::cout << "savedFFTs col1 head" << savedFFTs.col(0).head(5) << std::endl;
+            //std::cout << "savedFFTs col1 head" << savedFFTs.col(0).head(5) << std::endl;
             //std::cout << "savedFFTs col2 head" << savedFFTs.col(1).head(5) << std::endl;
             //std::cout << "savedFFTs col3 head" << savedFFTs.col(2).head(5) << std::endl;
             //std::cout << "savedFFTs col4 head" << savedFFTs.col(3).head(5) << std::endl;
 
-            std::cout << "savedFFTs col1 tail" << savedFFTs.col(0).tail(5) << std::endl;
+            //std::cout << "savedFFTs col1 tail" << savedFFTs.col(0).tail(5) << std::endl;
             //std::cout << "savedFFTs col2 tail" << savedFFTs.col(1).tail(5) << std::endl;
             //std::cout << "savedFFTs col3 tail" << savedFFTs.col(2).tail(5) << std::endl;
             //std::cout << "savedFFTs col4 tail" << savedFFTs.col(3).tail(5) << std::endl;

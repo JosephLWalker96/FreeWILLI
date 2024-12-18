@@ -1,6 +1,6 @@
 #include "../io/socket_manager.h"
 #include "../io/isocket_manager.h"
-#include "../session.h"
+#include "../shared_data_manager.h"
 #include "../pch.h"
 
 int packetCounter = 0; // this should only be used inside the UDPListener function, as it is not protected by a mutex

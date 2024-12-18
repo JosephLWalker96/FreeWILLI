@@ -1,24 +1,13 @@
 #include "main_utils.h"
 #include "runtime_config.h"
 #include "firmware_config.h"
-#include "session.h"
+#include "shared_data_manager.h"
 #include "threads/listener_thread.h"
 #include "threads/processor_thread.h"
 #include "io/socket_manager.h"
 
 int main(int argc, char *argv[])
 {
-#ifdef EIGEN_USE_BLAS
-    std::cout << "BLAS support is enabled in Eigen." << std::endl;
-#else
-    std::cout << "BLAS support is NOT enabled in Eigen." << std::endl;
-#endif
-
-#ifdef EIGEN_USE_LAPACKE
-    std::cout << "LAPACK support is enabled in Eigen." << std::endl;
-#else
-    std::cout << "LAPACK support is NOT enabled in Eigen." << std::endl;
-#endif
     printMode(); // print debug or release mode
 
     // Instantiate firmware configuration varaibles
