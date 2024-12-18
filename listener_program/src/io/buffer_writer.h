@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../runtime_config.h"
 #include "../pch.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
@@ -32,7 +31,7 @@ public:
     void appendToBuffer(const float peakAmp, const float doaX, const float doaY,
                         const float doaZ, const Eigen::VectorXf &tdoaVector,
                         const Eigen::VectorXf &xCorrAmps, const TimePoint &peakTime);
-    void flushBufferIfNecessary(RuntimeConfig &runtimeConfig);
+    void flushBufferIfNecessary(const std::string& detectionOutputFile);
 
     void initializeOutputFile(std::string &outputFile, const int numChannels);
 private:

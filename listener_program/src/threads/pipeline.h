@@ -1,4 +1,5 @@
-#include "../runtime_config.h"
+#pragma once
+
 #include "../firmware_config.h"
 
 #include "../algorithms/doa_utils.h"
@@ -15,28 +16,126 @@
 
 #include "processor_thread_utils.h"
 
+#include "../ML/onnx_model.h"
+#include "../tracker/tracker.h"
+#include "../io/socket_manager.h"
+
+#include "../main_utils.h"
 using TimePoint = std::chrono::system_clock::time_point;
 
-/**
- * @brief Processes data segments from a shared buffer, applies filters, and performs analysis.
- *
- * @param sess Reference to a Session object for managing shared buffers and synchronization.
- * @param firmwareConfig Reference to an FirmwareConfig object containing configuration details.
- * @param runtimeConfig Reference to an ExperimentRuntime object containing runtime-specific details.
- */
-void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, RuntimeConfig &runtimeConfig)
+class Pipeline
 {
-    try
+public:
+
+    Pipeline(SharedDataManager& sharedSess, const PipelineVariables& pipelineVariables) : sess(sharedSess) {
+
+        float speedOfSound = pipelineVariables.speedOfSound;
+        float energyDetectionThreshold = pipelineVariables.energyDetectionThreshold;
+        float amplitudeDetectionThreshold = pipelineVariables.amplitudeDetectionThreshold;
+
+        if (pipelineVariables.filterWeightsPath.empty()){
+            std::cout << "no filter" << std::endl;
+            filter = std::make_unique<FrequencyDomainNoFilterStrategy>(firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
+        }
+        else{
+            filter = std::make_unique<FrequencyDomainFilterStrategy>(pipelineVariables.filterWeightsPath, firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
+            std::cout << "using filter" << std::endl;
+        }
+
+
+        if (pipelineVariables.enableTracking)
+        {
+            tracker = std::make_unique<Tracker>(0.04f, 15, 4, "",
+                                                            pipelineVariables.clusterFrequencyInSeconds,
+                                                            pipelineVariables.clusterWindowInSeconds);
+        }
+
+        if (pipelineVariables.useImu)
+        {
+            firmwareConfig.imuManager = std::make_unique<ImuProcessor>(firmwareConfig.IMU_BYTE_SIZE);
+        }
+
+        if (!pipelineVariables.onnxModelPath.empty())
+        {
+            onnxModel = std::make_unique<ONNXModel>(pipelineVariables.onnxModelPath, pipelineVariables.onnxModelNormalizationPath);
+        }
+    }
+
+    void process(){
+        try
+        {
+            dataProcessor();
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << "Error occured in data processor thread: \n";
+
+            std::stringstream msg; // compose message to dispatch
+            msg << e.what() << std::endl;
+            std::cerr << msg.str();
+
+            try
+            {
+                writeDataToCerr(dataTimes, dataBytesSaved);
+            }
+            catch (...)
+            {
+                std::cerr << "failed to write data to cerr \n";
+                sess.errorOccurred = true;
+            }
+            sess.errorOccurred = true;
+        }
+    }
+
+    // public member variables
+    std::chrono::seconds programRuntime;
+    TimePoint programStartTime;
+
+private:
+
+    // Instantiate firmware configuration varaibles
+
+    SharedDataManager& sess;
+    FirmwareConfig firmwareConfig;
+    
+    Eigen::MatrixXf channelData; // time domain data (inputs)
+
+    std::string detectionOutputFile = "";
+
+    float energyDetectionThreshold;
+    float amplitudeDetectionThreshold;
+    float speedOfSound;
+
+    std::string receiverPositionsPath = "";
+
+
+    // Buffer objects
+    std::vector<std::vector<uint8_t>> dataBytesSaved;
+    std::vector<std::chrono::system_clock::time_point> dataTimes; // timestamps of UDP packet
+
+    std::unique_ptr<SocketManager> socketManger = nullptr;
+    std::unique_ptr<IFrequencyDomainStrategy> filter = nullptr;
+    std::unique_ptr<ONNXModel> onnxModel = nullptr;
+    std::unique_ptr<Tracker> tracker = nullptr;
+    
+    /**
+    * @brief Processes data segments from a shared buffer, applies filters, and performs analysis.
+    *
+     * @param sess Reference to a Session object for managing shared buffers and synchronization.
+     * @param firmwareConfig Reference to an FirmwareConfig object containing configuration details.
+     * @param runtimeConfig Reference to an ExperimentRuntime object containing runtime-specific details.
+     */
+    void dataProcessor()
     {
 
-        int paddedLength = runtimeConfig.filter->getPaddedLength();
+        int paddedLength = filter->getPaddedLength();
         std::cout << "paddedLength: " << paddedLength << std::endl;
 
-        runtimeConfig.channelData.resize(firmwareConfig.NUM_CHAN, paddedLength);
-        runtimeConfig.channelData.setZero();
-        runtimeConfig.filter->initialize(runtimeConfig.channelData);
+        channelData.resize(firmwareConfig.NUM_CHAN, paddedLength);
+        channelData.setZero();
+        filter->initialize(channelData);
 
-        Eigen::MatrixXf hydrophonePositions = getHydrophoneRelativePositions(runtimeConfig.receiverPositionsPath);
+        Eigen::MatrixXf hydrophonePositions = getHydrophoneRelativePositions(receiverPositionsPath);
 
         Eigen::MatrixXf P, U; // SVD matrices of hydrophonePositions
         int rankOfH;
@@ -59,8 +158,8 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
         while (!sess.errorOccurred)
         {
 
-            runtimeConfig.dataTimes.clear();
-            runtimeConfig.dataBytesSaved.clear();
+            dataTimes.clear();
+            dataBytesSaved.clear();
             TimePoint currentTimestamp;
 
             for (int nthPacketInSegment = 0; nthPacketInSegment < firmwareConfig.NUM_PACKS_DETECT; nthPacketInSegment++){
@@ -68,10 +167,10 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
                 auto startLoop = std::chrono::system_clock::now();
                 waitForData(sess, dataBytes);
                 
-                runtimeConfig.dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
+                dataBytesSaved.push_back(dataBytes); // save bytes in case they need to be saved to a file in case of error
 
                 currentTimestamp = firmwareConfig.generateTimestamp(dataBytes, firmwareConfig.NUM_CHAN);
-                runtimeConfig.dataTimes.push_back(currentTimestamp);
+                dataTimes.push_back(currentTimestamp);
 
                 firmwareConfig.throwIfDataErrors(dataBytes, firmwareConfig.MICRO_INCR, previousTimeSet, previousTime, currentTimestamp, firmwareConfig.PACKET_SIZE);
 
@@ -79,7 +178,7 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
                 previousTimeSet = true;
 
                 auto beforeConvert = std::chrono::steady_clock::now();
-                firmwareConfig.convertAndInsertData(runtimeConfig.channelData, dataBytes, nthPacketInSegment); // bytes data is decoded and appended to sess.dataSegment
+                firmwareConfig.convertAndInsertData(channelData, dataBytes, nthPacketInSegment); // bytes data is decoded and appended to sess.dataSegment
                 auto afterConvert = std::chrono::steady_clock::now();
                 durationConvert = afterConvert - beforeConvert;
 
@@ -96,52 +195,52 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
             }
 
             /*
-             *   Exited inner loop - dataSegment has been filled to 'DATA_SEGMENT_LENGTH' length
-             */
+            *   Exited inner loop - dataSegment has been filled to 'DATA_SEGMENT_LENGTH' length
+            */
 
             auto processingTimeBegin = std::chrono::steady_clock::now();
 
-            if ((runtimeConfig.detectionOutputFile).empty()) [[unlikely]]
+            if ((detectionOutputFile).empty()) [[unlikely]]
             {
                 std::string outputFile = "deployment_files/" + convertTimePointToString(currentTimestamp);
-                runtimeConfig.detectionOutputFile = outputFile;
+                detectionOutputFile = outputFile;
 
-                if (runtimeConfig.tracker)
+                if (tracker)
                 {
-                    runtimeConfig.tracker->mOutputfile = outputFile + "_tracker";
+                    tracker->mOutputfile = outputFile + "_tracker";
                 }
                 observationBuffer.initializeOutputFile(outputFile, firmwareConfig.NUM_CHAN);
             }
 
-            if (shouldTerminateProgram(runtimeConfig))
+            if (shouldTerminateProgram())
             {
-                observationBuffer.write(runtimeConfig.detectionOutputFile);
+                observationBuffer.write(detectionOutputFile);
                 std::cout << "Terminating program... duration reached \n";
                 std::exit(0);
             }
 
-            observationBuffer.flushBufferIfNecessary(runtimeConfig);
+            observationBuffer.flushBufferIfNecessary(detectionOutputFile); // observationBuffer should not need this argument
 
-            if (runtimeConfig.tracker)
+            if (tracker)
             {
-                runtimeConfig.tracker->scheduleCluster();
+                tracker->scheduleCluster();
             }
 
-            //std::cout << "channel 1 samples" << runtimeConfig.channelData.row(0).head(10) << std::endl;
-             
-            //std::cout << "time row1 head" << runtimeConfig.channelData.row(0).head(5) << std::endl;
-            //std::cout << "time row2 head" << runtimeConfig.channelData.row(1).head(5) << std::endl;
-            //std::cout << "time row3 head" << runtimeConfig.channelData.row(2).head(5) << std::endl;
-            //std::cout << "time row4 head" << runtimeConfig.channelData.row(3).head(5) << std::endl;
+            //std::cout << "channel 1 samples" << channelData.row(0).head(10) << std::endl;
+            
+            //std::cout << "time row1 head" << channelData.row(0).head(5) << std::endl;
+            //std::cout << "time row2 head" << channelData.row(1).head(5) << std::endl;
+            //std::cout << "time row3 head" << channelData.row(2).head(5) << std::endl;
+            //std::cout << "time row4 head" << channelData.row(3).head(5) << std::endl;
 
-            //std::cout << "time row1 tail" << runtimeConfig.channelData.row(0).tail(5) << std::endl;
-            //std::cout << "time row2 tail" << runtimeConfig.channelData.row(1).tail(5) << std::endl;
-            //std::cout << "time row3 tail" << runtimeConfig.channelData.row(2).tail(5) << std::endl;
-            //std::cout << "time row4 tail" << runtimeConfig.channelData.row(3).tail(5) << std::endl;
+            //std::cout << "time row1 tail" << channelData.row(0).tail(5) << std::endl;
+            //std::cout << "time row2 tail" << channelData.row(1).tail(5) << std::endl;
+            //std::cout << "time row3 tail" << channelData.row(2).tail(5) << std::endl;
+            //std::cout << "time row4 tail" << channelData.row(3).tail(5) << std::endl;
             
 
-            DetectionResult threshResult = detectTimeDomainThreshold(runtimeConfig.channelData.row(0), runtimeConfig.dataTimes,
-                                                                     runtimeConfig.amplitudeDetectionThreshold, firmwareConfig.SAMPLE_RATE);
+            DetectionResult threshResult = detectTimeDomainThreshold(channelData.row(0), dataTimes,
+                                                                    amplitudeDetectionThreshold, firmwareConfig.SAMPLE_RATE);
             if (threshResult.maxPeakIndex < 0)
             {
                 continue;
@@ -149,12 +248,12 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
 
             //std::cout << "BeforeFilt: " << std::endl;
             auto beforeFilt = std::chrono::steady_clock::now();
-            runtimeConfig.filter->apply(runtimeConfig.channelData);
+            filter->apply(channelData);
             auto afterFilt = std::chrono::steady_clock::now();
             std::chrono::duration<double> durationFilt = afterFilt - beforeFilt;
             //std::cout << "durationFilt: " << durationFilt.count() << std::endl;
             // std::cout << "after filt " << &channelData << std::endl;
-            Eigen::MatrixXcf savedFFTs = runtimeConfig.filter->getFrequencyDomainData();
+            Eigen::MatrixXcf savedFFTs = filter->getFrequencyDomainData();
             
             //std::cout << "savedFFTs col1 head" << savedFFTs.col(0).head(5) << std::endl;
             //std::cout << "savedFFTs col2 head" << savedFFTs.col(1).head(5) << std::endl;
@@ -168,8 +267,8 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
             //std::exit(0);
             
 
-            DetectionResult detResult = detectFrequencyDomainThreshold(savedFFTs.col(0), runtimeConfig.dataTimes,
-                                                                       runtimeConfig.energyDetectionThreshold, firmwareConfig.SAMPLE_RATE);
+            DetectionResult detResult = detectFrequencyDomainThreshold(savedFFTs.col(0), dataTimes,
+                                                                    energyDetectionThreshold, firmwareConfig.SAMPLE_RATE);
 
             if (detResult.maxPeakIndex < 0)
             {             // if no pulse was detected (maxPeakIndex remains -1) stop processing
@@ -177,8 +276,8 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
             }
 
             /*
-             *  Pulse detected. Now process the channels according to runtimeConfig settings.
-             */
+            *  Pulse detected. Now process the channels according to runtimeConfig settings.
+            */
 
             sess.detectionCounter++;
             // std::cout << "Filter runtime: " << durationFilter.count() << std::endl;
@@ -194,7 +293,7 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
             std::cout << "TDOAs: " << tdoaVector.transpose() << std::endl;
             std::cout << "GCC time: " << durationGCCW.count() << std::endl;
             // auto beforeDOA = std::chrono::steady_clock::now();
-            Eigen::VectorXf DOAs = computeDoaFromTdoa(P, U, runtimeConfig.speedOfSound, tdoaVector, rankOfH);
+            Eigen::VectorXf DOAs = computeDoaFromTdoa(P, U, speedOfSound, tdoaVector, rankOfH);
 
             Eigen::VectorXf AzEl = convertDoaToElAz(DOAs);
             // auto afterDOA = std::chrono::steady_clock::now();
@@ -211,24 +310,24 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
 
             // UpdatetrackerLabel tracker buffer and filters with last observation
             int trackerLabel = -1;
-            if (runtimeConfig.tracker)
+            if (tracker)
             {
-                runtimeConfig.tracker->updateTrackerBuffer(DOAs);
-                if (runtimeConfig.tracker->mIsTrackerInitialized)
+                tracker->updateTrackerBuffer(DOAs);
+                if (tracker->mIsTrackerInitialized)
                 {
-                    trackerLabel = runtimeConfig.tracker->updateKalmanFiltersContinuous(DOAs, threshResult.peakTimes);
+                    trackerLabel = tracker->updateKalmanFiltersContinuous(DOAs, threshResult.peakTimes);
                     saveSpectraForTraining("training_data.csv", trackerLabel, savedFFTs.col(0));
                     std::cout << "tracker label: " << trackerLabel << std::endl;
                 }
             }
 
             // Normalize the input data
-            if (runtimeConfig.onnxModel)
+            if (onnxModel)
             {
                 std::vector<float> input_tensor_values = getExampleClick();
                 // Run inference
                 auto beforeClass = std::chrono::steady_clock::now();
-                std::vector<float> predictions = runtimeConfig.onnxModel->runInference(input_tensor_values);
+                std::vector<float> predictions = onnxModel->runInference(input_tensor_values);
                 auto afterClass = std::chrono::steady_clock::now();
                 std::chrono::duration<double> durationClass = afterClass - beforeClass;
                 /*
@@ -246,23 +345,19 @@ void dataProcessor(SharedDataManager &sess, FirmwareConfig &firmwareConfig, Runt
             // std::cout << "Latency: " << latencyMeasure.count() << std::endl;
         }
     }
-    catch (const std::exception &e)
+
+    /**
+     * @brief Determines if the program should terminate based on the runtime duration.
+     *
+     * @param runtimeConfig Experiment runtime configuration and state.
+     * @param startLoop The time point at the start of the current loop iteration.
+     * @return true if the program should terminate, false otherwise.
+     */
+    bool shouldTerminateProgram()
     {
-        std::cerr << "Error occured in data processor thread: \n";
 
-        std::stringstream msg; // compose message to dispatch
-        msg << e.what() << std::endl;
-        std::cerr << msg.str();
-
-        try
-        {
-            writeDataToCerr(runtimeConfig.dataTimes, runtimeConfig.dataBytesSaved);
-        }
-        catch (...)
-        {
-            std::cerr << "failed to write data to cerr \n";
-            sess.errorOccurred = true;
-        }
-        sess.errorOccurred = true;
+        TimePoint currentTime = std::chrono::system_clock::now();
+        auto elapsedTime = currentTime - programStartTime;
+        return elapsedTime >= programRuntime;
     }
-}
+};

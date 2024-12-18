@@ -37,7 +37,7 @@ void logPacketStatistics(int packetCounter, int printInterval, std::chrono::stea
  *
  * @throws std::runtime_error if there is an error receiving data from the socket or if the buffer overflows.
  */
-void udpListener(SharedDataManager &sess, ISocketManager *socketManager, const int &PACKET_SIZE)
+void udpListener(SharedDataManager &sess, ISocketManager *socketManager)
 {
     try
     {
@@ -45,7 +45,7 @@ void udpListener(SharedDataManager &sess, ISocketManager *socketManager, const i
         socklen_t addrLength = sizeof(addr);
         int bytesReceived;
         constexpr int printInterval = 500;
-        const int receiveSize = PACKET_SIZE + 1; // +1 to detect overflow
+        const int receiveSize = 2048; // some max size
 
         // We let the SocketManager handle resizing internally as it receives data
         socketManager->setReceiveBufferSize(receiveSize);

@@ -1,36 +1,29 @@
-#include "main_utils.h"
-#include "runtime_config.h"
 #include "firmware_config.h"
 #include "shared_data_manager.h"
 #include "threads/listener_thread.h"
 #include "threads/processor_thread.h"
 #include "io/socket_manager.h"
+#include "main_utils.h"
 
 int main(int argc, char *argv[])
 {
-    printMode(); // print debug or release mode
+    printMode();
 
-    // Instantiate firmware configuration varaibles
-    FirmwareConfig firmwareConfig;
-
-    // Main processing loop
     while (true)
     {
+
+        auto [socketVariables, pipelineVars] = parseJsonConfig(std::string(argv[1]));
+        SocketManager socketManager(socketVariables);
+        
         SharedDataManager sess;
-        RuntimeConfig runtimeConfig;
-        runtimeConfig.programRuntime = std::chrono::seconds(std::stoi(argv[2])); // program run duration
+        Pipeline pipeline(sess, pipelineVars);
 
-        // Initialize the socket and populate runtimeConfig entries
-        parseJsonConfig(firmwareConfig, runtimeConfig, std::string(argv[1]));
-
-        runtimeConfig.socketManger->restartListener();
-
-        runtimeConfig.programStartTime = std::chrono::system_clock::now(); // Start experiment timer
+        pipeline.programRuntime = std::chrono::seconds(std::stoi(argv[2])); // program run duration
+        pipeline.programStartTime = std::chrono::system_clock::now(); // Start experiment timer
 
         // Create threads for listening to UDP packets and processing data
-        std::thread listenerThread(udpListener, std::ref(sess), runtimeConfig.socketManger.get(), firmwareConfig.PACKET_SIZE);
-        std::thread processorThread(dataProcessor, std::ref(sess), std::ref(firmwareConfig), std::ref(runtimeConfig));
-
+        std::thread listenerThread(udpListener, std::ref(sess), std::ref(socketManager));
+        std::thread processorThread(&Pipeline::process, &pipeline);
         // Wait for threads to finish
         listenerThread.join();
         processorThread.join();

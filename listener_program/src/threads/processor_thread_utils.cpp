@@ -70,20 +70,6 @@ void writeDataToCerr(std::span<TimePoint> errorTimestamps, std::vector<std::vect
 }
 
 
-/**
- * @brief Determines if the program should terminate based on the runtime duration.
- *
- * @param runtimeConfig Experiment runtime configuration and state.
- * @param startLoop The time point at the start of the current loop iteration.
- * @return true if the program should terminate, false otherwise.
- */
-bool shouldTerminateProgram(const RuntimeConfig &runtimeConfig)
-{
-
-    TimePoint currentTime = std::chrono::system_clock::now();
-    auto elapsedTime = currentTime - runtimeConfig.programStartTime;
-    return elapsedTime >= runtimeConfig.programRuntime;
-}
 
 
 /**

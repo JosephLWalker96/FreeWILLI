@@ -9,7 +9,7 @@
 class SocketManager : public ISocketManager
 {
 public:
-    SocketManager(int udpPort, const std::string &udpIp);
+    SocketManager(const SocketVariables& socketVariables);
 
     void restartListener() override;
 

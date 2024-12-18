@@ -1,4 +1,5 @@
 #include "socket_manager.h"
+#include "../main_utils.h"
 #include <stdexcept>
 #include <iostream>
 #include <cstring>
@@ -10,12 +11,18 @@
  * @brief Constructs a new SocketManager and initializes the UDP socket.
  * @throws std::runtime_error If the socket cannot be created.
  */
-SocketManager::SocketManager(int udpPort, const std::string &udpIp)
+SocketManager::SocketManager(const SocketVariables& socketVariables)
     : mDatagramSocket(socket(AF_INET, SOCK_DGRAM, 0)),
-      mUdpPort(udpPort),
-      mUdpIp(udpIp),
+      mUdpPort(socketVariables.udpPort),
+      mUdpIp(socketVariables.udpIp),
       mDataBytes()
 {
+
+    if (mUdpIp == "self")
+    {
+        mUdpIp = "127.0.0.1";
+    }
+    
     if (mDatagramSocket == -1)
     {
         throw std::runtime_error("Error creating socket\n");

@@ -197,7 +197,7 @@ void ObservationBuffer::appendBufferToFile(const std::string &outputFile)
 /**
  * @brief Determines if the buffer should be flushed based on its size or time since the last flush.
  */
-void ObservationBuffer::flushBufferIfNecessary(RuntimeConfig &runtimeConfig)
+void ObservationBuffer::flushBufferIfNecessary(const std::string& detectionOutputFile)
 {
     int bufferSize = mBuffer.mPeakTimes.size();
 
@@ -210,7 +210,7 @@ void ObservationBuffer::flushBufferIfNecessary(RuntimeConfig &runtimeConfig)
         std::chrono::steady_clock::now() - mLastFlushTime);
 
     if(bufferSize >= mBufferSizeThreshold || mFlushInterval <= timeSinceLastFlush){
-        write(runtimeConfig.detectionOutputFile);
+        write(detectionOutputFile);
         clearBuffer();
     }
 }
