@@ -11,6 +11,7 @@ FrequencyDomainFilterStrategy::FrequencyDomainFilterStrategy(const std::string &
     : mNumChannels(numChannels)
 
 {
+
     std::vector<float> filterWeights = readFirFilterFile(filterWeightsPath);
 
     // padded length needed for circular convolution to be same as linear convolution

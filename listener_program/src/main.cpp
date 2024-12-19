@@ -1,7 +1,7 @@
 #include "firmware_config.h"
 #include "shared_data_manager.h"
 #include "threads/listener_thread.h"
-#include "threads/processor_thread.h"
+#include "threads/pipeline.h"
 #include "io/socket_manager.h"
 #include "main_utils.h"
 
@@ -9,12 +9,12 @@ int main(int argc, char *argv[])
 {
     printMode();
 
+    auto [socketVariables, pipelineVars] = parseJsonConfig(std::string(argv[1]));
+    std::unique_ptr<ISocketManager> socketManager = std::make_unique<SocketManager>(socketVariables); 
+
     while (true)
     {
-
-        auto [socketVariables, pipelineVars] = parseJsonConfig(std::string(argv[1]));
-        SocketManager socketManager(socketVariables);
-        
+        socketManager->restartListener();
         SharedDataManager sess;
         Pipeline pipeline(sess, pipelineVars);
 
@@ -22,11 +22,12 @@ int main(int argc, char *argv[])
         pipeline.programStartTime = std::chrono::system_clock::now(); // Start experiment timer
 
         // Create threads for listening to UDP packets and processing data
-        std::thread listenerThread(udpListener, std::ref(sess), std::ref(socketManager));
-        std::thread processorThread(&Pipeline::process, &pipeline);
+        std::thread producerThread(udpListener, std::ref(sess), socketManager.get());
+        std::thread consumerThread(&Pipeline::process, &pipeline);
+        
         // Wait for threads to finish
-        listenerThread.join();
-        processorThread.join();
+        producerThread.join();
+        consumerThread.join();
 
         std::cout << "Restarting threads..." << std::endl;
     }

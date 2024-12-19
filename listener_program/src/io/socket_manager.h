@@ -3,6 +3,7 @@
 #include "isocket_manager.h"
 #include <string>
 
+class SocketVariables;
 /**
  * @brief Manages UDP socket operations, including creating, restarting, and configuring the listener.
  */

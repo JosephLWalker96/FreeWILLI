@@ -17,7 +17,7 @@ Eigen::MatrixXf loadHydrophonePositionsFromFile(const std::string &filename)
     if (!inputFile.is_open())
     {
         std::stringstream msg; // compose message to dispatch
-        msg << "Error: Unable to open filter file '" << filename << "'." << std::endl;
+        msg << "Error: Unable to open hydrophone position file '" << filename << "'." << std::endl;
         throw std::ios_base::failure(msg.str());
     }
 
@@ -117,14 +117,14 @@ Eigen::MatrixXf getHydrophoneRelativePositions(const std::string &filename)
  * @param basisMatrixU Reference to a matrix for storing the U matrix from SVD decomposition.
  * @param rankOfHydrophoneMatrix Reference to an integer for storing the rank of the hydrophone position matrix.
  */
-void hydrophoneMatrixDecomposition(const Eigen::MatrixXf hydrophonePositions, Eigen::MatrixXf &precomputedP,
-                                   Eigen::MatrixXf &basisMatrixU, int &rankOfHydrophoneMatrix)
+auto hydrophoneMatrixDecomposition(const Eigen::MatrixXf hydrophonePositions) -> std::tuple<Eigen::MatrixXf, Eigen::MatrixXf, int>
 {
     // Compute SVD and rank
     auto svdDecomposition = computeSvd(hydrophonePositions);
-    rankOfHydrophoneMatrix = computeRank(hydrophonePositions);
+    int rankOfHydrophoneMatrix = computeRank(hydrophonePositions);
 
     // Precompute matrices
-    precomputedP = precomputePseudoInverse(svdDecomposition);
-    basisMatrixU = svdDecomposition.matrixU();
+    Eigen::MatrixXf precomputedP = precomputePseudoInverse(svdDecomposition);
+    Eigen::MatrixXf basisMatrixU = svdDecomposition.matrixU();
+    return std::make_tuple(precomputedP, basisMatrixU, rankOfHydrophoneMatrix);
 }

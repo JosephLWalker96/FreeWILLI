@@ -6,9 +6,9 @@ class RuntimeConfig;
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-bool shouldTerminateProgram(const RuntimeConfig &runtimeConfig);
+//bool shouldTerminateProgram(const RuntimeConfig &runtimeConfig);
 
-void waitForData(SharedDataManager &sess, std::vector<uint8_t> &dataBytes);
+void waitForData(SharedDataManager &sess, std::vector<std::vector<uint8_t>> &dataBytes,int numPacksToGet);
 
 std::string convertTimePointToString(const TimePoint &timePoint);
 

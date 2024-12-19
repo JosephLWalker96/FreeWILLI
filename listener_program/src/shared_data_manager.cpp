@@ -17,14 +17,17 @@ int SharedDataManager::pushDataToBuffer(const std::vector<uint8_t> &data)
  * @param data Reference to a vector where the popped data will be placed.
  * @return True if data was successfully popped, false if the buffer was empty.
  */
-bool SharedDataManager::popDataFromBuffer(std::vector<uint8_t> &data)
+bool SharedDataManager::popDataFromBuffer(std::vector<std::vector<uint8_t>> &data, int numPacksToGet)
 {
     std::lock_guard<std::mutex> lock(dataBufferLock);
-    if (!dataBuffer.empty())
+    int i = 0;
+    if (dataBuffer.size() >= numPacksToGet)
     {
-        data = dataBuffer.front();
-        dataBuffer.pop();
-        return true;
+        while(i < numPacksToGet){
+            data.push_back(dataBuffer.front());
+            dataBuffer.pop();
+            i++;
+        }
     }
-    return false;
+    return i == (numPacksToGet - 1);
 }

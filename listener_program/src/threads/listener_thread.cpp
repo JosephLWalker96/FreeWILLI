@@ -33,8 +33,6 @@ void logPacketStatistics(int packetCounter, int printInterval, std::chrono::stea
  *
  * @param sess Reference to a Session object for managing shared buffers and session state.
  * @param socketManager Reference to a SocketManager object that manages the UDP socket.
- * @param PACKET_SIZE The expected size of the incoming UDP packets.
- *
  * @throws std::runtime_error if there is an error receiving data from the socket or if the buffer overflows.
  */
 void udpListener(SharedDataManager &sess, ISocketManager *socketManager)

@@ -14,13 +14,13 @@
  * @param startLoop The start time of the current loop iteration.
  * @param dataBytes Reference to the vector that will hold the retrieved data bytes.
  */
-void waitForData(SharedDataManager &sess, std::vector<uint8_t> &dataBytes)
+void waitForData(SharedDataManager &sess, std::vector<std::vector<uint8_t>> &dataBytes, int numPacksToGet)
 {
     while (true)
     {
 
         //auto startLoop = std::chrono::system_clock::now();
-        bool gotData = sess.popDataFromBuffer(dataBytes); // Retrieves data or sleeps until available
+        bool gotData = sess.popDataFromBuffer(dataBytes, numPacksToGet); // Retrieves data or sleeps until available
         if (gotData)
         {
             return;

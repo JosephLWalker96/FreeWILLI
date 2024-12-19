@@ -51,7 +51,6 @@ GCC_PHAT::~GCC_PHAT()
 std::tuple<Eigen::VectorXf, Eigen::VectorXf> GCC_PHAT::process(const Eigen::MatrixXcf &savedFfts)
 {
     int fftLength = static_cast<int>(savedFfts.col(0).size());
-    std::cout << "fftLength: " << fftLength << std::endl;
 
     Eigen::VectorXf tdoaEstimates(mNumTdoas);
     Eigen::VectorXf crossCorrPeaks(mNumTdoas);

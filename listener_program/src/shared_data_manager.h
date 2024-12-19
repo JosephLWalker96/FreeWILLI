@@ -18,5 +18,5 @@ public:
     std::atomic<int> detectionCounter = 0;                            ///< Tracks the number of successful detections.
 
     int pushDataToBuffer(const std::vector<uint8_t> &data);
-    bool popDataFromBuffer(std::vector<uint8_t> &data);
+    bool popDataFromBuffer(std::vector<std::vector<uint8_t>> &data, int numPacksToGet);
 };

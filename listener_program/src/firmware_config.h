@@ -3,6 +3,8 @@
 #include "pch.h"
 #include "algorithms/IMU_processor.h"
 
+using TimePoint = std::chrono::system_clock::time_point;
+
 class FirmwareConfig
 {
 public:
@@ -35,7 +37,7 @@ public:
     /*
     * counter: how many times we’ve already called this function 
     */
-    void convertAndInsertData(Eigen::MatrixXf &channelMatrix, 
+    void insertDataIntoChannelMatrix(Eigen::MatrixXf &channelMatrix, 
                         std::span<uint8_t> dataBytes, 
                         int &counter,
                         int headSize = HEAD_SIZE,
