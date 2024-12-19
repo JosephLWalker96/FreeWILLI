@@ -82,32 +82,37 @@ public:
      * @return A `TimePoint` representing the timestamp.
      * @throws std::runtime_error if `std::mktime` fails to convert the timestamp.
      */
-    TimePoint generateTimestamp(std::vector<uint8_t> &dataBytes, const int numChannels)
+    std::vector<TimePoint> generateTimestamp(std::vector<std::vector<uint8_t>> &dataBytes, const int numChannels)
     {
+
         std::tm timeStruct{};
-        timeStruct.tm_year = static_cast<int>(dataBytes[0]) + 2000 - 1900;
-        timeStruct.tm_mon = static_cast<int>(dataBytes[1]) - 1;
-        timeStruct.tm_mday = static_cast<int>(dataBytes[2]);
-        timeStruct.tm_hour = static_cast<int>(dataBytes[3]);
-        timeStruct.tm_min = static_cast<int>(dataBytes[4]);
-        timeStruct.tm_sec = static_cast<int>(dataBytes[5]);
+        std::vector<TimePoint> outputTimes(dataBytes.size());
+        for (int i = 0; i < dataBytes.size(); i++){
+            timeStruct.tm_year = static_cast<int>(dataBytes[i][0]) + 2000 - 1900;
+            timeStruct.tm_mon = static_cast<int>(dataBytes[i][1]) - 1;
+            timeStruct.tm_mday = static_cast<int>(dataBytes[i][2]);
+            timeStruct.tm_hour = static_cast<int>(dataBytes[i][3]);
+            timeStruct.tm_min = static_cast<int>(dataBytes[i][4]);
+            timeStruct.tm_sec = static_cast<int>(dataBytes[i][5]);
 
-        int64_t microseconds = (static_cast<int64_t>(dataBytes[6]) << 24) +
-                            (static_cast<int64_t>(dataBytes[7]) << 16) +
-                            (static_cast<int64_t>(dataBytes[8]) << 8) +
-                            static_cast<int64_t>(dataBytes[9]);
+            int64_t microseconds = (static_cast<int64_t>(dataBytes[i][6]) << 24) +
+                                (static_cast<int64_t>(dataBytes[i][7]) << 16) +
+                                (static_cast<int64_t>(dataBytes[i][8]) << 8) +
+                                static_cast<int64_t>(dataBytes[i][9]);
 
-        std::time_t timeResult = std::mktime(&timeStruct);
+            std::time_t timeResult = std::mktime(&timeStruct);
 
-        if (timeResult == std::time_t(-1))
-        {
-            throw std::runtime_error("Error: failure in mktime.");
+            //if (timeResult == std::time_t(-1))
+            //{
+            //    throw std::runtime_error("Error: failure in mktime.");
+            //}
+
+            auto currentTime = std::chrono::system_clock::from_time_t(timeResult);
+            currentTime += std::chrono::microseconds(microseconds);
+            outputTimes.push_back(currentTime);
         }
 
-        auto currentTime = std::chrono::system_clock::from_time_t(timeResult);
-        currentTime += std::chrono::microseconds(microseconds);
-
-        return currentTime;
+        return outputTimes;
     }
 
     /**

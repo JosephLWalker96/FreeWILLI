@@ -28,6 +28,7 @@ bool SharedDataManager::popDataFromBuffer(std::vector<std::vector<uint8_t>> &dat
             dataBuffer.pop();
             i++;
         }
+        return true;
     }
-    return i == (numPacksToGet - 1);
+    return false;
 }

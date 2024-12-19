@@ -137,7 +137,7 @@ void Pipeline::dataProcessor() {
 void Pipeline::obtainAndProcessByteData(std::vector<std::vector<uint8_t>>& dataBytes, bool& previousTimeSet, TimePoint& previousTime){
     dataTimes.clear();
     dataBytesSaved.clear();
-    TimePoint currentTimestamp;
+    std::vector<TimePoint> currentTimestamp;
 
     /* 
     for (int nthPacketInSegment = 0; nthPacketInSegment < firmwareConfig.NUM_PACKS_DETECT; ++nthPacketInSegment) {
@@ -159,18 +159,31 @@ void Pipeline::obtainAndProcessByteData(std::vector<std::vector<uint8_t>>& dataB
     */
     waitForData(sess, dataBytes, firmwareConfig.NUM_PACKS_DETECT);
     dataBytesSaved = dataBytes;
+    auto beforeGCC = std::chrono::steady_clock::now();
     currentTimestamp = firmwareConfig.generateTimestamp(dataBytes, firmwareConfig.NUM_CHAN);
-    dataTimes.push_back(currentTimestamp);
+    auto afterGCC = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration = afterGCC - beforeGCC;
+    std::cout << "Timestamps: " << duration.count() << std::endl;
 
-    firmwareConfig.throwIfDataErrors(dataBytes, firmwareConfig.MICRO_INCR, previousTimeSet, previousTime, currentTimestamp, firmwareConfig.PACKET_SIZE);
+    dataTimes = currentTimestamp;
 
-    previousTime = currentTimestamp;
+    //firmwareConfig.throwIfDataErrors(dataBytes, firmwareConfig.MICRO_INCR, previousTimeSet, previousTime, currentTimestamp, firmwareConfig.PACKET_SIZE);
+    //previousTime = currentTimestamp;
+
     previousTimeSet = true;
-    firmwareConfig.insertDataIntoChannelMatrix(channelData, dataBytes, nthPacketInSegment);
 
-    if (firmwareConfig.imuManager) {
-        firmwareConfig.imuManager->setRotationMatrix(dataBytes);
+    auto before2l = std::chrono::steady_clock::now();
+    for (int nthPacketInSegment = 0; nthPacketInSegment < firmwareConfig.NUM_PACKS_DETECT; ++nthPacketInSegment) {
+        firmwareConfig.insertDataIntoChannelMatrix(channelData, dataBytes[nthPacketInSegment], nthPacketInSegment);
+
+        //if (firmwareConfig.imuManager) {
+        //    firmwareConfig.imuManager->setRotationMatrix(dataBytes[nthPacketInSegment]);
+        //}
     }
+
+    auto after2l = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration2l = after2l - before2l;
+    std::cout << "append : " << duration2l.count() << std::endl;
 }
 
 void Pipeline::initilializeOutputFiles(TimePoint& timepoint){
