@@ -136,5 +136,27 @@ cd ..
 ./bin/HarpListen config_files/volumetric.json 50000
 ```
 
-## Installation and build for DataLogger Simulator
+### Installation and build for DataLogger Simulator
+1. Install dependencies:
+```bash
+cd simulator_program/
+conda create --name freewilli python=3.9
+conda activate freewilli
+pip install -r requirements.txt
+```
 
+2. Download data:
+By default, the program reads in data from folder **simulator_data/track132_5minchunks/**
+
+[Link Download](https://drive.google.com/drive/folders/1v8sgYyQATcsUkzAI6AcUaiMpq5Wi37y1?usp=sharing) the track132_5minchunks/ folder and place it in the simulator_data/ directory.
+
+3. Run example:
+```bash
+cd simulator_program/
+```
+Assuming you are running the simulator on the same machine as the listener program, run the following:
+```bash
+python datalogger_simulator.py --ip self --fw 1240 --port 1045
+```
+
+Otherwise, specify the correct IP address (--ip) and port (--port).
