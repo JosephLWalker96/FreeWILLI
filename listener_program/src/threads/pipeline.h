@@ -6,7 +6,8 @@
 #include "../algorithms/gcc_phat.h"
 #include "../algorithms/hydrophone_position_processing.h"
 #include "../algorithms/fir_filter.h"
-#include "../algorithms/threshold_detectors.h"
+#include "../algorithms/time_domain_detectors.h"
+#include "../algorithms/frequency_domain_detectors.h"
 #include "../algorithms/IMU_processor.h"
 #include "../io/buffer_writer.h"
 #include "../io/socket_manager.h"
@@ -36,8 +37,6 @@ private:
 
     Eigen::MatrixXf channelData;
     std::string detectionOutputFile;
-    float energyDetectionThreshold;
-    float amplitudeDetectionThreshold;
     float speedOfSound;
     std::string receiverPositionsPath;
     std::vector<std::vector<uint8_t>> dataBytesSaved;
@@ -46,6 +45,8 @@ private:
     std::unique_ptr<IFrequencyDomainStrategy> filter;
     std::unique_ptr<ONNXModel> onnxModel;
     std::unique_ptr<Tracker> tracker;
+    std::unique_ptr<TimeDomainDetector> timeDomainDetector; 
+    std::unique_ptr<FrequencyDomainDetector> frequencyDomainDetector;
 
     void dataProcessor();
 

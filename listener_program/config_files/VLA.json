@@ -11,5 +11,5 @@
     "Enable_Tracking": false,
     "Cluster_Frequency_In_Seconds": 60,
     "Cluster_Window_In_Seconds": 30,
-    "Use_IMU": false
+    "Firmware_with_IMU": false
 }

@@ -10,9 +10,8 @@ Pipeline::Pipeline(SharedDataManager &sharedSess, const PipelineVariables &pipel
     : sess(sharedSess) {
 
     speedOfSound = pipelineVariables.speedOfSound;
-    energyDetectionThreshold = pipelineVariables.energyDetectionThreshold;
-    amplitudeDetectionThreshold = pipelineVariables.amplitudeDetectionThreshold;
     receiverPositionsPath = pipelineVariables.receiverPositionsPath;
+    
     if (pipelineVariables.filterWeightsPath.empty()) {
         filter = std::make_unique<FrequencyDomainNoFilterStrategy>(firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);
     } else {
@@ -31,6 +30,8 @@ Pipeline::Pipeline(SharedDataManager &sharedSess, const PipelineVariables &pipel
     if (!pipelineVariables.onnxModelPath.empty()) {
         onnxModel = std::make_unique<ONNXModel>(pipelineVariables.onnxModelPath, pipelineVariables.onnxModelNormalizationPath);
     }
+    timeDomainDetector = std::make_unique<PeakAmplitudeDetector>(pipelineVariables.amplitudeDetectionThreshold);
+    frequencyDomainDetector = std::make_unique<FrequencyDomainDetector>(pipelineVariables.energyDetectionThreshold);
 }
 
 /**
@@ -73,7 +74,7 @@ void Pipeline::dataProcessor() {
     
     bool previousTimeSet = false;
     auto previousTime = TimePoint::min();
-    std::vector<std::vector<uint8_t>> dataBytes;
+    std::vector<std::vector<uint8_t>> dataBytes(firmwareConfig.NUM_PACKS_DETECT);
 
     GCC_PHAT computeTDOAs(paddedLength, firmwareConfig.NUM_CHAN, firmwareConfig.SAMPLE_RATE);
     while (!sess.errorOccurred) {
@@ -90,19 +91,15 @@ void Pipeline::dataProcessor() {
             tracker->scheduleCluster();
         }
 
-        DetectionResult threshResult = detectTimeDomainThreshold(channelData.row(0), dataTimes,
-                                                                 amplitudeDetectionThreshold, firmwareConfig.SAMPLE_RATE);
-        if (threshResult.maxPeakIndex < 0) {
-            continue;
+        if(!timeDomainDetector->detect(channelData.row(0))){
+            break;
         }
 
         filter->apply(channelData);
         Eigen::MatrixXcf savedFFTs = filter->getFrequencyDomainData();
 
-        DetectionResult detResult = detectFrequencyDomainThreshold(savedFFTs.col(0), dataTimes,
-                                                                   energyDetectionThreshold, firmwareConfig.SAMPLE_RATE);
-        if (detResult.maxPeakIndex < 0) {
-            continue;
+        if(!frequencyDomainDetector->detect(savedFFTs.col(0))){
+            break;
         }
 
         sess.detectionCounter++;
@@ -117,12 +114,15 @@ void Pipeline::dataProcessor() {
         Eigen::VectorXf AzEl = convertDoaToElAz(DOAs);
         std::cout << "AzEl: " << AzEl << std::endl;
 
-        observationBuffer.appendToBuffer(detResult.peakAmplitude, DOAs[0], DOAs[1], DOAs[2], tdoaVector, std::get<1>(tdoasAndXCorrAmps), threshResult.peakTimes);
+        observationBuffer.appendToBuffer(timeDomainDetector->getLastDetection(), 
+                                        DOAs[0], DOAs[1], DOAs[2], tdoaVector, 
+                                        std::get<1>(tdoasAndXCorrAmps), 
+                                        dataTimes[0]);
 
         if (tracker) {
             tracker->updateTrackerBuffer(DOAs);
             if (tracker->mIsTrackerInitialized) {
-                tracker->updateKalmanFiltersContinuous(DOAs, threshResult.peakTimes);
+                tracker->updateKalmanFiltersContinuous(DOAs, dataTimes[0]);
             }
         }
 
@@ -139,24 +139,6 @@ void Pipeline::obtainAndProcessByteData(std::vector<std::vector<uint8_t>>& dataB
     dataBytesSaved.clear();
     std::vector<TimePoint> currentTimestamp;
 
-    /* 
-    for (int nthPacketInSegment = 0; nthPacketInSegment < firmwareConfig.NUM_PACKS_DETECT; ++nthPacketInSegment) {
-        waitForData(sess, dataBytes);
-        dataBytesSaved.push_back(dataBytes);
-        currentTimestamp = firmwareConfig.generateTimestamp(dataBytes, firmwareConfig.NUM_CHAN);
-        dataTimes.push_back(currentTimestamp);
-
-        firmwareConfig.throwIfDataErrors(dataBytes, firmwareConfig.MICRO_INCR, previousTimeSet, previousTime, currentTimestamp, firmwareConfig.PACKET_SIZE);
-
-        previousTime = currentTimestamp;
-        previousTimeSet = true;
-        firmwareConfig.insertDataIntoChannelMatrix(channelData, dataBytes, nthPacketInSegment);
-
-        if (firmwareConfig.imuManager) {
-            firmwareConfig.imuManager->setRotationMatrix(dataBytes);
-        }
-    }
-    */
     waitForData(sess, dataBytes, firmwareConfig.NUM_PACKS_DETECT);
     dataBytesSaved = dataBytes;
     auto beforeGCC = std::chrono::steady_clock::now();

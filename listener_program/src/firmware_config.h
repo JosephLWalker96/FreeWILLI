@@ -69,8 +69,8 @@ public:
             float value = static_cast<float>(sample) - sampleOffset;
 
             matrixPtr[startOffset + i] = value;
-        }
-    }
+        } 
+}
 
 
 
@@ -82,38 +82,48 @@ public:
      * @return A `TimePoint` representing the timestamp.
      * @throws std::runtime_error if `std::mktime` fails to convert the timestamp.
      */
-    std::vector<TimePoint> generateTimestamp(std::vector<std::vector<uint8_t>> &dataBytes, const int numChannels)
-    {
+std::vector<TimePoint> generateTimestamp(const std::vector<std::vector<uint8_t>> &dataBytes, int numChannels)
+{
+    const size_t dataSize = dataBytes.size();
+    std::vector<TimePoint> outputTimes(dataSize);
 
+    for (size_t i = 0; i < dataSize; ++i) {
+        // Extract fields
+        int year  = static_cast<int>(dataBytes[i][0]) + 2000 - 1900;
+        int month = static_cast<int>(dataBytes[i][1]) - 1;
+        int day   = static_cast<int>(dataBytes[i][2]);
+        int hour  = static_cast<int>(dataBytes[i][3]);
+        int min   = static_cast<int>(dataBytes[i][4]);
+        int sec   = static_cast<int>(dataBytes[i][5]);
+
+        // Compute microseconds
+        int64_t microseconds =
+            (static_cast<int64_t>(dataBytes[i][6]) << 24) |
+            (static_cast<int64_t>(dataBytes[i][7]) << 16) |
+            (static_cast<int64_t>(dataBytes[i][8]) << 8)  |
+            (static_cast<int64_t>(dataBytes[i][9]));
+
+        // tm structure
         std::tm timeStruct{};
-        std::vector<TimePoint> outputTimes(dataBytes.size());
-        for (int i = 0; i < dataBytes.size(); i++){
-            timeStruct.tm_year = static_cast<int>(dataBytes[i][0]) + 2000 - 1900;
-            timeStruct.tm_mon = static_cast<int>(dataBytes[i][1]) - 1;
-            timeStruct.tm_mday = static_cast<int>(dataBytes[i][2]);
-            timeStruct.tm_hour = static_cast<int>(dataBytes[i][3]);
-            timeStruct.tm_min = static_cast<int>(dataBytes[i][4]);
-            timeStruct.tm_sec = static_cast<int>(dataBytes[i][5]);
+        timeStruct.tm_year = year;
+        timeStruct.tm_mon  = month;
+        timeStruct.tm_mday = day;
+        timeStruct.tm_hour = hour;
+        timeStruct.tm_min  = min;
+        timeStruct.tm_sec  = sec;
 
-            int64_t microseconds = (static_cast<int64_t>(dataBytes[i][6]) << 24) +
-                                (static_cast<int64_t>(dataBytes[i][7]) << 16) +
-                                (static_cast<int64_t>(dataBytes[i][8]) << 8) +
-                                static_cast<int64_t>(dataBytes[i][9]);
+        std::time_t timeResult = std::mktime(&timeStruct);
 
-            std::time_t timeResult = std::mktime(&timeStruct);
+        // Convert to time_point
+        auto currentTime = std::chrono::system_clock::from_time_t(timeResult)
+                           + std::chrono::microseconds(microseconds);
 
-            //if (timeResult == std::time_t(-1))
-            //{
-            //    throw std::runtime_error("Error: failure in mktime.");
-            //}
-
-            auto currentTime = std::chrono::system_clock::from_time_t(timeResult);
-            currentTime += std::chrono::microseconds(microseconds);
-            outputTimes.push_back(currentTime);
-        }
-
-        return outputTimes;
+        // Assign directly
+        outputTimes[i] = currentTime;
     }
+
+    return outputTimes;
+}
 
     /**
      * @brief Checks for data errors in a session based on timing and packet size.

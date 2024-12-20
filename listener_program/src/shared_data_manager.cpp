@@ -24,7 +24,7 @@ bool SharedDataManager::popDataFromBuffer(std::vector<std::vector<uint8_t>> &dat
     if (dataBuffer.size() >= numPacksToGet)
     {
         while(i < numPacksToGet){
-            data.push_back(dataBuffer.front());
+            data[i] = dataBuffer.front();
             dataBuffer.pop();
             i++;
         }
