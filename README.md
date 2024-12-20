@@ -146,9 +146,10 @@ pip install -r requirements.txt
 ```
 
 2. Download data:
+
 By default, the program reads in data from folder **simulator_data/track132_5minchunks/**
 
-[Link Download](https://drive.google.com/drive/folders/1v8sgYyQATcsUkzAI6AcUaiMpq5Wi37y1?usp=sharing) the track132_5minchunks/ folder and place it in the simulator_data/ directory.
+[Download](https://drive.google.com/drive/folders/1v8sgYyQATcsUkzAI6AcUaiMpq5Wi37y1?usp=sharing) the track132_5minchunks/ folder and place it in the simulator_data/ directory.
 
 3. Run example:
 ```bash
