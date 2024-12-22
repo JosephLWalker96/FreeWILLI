@@ -783,12 +783,12 @@ void BlinkTask(__unused void *params){
 
 //            const char* ssid = "3187D";
 //            const char* password = "inputrain524";
-            const char* ssid = "SpectrumSetup-D8";
-            const char* password = "urbanfarmer157";
+//            const char* ssid = "SpectrumSetup-D8";
+//            const char* password = "urbanfarmer157";
 //            const char* ssid = "SSH";
 //            const char* password = "19990114";
-//            const char* ssid = "LeoZ";
-//            const char* password = "LZ19990114";
+            const char* ssid = "LeoZ";
+            const char* password = "LZ19990114";
             while (cyw43_arch_wifi_connect_timeout_ms(ssid, password, CYW43_AUTH_WPA2_AES_PSK, 30000)) {
                 printf("Failed to reconnect. Retrying...\n");
                 vTaskDelay(pdMS_TO_TICKS(5000)); // Wait 5 seconds before retrying
@@ -1013,10 +1013,10 @@ void WiFiInitTask(void *pvParameters){
     if (xSemaphoreTake(deviceInitSemaphore, portMAX_DELAY) == pdTRUE){
         cyw43_arch_enable_sta_mode();
 
-        const char* ssid = "SpectrumSetup-D8";
-        const char* password = "urbanfarmer157";
-//      const char* ssid = "LeoZ";
-//      const char* password = "LZ19990114";
+//        const char* ssid = "SpectrumSetup-D8";
+//        const char* password = "urbanfarmer157";
+      const char* ssid = "LeoZ";
+      const char* password = "LZ19990114";
 //      const char* ssid = "3187D";
 //      const char* password = "inputrain524";
 //      const char* ssid = "SSH";

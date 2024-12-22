@@ -50,6 +50,7 @@ Eigen::VectorXf GCC_PHAT_FFTW(Eigen::MatrixXcf& savedFFTs, fftwf_plan& inverseFF
         SIG1 = savedFFTs.col(sig1_ind);
         for (unsigned int sig2_ind = sig1_ind + 1; sig2_ind < NUM_CHAN; sig2_ind++) {
             SIG2 = savedFFTs.col(sig2_ind);
+            int i;
 
             Eigen::VectorXcf crossSpectra = SIG1.array() * SIG2.conjugate().array();
             Eigen::VectorXf crossSpectraMagnitude = crossSpectra.cwiseAbs();

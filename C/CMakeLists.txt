@@ -131,26 +131,26 @@ if (${CMAKE_BUILD_TYPE} STREQUAL "PicoW")
 #    pico_add_extra_outputs(hello_uart)
 
     # Test ethernet on pico
-    add_executable(hello_ethnet ethnet_test.cpp)
-    target_link_libraries(hello_ethnet
-            CH9121
-            pico_stdlib
-            hardware_spi
-    )
-    pico_enable_stdio_usb(hello_ethnet 1)
-    pico_enable_stdio_uart(hello_ethnet 1)
-    pico_add_extra_outputs(hello_ethnet)
+#    add_executable(hello_ethnet ethnet_test.cpp)
+#    target_link_libraries(hello_ethnet
+#            CH9121
+#            pico_stdlib
+#            hardware_spi
+#    )
+#    pico_enable_stdio_usb(hello_ethnet 1)
+#    pico_enable_stdio_uart(hello_ethnet 1)
+#    pico_add_extra_outputs(hello_ethnet)
 
     # Test udp on pico over FreeRTOS
-    add_executable(hello_udp udp_test.cpp)
-    target_link_libraries(hello_udp
-            pico_stdlib
-            FreeRTOS-Kernel-Heap4
-            pico_cyw43_arch_lwip_sys_freertos
-            LWIP_PORT
-    )
-    pico_enable_stdio_uart(hello_udp 1)
-    pico_add_extra_outputs(hello_udp)
+#    add_executable(hello_udp udp_test.cpp)
+#    target_link_libraries(hello_udp
+#            pico_stdlib
+#            FreeRTOS-Kernel-Heap4
+#            pico_cyw43_arch_lwip_sys_freertos
+#            LWIP_PORT
+#    )
+#    pico_enable_stdio_uart(hello_udp 1)
+#    pico_add_extra_outputs(hello_udp)
 
     # Test simple_server over wifi
     add_executable(wifi_server simple_server_wifi.cpp)
