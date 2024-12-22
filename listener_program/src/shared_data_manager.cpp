@@ -20,10 +20,9 @@ int SharedDataManager::pushDataToBuffer(const std::vector<uint8_t> &data)
 bool SharedDataManager::popDataFromBuffer(std::vector<std::vector<uint8_t>> &data, int numPacksToGet)
 {
     std::lock_guard<std::mutex> lock(dataBufferLock);
-    int i = 0;
     if (dataBuffer.size() >= numPacksToGet)
     {
-        while(i < numPacksToGet){
+        while(int i =0 < numPacksToGet){
             data[i] = dataBuffer.front();
             dataBuffer.pop();
             i++;

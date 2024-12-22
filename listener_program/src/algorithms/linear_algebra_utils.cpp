@@ -20,9 +20,9 @@ Eigen::JacobiSVD<Eigen::MatrixXf> computeSvd(const Eigen::MatrixXf &matrix)
 Eigen::MatrixXf precomputePseudoInverse(const Eigen::JacobiSVD<Eigen::MatrixXf> &svd)
 {
     // Extract matrices and singular values from the SVD decomposition
-    Eigen::MatrixXf rightSingularVectors = svd.matrixV();
-    Eigen::MatrixXf leftSingularVectors = svd.matrixU();
-    Eigen::VectorXf singularValues = svd.singularValues();
+    const Eigen::MatrixXf& rightSingularVectors = svd.matrixV();
+    const Eigen::MatrixXf& leftSingularVectors = svd.matrixU();
+    const Eigen::VectorXf& singularValues = svd.singularValues();
 
     // Compute the pseudo-inverse of the singular value matrix (Sigma^+)
     Eigen::MatrixXf sigmaPseudoInverse = Eigen::MatrixXf::Zero(rightSingularVectors.cols(), leftSingularVectors.cols());

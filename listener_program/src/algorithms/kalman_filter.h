@@ -9,7 +9,7 @@
 class KalmanFilter
 {
 public:
-    KalmanFilter(const Eigen::Vector3f &initialState);
+    explicit KalmanFilter(const Eigen::Vector3f &initialState);
     void predict();
     void update(const Eigen::VectorXf &observation);
     auto filterUpdate(

@@ -7,7 +7,7 @@ public:
     virtual ~IFrequencyDomainStrategy() = default;
 
     virtual void initialize(Eigen::MatrixXf &channelData) = 0;
-    virtual void apply(Eigen::MatrixXf &channelData) = 0;
+    virtual void apply() = 0;
     virtual int getPaddedLength() = 0;
 
     virtual Eigen::MatrixXcf &getFrequencyDomainData() = 0;
@@ -24,7 +24,7 @@ public:
     
     int getPaddedLength() override;
     void initialize(Eigen::MatrixXf &channelData) override;
-    void apply(Eigen::MatrixXf &channelData) override;
+    void apply() override;
 
 private:
     void initializeFilterWeights(const std::vector<float> &filterWeights);
@@ -52,7 +52,7 @@ public:
     
     int getPaddedLength() override;
     void initialize(Eigen::MatrixXf &channelData) override;
-    void apply(Eigen::MatrixXf &channelData) override;
+    void apply() override;
 
 private:
     void initialize(int fftOutputSize);

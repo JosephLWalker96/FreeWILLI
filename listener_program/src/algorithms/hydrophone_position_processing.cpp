@@ -117,11 +117,11 @@ Eigen::MatrixXf getHydrophoneRelativePositions(const std::string &filename)
  * @param basisMatrixU Reference to a matrix for storing the U matrix from SVD decomposition.
  * @param rankOfHydrophoneMatrix Reference to an integer for storing the rank of the hydrophone position matrix.
  */
-auto hydrophoneMatrixDecomposition(const Eigen::MatrixXf hydrophonePositions) -> std::tuple<Eigen::MatrixXf, Eigen::MatrixXf, int>
+auto hydrophoneMatrixDecomposition(const Eigen::MatrixXf& hydrophonePositions) -> std::tuple<Eigen::MatrixXf, Eigen::MatrixXf, int>
 {
     // Compute SVD and rank
     auto svdDecomposition = computeSvd(hydrophonePositions);
-    int rankOfHydrophoneMatrix = computeRank(hydrophonePositions);
+    int rankOfHydrophoneMatrix = computeRank(hydrophonePositions, 1e-6);
 
     // Precompute matrices
     Eigen::MatrixXf precomputedP = precomputePseudoInverse(svdDecomposition);

@@ -21,10 +21,14 @@ ONNXModel::ONNXModel(const std::string &modelPath, const std::string &scalerPara
     mInputNodeDims = getInputNodeInfo();
     loadScalerParams(scalerParamsPath);
 
+    /*
     for (const std::string &str : mInputNodeNames)
     {
         mCstrVec.push_back(str.c_str());
     }
+    */
+   std::transform(mInputNodeNames.begin(), mInputNodeNames.end(), std::back_inserter(mCstrVec),
+               [](const std::string &str) { return str.c_str(); });
 }
 
 /**

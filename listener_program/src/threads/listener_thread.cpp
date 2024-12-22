@@ -41,7 +41,6 @@ void udpListener(SharedDataManager &sess, ISocketManager *socketManager)
     {
         struct sockaddr_in addr;
         socklen_t addrLength = sizeof(addr);
-        int bytesReceived;
         constexpr int printInterval = 500;
         const int receiveSize = 2048; // some max size
 
@@ -53,7 +52,7 @@ void udpListener(SharedDataManager &sess, ISocketManager *socketManager)
         while (!sess.errorOccurred)
         {
             // Receive data
-            bytesReceived = socketManager->receiveData(0, (struct sockaddr *)&addr, &addrLength);
+            int bytesReceived = socketManager->receiveData(0, (struct sockaddr *)&addr, &addrLength);
 
             if (bytesReceived == -1)
                 throw std::runtime_error("Error in receiveData: bytesReceived is -1");

@@ -1,13 +1,13 @@
 #include "../pch.h"
 #include "time_domain_detectors.h"
 
-PeakAmplitudeDetector::PeakAmplitudeDetector(float threshold) : detectionThreshold(threshold) {}
+PeakAmplitudeDetector::PeakAmplitudeDetector(float threshold) : detectionThreshold(threshold), peakAmplitude(0) {}
 
-bool PeakAmplitudeDetector::detect(const Eigen::VectorXf &timeDomainData) const {
+bool PeakAmplitudeDetector::detect(const Eigen::VectorXf &timeDomainData){
     int peakIndex = 0;
 
     // Find the peak amplitude and its index in the data
-    float peakAmplitude = timeDomainData.maxCoeff(&peakIndex);
+    peakAmplitude = timeDomainData.maxCoeff(&peakIndex);
 
     // Return true if the peak amplitude meets or exceeds the threshold
     return peakAmplitude >= detectionThreshold;
@@ -15,5 +15,5 @@ bool PeakAmplitudeDetector::detect(const Eigen::VectorXf &timeDomainData) const 
 
 
 float PeakAmplitudeDetector::getLastDetection() const{
-    return lastDetection;
+    return peakAmplitude;
 }

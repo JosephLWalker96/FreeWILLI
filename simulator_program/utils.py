@@ -6,6 +6,9 @@ from scipy.io import loadmat
 import sys
 import struct
 import argparse
+import scipy
+print("scipy", scipy.__version__)
+
 
 
 

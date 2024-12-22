@@ -1,11 +1,15 @@
-// check for memory leaks
+check for memory leaks
 valgrind --log-file=grind2.txt --leak-check=yes --show-possibly-lost=no ./debug/HarpListenDebug self 1045 1240 100 30
 
-// memory usage
+memory usage
 valgrind --tool=massif --pages-as-heap=yes ./bin/HarpListen self 1045 1240 100 10000
-
 //  profiling the stack (--stacks=yes) slows down performance significantly
 //  --pages-as-heap=yes likely to also slow down program
 
-// hotspot monitoring
+hotspot monitoring
 perf record -e cycles,instructions -g ./debug/HarpListenDebug config_files/volumetric.json 120
+
+
+static analysis:
+cppcheck --enable=all .
+clang-tidy src/algorithms/*.cpp (need to generate a .clang-tidy file and a compile_commands.json file)

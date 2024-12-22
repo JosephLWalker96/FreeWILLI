@@ -51,7 +51,7 @@ void FrequencyDomainFilterStrategy::initialize(Eigen::MatrixXf &channelData){
     
 }
 
-void FrequencyDomainFilterStrategy::apply(Eigen::MatrixXf &channelData)
+void FrequencyDomainFilterStrategy::apply()
 {
     fftwf_execute(mForwardFftPlan);
      
@@ -173,7 +173,7 @@ void FrequencyDomainNoFilterStrategy::initialize(Eigen::MatrixXf &channelData){
     );
     
 }
-void FrequencyDomainNoFilterStrategy::apply(Eigen::MatrixXf &channelData)
+void FrequencyDomainNoFilterStrategy::apply()
 {
     fftwf_execute(mForwardFftPlan);
 }

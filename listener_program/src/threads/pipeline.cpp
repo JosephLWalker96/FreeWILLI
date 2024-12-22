@@ -7,10 +7,10 @@
  * @param pipelineVariables Configuration parameters for the pipeline.
  */
 Pipeline::Pipeline(SharedDataManager &sharedSess, const PipelineVariables &pipelineVariables)
-    : sess(sharedSess) {
-
-    speedOfSound = pipelineVariables.speedOfSound;
-    receiverPositionsPath = pipelineVariables.receiverPositionsPath;
+    : sess(sharedSess),
+      speedOfSound(pipelineVariables.speedOfSound),
+      receiverPositionsPath(pipelineVariables.receiverPositionsPath)
+    {
     
     if (pipelineVariables.filterWeightsPath.empty()) {
         filter = std::make_unique<FrequencyDomainNoFilterStrategy>(firmwareConfig.CHANNEL_SIZE, firmwareConfig.NUM_CHAN);

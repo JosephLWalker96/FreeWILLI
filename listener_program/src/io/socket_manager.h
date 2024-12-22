@@ -10,7 +10,7 @@ class SocketVariables;
 class SocketManager : public ISocketManager
 {
 public:
-    SocketManager(const SocketVariables& socketVariables);
+    explicit SocketManager(const SocketVariables& socketVariables);
 
     void restartListener() override;
 

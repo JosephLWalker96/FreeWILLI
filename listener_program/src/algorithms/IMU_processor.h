@@ -11,7 +11,7 @@
 class ImuProcessor
 {
 public:
-    ImuProcessor(int IMU_BYTE_SIZE);
+    explicit ImuProcessor(int IMU_BYTE_SIZE);
 
     void setRotationMatrix(const std::vector<uint8_t> &dataBytes);
 

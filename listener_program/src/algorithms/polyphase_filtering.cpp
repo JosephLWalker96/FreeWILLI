@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <numeric>
 #include <chrono>
-#include <omp.h>
+//#include <omp.h>
 
 std::vector<double> read_filter_taps(const std::string &filename)
 {
@@ -102,7 +102,7 @@ std::vector<double> resample_poly(const std::vector<double> &x, int up, int down
     size_t n_out = (x.size() * up + down - 1) / down;
     std::vector<double> y(n_out, 0.0);
 
-#pragma omp parallel for // Example for multithreading using OpenMP
+//#pragma omp parallel for // Example for multithreading using OpenMP
     for (size_t i = 0; i < n_out; ++i)
     {
         int phase = i % up;
