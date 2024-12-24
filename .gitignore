@@ -5,7 +5,6 @@ Private/
 simulator_data/
 __pycache__/
 *.o
-**/deployment_files/
 nohup.out
 deployment_files/*
 /listener_program/build/*

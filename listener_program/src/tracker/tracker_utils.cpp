@@ -96,10 +96,16 @@ auto convertEigenToPointVector(const std::vector<Eigen::VectorXf> &buffer) -> st
 {
     std::vector<point3> pointVector;
     pointVector.reserve(buffer.size());
-    for (const auto &point : buffer)
-    {
+    
+    for (const auto &point : buffer){
         pointVector.push_back(point3{point[0], point[1], point[2]});
     }
+
+   std::transform(buffer.begin(), buffer.end(), std::back_inserter(pointVector),
+                [](const auto& point){return point3{point[0], point[1], point[2]}; });
+
+
+
     return pointVector;
 }
 

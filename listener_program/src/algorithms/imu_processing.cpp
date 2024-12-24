@@ -1,4 +1,4 @@
-#include "IMU_processor.h"
+#include "imu_processing.h"
 
 ImuProcessor::ImuProcessor(int IMU_BYTE_SIZE) : mImuByteSize(IMU_BYTE_SIZE), mRotationMatrix(Eigen::Matrix3f::Identity()) {}
 

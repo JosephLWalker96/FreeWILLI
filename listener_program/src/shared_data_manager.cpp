@@ -22,10 +22,9 @@ bool SharedDataManager::popDataFromBuffer(std::vector<std::vector<uint8_t>> &dat
     std::lock_guard<std::mutex> lock(dataBufferLock);
     if (dataBuffer.size() >= numPacksToGet)
     {
-        while(int i =0 < numPacksToGet){
+        for(int i = 0; i < numPacksToGet; i++){
             data[i] = dataBuffer.front();
             dataBuffer.pop();
-            i++;
         }
         return true;
     }

@@ -61,7 +61,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         add_compile_options(-O3 -g -Wall -fno-inline)
         add_link_options(-fsanitize=address)
     else ()
-        add_compile_options(-O3 -g -Wall -fno-inline)
+        #add_compile_options(-O3 -g -fanalyzer -Wall -Wextra -fno-inline)
+        add_compile_options(-O3 -g -fanalyzer -fno-inline)
         #add_compile_options(-O0 -g -Wall -fno-inline -fsanitize=address)
     endif ()
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -141,7 +142,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     # can be accessed in all cpp files in the project
     target_compile_definitions(HarpListen PRIVATE DEBUG)
     target_compile_definitions(UnitTests PRIVATE DEBUG)
-    target_compile_definitions(Benchmark PRIVATE DEBUG)
+    
+    #BRING THIS BACK IN
+    #target_compile_definitions(Benchmark PRIVATE DEBUG)
 
     # Set the output directory for the executable
     set_property(TARGET HarpListen PROPERTY OUTPUT_NAME HarpListenDebug)

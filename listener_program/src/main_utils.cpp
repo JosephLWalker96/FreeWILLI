@@ -21,15 +21,18 @@ auto parseJsonConfig(const std::string &jsonFilePath) -> std::tuple<SocketVariab
     socketVariables.udpPort = jsonConfig.at("Port").get<int>();
 
     // Configure PipelineVariables parameters
+    pipelineVariables.useImu = jsonConfig.at("Firmware1240_with_IMU").get<bool>();
     pipelineVariables.speedOfSound = jsonConfig.at("SpeedOfSound").get<float>();
-    pipelineVariables.energyDetectionThreshold = jsonConfig.at("EnergyDetectionThreshold").get<float>();
-    pipelineVariables.amplitudeDetectionThreshold = jsonConfig.at("AmplitudeDetectionThreshold").get<float>();
+    pipelineVariables.timeDomainDetector = jsonConfig.at("Time_Domain_Detector").get<std::string>();
+    pipelineVariables.amplitudeDetectionThreshold = jsonConfig.at("Time_Domain_Threshold").get<float>();
+    pipelineVariables.frequencyDomainStrategy = jsonConfig.at("Frequency_Domain_Strategy").get<std::string>();
+    pipelineVariables.frequencyDomainDetector = jsonConfig.at("Frequency_Domain_Detector").get<std::string>();
+    pipelineVariables.energyDetectionThreshold = jsonConfig.at("Frequency_Domain_Threshold").get<float>();
     pipelineVariables.filterWeightsPath = jsonConfig.at("FilterWeights").get<std::string>();
     pipelineVariables.receiverPositionsPath = jsonConfig.at("ReceiverPositions").get<std::string>();
     pipelineVariables.enableTracking = jsonConfig.at("Enable_Tracking").get<bool>();
     pipelineVariables.clusterFrequencyInSeconds = std::chrono::seconds(jsonConfig.at("Cluster_Frequency_In_Seconds").get<int>());
     pipelineVariables.clusterWindowInSeconds = std::chrono::seconds(jsonConfig.at("Cluster_Window_In_Seconds").get<int>());
-    pipelineVariables.useImu = jsonConfig.at("Firmware_with_IMU").get<bool>();
     pipelineVariables.onnxModelPath = jsonConfig.at("ONNX_model_path").get<std::string>();
     pipelineVariables.onnxModelNormalizationPath = jsonConfig.at("ONNX_model_normalization").get<std::string>();
 

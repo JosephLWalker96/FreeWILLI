@@ -1,4 +1,4 @@
-#include "firmware_config.h"
+#include "firmware_1240.h"
 #include "shared_data_manager.h"
 #include "threads/listener_thread.h"
 #include "threads/pipeline.h"

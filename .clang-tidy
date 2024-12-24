@@ -16,6 +16,8 @@ Checks: >
     bugprone-branch-clone,
     -clang-analyzer-security.insecureAPI.*,
     -misc-no-recursion,
+    readability-identifier-naming
+
 
 # treat all warnings as errors
 WarningsAsErrors: '*'
@@ -23,5 +25,13 @@ WarningsAsErrors: '*'
 CheckOptions:
   - key:             bugprone-assert-side-effect.AssertMacros
     value:           'ASSERT'
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key: readability-identifier-naming.VariableCase
+    value: camelBack
 
-ExtraArgs: [-std=c++20,-DDEBUG]
+ExtraArgs: 
+  - -std=c++20
+  - -DDEBUG

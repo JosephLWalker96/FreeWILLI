@@ -263,10 +263,9 @@ void Tracker::filterByIndices(std::vector<T> &vector, const std::vector<int> &in
 {
     // Retain elements specified by indicesToKeep
     std::vector<T> filtered;
-    for (int idx : indicesToKeep)
-    {
-        filtered.push_back(vector[idx]);
-    }
+    filtered.reserve(indicesToKeep.size());
+    std::transform(indicesToKeep.begin(),indicesToKeep.end(),std::back_inserter(filtered),
+                 [&vector](int ind){return vector[ind];});
 
     // Replace the original vector with the filtered one
     vector.swap(filtered);

@@ -6,12 +6,10 @@ class RuntimeConfig;
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-//bool shouldTerminateProgram(const RuntimeConfig &runtimeConfig);
+void waitForData(SharedDataManager& sess, std::vector<std::vector<uint8_t>>& dataBytes, int numPacksToGet);
 
-void waitForData(SharedDataManager &sess, std::vector<std::vector<uint8_t>> &dataBytes,int numPacksToGet);
+std::string convertTimePointToString(const TimePoint& timePoint);
 
-std::string convertTimePointToString(const TimePoint &timePoint);
+void writeDataToCerr(std::span<TimePoint> errorTimestamps, const std::vector<std::vector<uint8_t>>& erroredDataBytes);
 
-void writeDataToCerr(std::span<TimePoint> errorTimestamps, std::vector<std::vector<uint8_t>> erroredDataBytes);
-
-void saveSpectraForTraining(const std::string &filename, int label, const Eigen::VectorXcf &frequencyDomainData);
+void saveSpectraForTraining(const std::string& filename, int label, const Eigen::VectorXcf& frequencyDomainData);

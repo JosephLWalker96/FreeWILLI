@@ -7,9 +7,12 @@
  */
 struct PipelineVariables {
     float amplitudeDetectionThreshold = 0;
+    std::string timeDomainDetector = "";
+    std::string frequencyDomainDetector = "";
     float energyDetectionThreshold = 0;
     float speedOfSound = 0;
-    std::string filterWeightsPath = "default";
+    std::string frequencyDomainStrategy = "";
+    std::string filterWeightsPath = "";
     std::string receiverPositionsPath = "";
     bool enableTracking = false;
     std::chrono::seconds clusterFrequencyInSeconds;
