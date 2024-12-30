@@ -9,24 +9,6 @@ class ITimeDomainDetector
     virtual float getLastDetection() const = 0;
 };
 
-class ITimeDomainDetectorFactory
-{
-   public:
-    static std::unique_ptr<ITimeDomainDetector> create(const PipelineVariables& pipelineVariables)
-    {
-        if (pipelineVariables.timeDomainDetector == "PeakAmplitude")
-        {
-            return std::make_unique<PeakAmplitudeDetector>(pipelineVariables.amplitudeDetectionThreshold);
-        } else if (pipelineVariables.timeDomainDetector == "None")
-        {
-            return std::make_unique<NoTimeDomainDetector>();
-        } else
-        {
-            throw std::invalid_argument("Unknown TimeDomainDetector type: " + pipelineVariables.timeDomainDetector);
-        }
-    }
-};
-
 class PeakAmplitudeDetector : public ITimeDomainDetector
 {
    private:
@@ -68,5 +50,23 @@ class NoTimeDomainDetector : public ITimeDomainDetector
     {
         // No detection value
         return peakAmplitude;
+    }
+};
+
+class ITimeDomainDetectorFactory
+{
+   public:
+    static std::unique_ptr<ITimeDomainDetector> create(const std::string& timeDomainDetector, float timeDomainThreshold)
+    {
+        if (timeDomainDetector == "PeakAmplitude")
+        {
+            return std::make_unique<PeakAmplitudeDetector>(timeDomainThreshold);
+        } else if (timeDomainDetector == "None")
+        {
+            return std::make_unique<NoTimeDomainDetector>();
+        } else
+        {
+            throw std::invalid_argument("Unknown TimeDomainDetector type: " + timeDomainDetector);
+        }
     }
 };

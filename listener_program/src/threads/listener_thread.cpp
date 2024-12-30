@@ -17,21 +17,17 @@ int packetCounter = 0;  // this should only be used inside the UDPListener
  * @param processedPackets Number of processed packets.
  * @param detectionCount Number of detections recorded by the session.
  */
-void logPacketStatistics(int packetCounter, int printInterval,
-                         std::chrono::steady_clock::time_point& startPacketTime,
-                         int queueSize, int processedPackets,
-                         int detectionCount)
+void logPacketStatistics(int packetCounter, int printInterval, std::chrono::steady_clock::time_point& startPacketTime,
+                         int queueSize, int processedPackets, int detectionCount)
 {
     auto endPacketTime = std::chrono::steady_clock::now();
-    std::chrono::duration<double> durationPacketTime =
-        endPacketTime - startPacketTime;
+    std::chrono::duration<double> durationPacketTime = endPacketTime - startPacketTime;
 
     // Compose log message using fixed formatting
     printf(
         "Packets rec: %d duration: %.6f queue size: %d processed packets: %d "
         "detections: %d\n",
-        packetCounter, durationPacketTime.count() / printInterval, queueSize,
-        processedPackets, detectionCount);
+        packetCounter, durationPacketTime.count() / printInterval, queueSize, processedPackets, detectionCount);
 
     startPacketTime = std::chrono::steady_clock::now();
 }
@@ -65,29 +61,24 @@ void udpListener(SharedDataManager& sess, ISocketManager* socketManager)
         while (!sess.errorOccurred)
         {
             // Receive data
-            int bytesReceived = socketManager->receiveData(
-                0, (struct sockaddr*)&addr, &addrLength);
+            int bytesReceived = socketManager->receiveData(0, (struct sockaddr*)&addr, &addrLength);
 
-            if (bytesReceived == -1)
-                throw std::runtime_error(
-                    "Error in receiveData: bytesReceived is -1");
+            if (bytesReceived == -1) throw std::runtime_error("Error in receiveData: bytesReceived is -1");
 
             // The data is already resized in the SocketManager after reception,
             // or we can resize here if needed (commented out because
             // SocketManager does it):
             // socketManager.setReceiveBufferSize(bytesReceived);
 
-            const std::vector<uint8_t>& dataBytes =
-                socketManager->getReceivedData();
+            const std::vector<uint8_t>& dataBytes = socketManager->getReceivedData();
 
             int queueSize = sess.pushDataToBuffer(dataBytes);
 
             packetCounter += 1;
             if (packetCounter % printInterval == 0)
             {
-                logPacketStatistics(
-                    packetCounter, printInterval, startPacketTime, queueSize,
-                    packetCounter - queueSize, sess.detectionCounter);
+                logPacketStatistics(packetCounter, printInterval, startPacketTime, queueSize, packetCounter - queueSize,
+                                    sess.detectionCounter);
             }
 
             if (queueSize > 1000)

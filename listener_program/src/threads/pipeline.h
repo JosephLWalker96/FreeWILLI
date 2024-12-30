@@ -1,20 +1,19 @@
 #pragma once
+
 #include "../ML/onnx_model.h"
 #include "../algorithms/doa_utils.h"
 #include "../algorithms/fir_filter.h"
 #include "../algorithms/frequency_domain_detectors.h"
 #include "../algorithms/gcc_phat.h"
 #include "../algorithms/hydrophone_position_processing.h"
-#include "../algorithms/imu_processing.h"
 #include "../algorithms/time_domain_detectors.h"
 #include "../firmware_1240.h"
 #include "../io/buffer_writer.h"
 #include "../io/socket_manager.h"
-#include "../main_utils.h"
-#include "../pch.h"
 #include "../shared_data_manager.h"
 #include "../tracker/tracker.h"
-#include "processor_thread_utils.h"
+
+class PipelineVariables;
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -41,6 +40,7 @@ class Pipeline
     std::string receiverPositionsPath;
     // std::vector<std::vector<uint8_t>> dataBytesSaved;
     std::vector<std::vector<uint8_t>> dataBytes;
+    // std::vector<std::array<uint8_t, 1032>> dataBytes(8);
     std::vector<TimePoint> dataTimes;
 
     std::unique_ptr<Firmware1240> firmwareConfig = nullptr;
@@ -55,4 +55,5 @@ class Pipeline
     void initilializeOutputFiles();
     void terminateProgramIfNecessary();
     void obtainAndProcessByteData(bool& previousTimeSet, TimePoint& previousTime);
+    void handleProcessingError(const std::exception& e);
 };

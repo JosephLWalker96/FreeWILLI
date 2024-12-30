@@ -5,8 +5,9 @@
  * @struct PipelineVariables
  * @brief Holds configuration variables for the pipeline.
  */
-struct PipelineVariables {
-    float amplitudeDetectionThreshold = 0;
+struct PipelineVariables
+{
+    float timeDomainThreshold = 0;
     std::string timeDomainDetector = "";
     std::string frequencyDomainDetector = "";
     float energyDetectionThreshold = 0;
@@ -26,7 +27,8 @@ struct PipelineVariables {
  * @struct SocketVariables
  * @brief Holds configuration variables for the socket.
  */
-struct SocketVariables {
+struct SocketVariables
+{
     std::string udpIp = "";
     int udpPort = -1;
 };
@@ -37,7 +39,7 @@ struct SocketVariables {
  * @return A tuple containing `SocketVariables` and `PipelineVariables` structs.
  * @throws std::runtime_error If the JSON file cannot be opened or required fields are missing.
  */
-auto parseJsonConfig(const std::string &jsonFilePath) -> std::tuple<SocketVariables, PipelineVariables>;
+auto parseJsonConfig(const std::string& jsonFilePath) -> std::tuple<SocketVariables, PipelineVariables>;
 
 /**
  * @brief Prints the current build mode (Debug or Release).

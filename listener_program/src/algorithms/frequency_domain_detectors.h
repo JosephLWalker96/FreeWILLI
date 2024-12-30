@@ -11,25 +11,6 @@ class IFrequencyDomainDetector
     virtual bool detect(const Eigen::VectorXcf& frequencyDomainData) const = 0;
 };
 
-class IFrequencyDomainDetectorFactory
-{
-   public:
-    static std::unique_ptr<IFrequencyDomainDetector> create(const PipelineVariables& pipelineVariables)
-    {
-        if (pipelineVariables.frequencyDomainDetector == "AverageEnergy")
-        {
-            return std::make_unique<AverageMagnitudeDetector>(pipelineVariables.energyDetectionThreshold);
-        } else if (pipelineVariables.frequencyDomainDetector == "None")
-        {
-            return std::make_unique<NoFrequencyDomainDetector>();
-        } else
-        {
-            throw std::invalid_argument("Unknown TimeDomainDetector type: " +
-                                        pipelineVariables.frequencyDomainDetector);
-        }
-    }
-};
-
 class AverageMagnitudeDetector : public IFrequencyDomainDetector
 {
    private:
@@ -54,4 +35,23 @@ class NoFrequencyDomainDetector : public IFrequencyDomainDetector
 
     // Override the detect method
     bool detect(const Eigen::VectorXcf& frequencyDomainData) const override;
+};
+
+class IFrequencyDomainDetectorFactory
+{
+   public:
+    static std::unique_ptr<IFrequencyDomainDetector> create(const std::string& frequencyDomainDetector,
+                                                            float energyDetectionThreshold)
+    {
+        if (frequencyDomainDetector == "AverageEnergy")
+        {
+            return std::make_unique<AverageMagnitudeDetector>(energyDetectionThreshold);
+        } else if (frequencyDomainDetector == "None")
+        {
+            return std::make_unique<NoFrequencyDomainDetector>();
+        } else
+        {
+            throw std::invalid_argument("Unknown TimeDomainDetector type: " + frequencyDomainDetector);
+        }
+    }
 };

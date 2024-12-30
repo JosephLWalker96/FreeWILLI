@@ -1,5 +1,9 @@
 #include "pipeline.h"
 
+#include "../main_utils.h"
+#include "../pch.h"
+#include "processor_thread_utils.h"
+
 /**
  * @brief Constructs a Pipeline object and initializes necessary components.
  *
@@ -11,10 +15,14 @@ Pipeline::Pipeline(SharedDataManager& sharedSess, const PipelineVariables& pipel
     : sess(sharedSess),
       speedOfSound(pipelineVariables.speedOfSound),
       receiverPositionsPath(pipelineVariables.receiverPositionsPath),
-      firmwareConfig(FirmwareFactory::create(pipelineVariables)),
-      filter(IFrequencyDomainStrategyFactory::create(pipelineVariables, firmwareConfig.get())),
-      timeDomainDetector(ITimeDomainDetectorFactory::create(pipelineVariables)),
-      frequencyDomainDetector(IFrequencyDomainDetectorFactory::create(pipelineVariables))
+      firmwareConfig(FirmwareFactory::create(pipelineVariables.useImu)),
+      filter(IFrequencyDomainStrategyFactory::create(pipelineVariables.frequencyDomainStrategy,
+                                                     pipelineVariables.filterWeightsPath, firmwareConfig->CHANNEL_SIZE,
+                                                     firmwareConfig->NUM_CHAN)),
+      timeDomainDetector(ITimeDomainDetectorFactory::create(pipelineVariables.timeDomainDetector,
+                                                            pipelineVariables.timeDomainThreshold)),
+      frequencyDomainDetector(IFrequencyDomainDetectorFactory::create(pipelineVariables.frequencyDomainDetector,
+                                                                      pipelineVariables.energyDetectionThreshold))
 {
     if (pipelineVariables.enableTracking)
     {
@@ -40,21 +48,7 @@ void Pipeline::process()
         dataProcessor();
     } catch (const std::exception& e)
     {
-        std::cerr << "Error occurred in data processor thread:\n";
-
-        std::stringstream msg;
-        msg << e.what() << std::endl;
-        std::cerr << msg.str();
-
-        try
-        {
-            writeDataToCerr(dataTimes, dataBytes);
-        } catch (...)
-        {
-            std::cerr << "Failed to write data to cerr\n";
-            sess.errorOccurred = true;
-        }
-        sess.errorOccurred = true;
+        handleProcessingError(e);
     }
 }
 
@@ -77,16 +71,15 @@ void Pipeline::dataProcessor()
     bool previousTimeSet = false;
     auto previousTime = TimePoint::min();
 
-    dataBytes.reserve(firmwareConfig->NUM_PACKS_DETECT);
+    dataBytes.resize(firmwareConfig->NUM_PACKS_DETECT);
 
     GCC_PHAT computeTDOAs(paddedLength, firmwareConfig->NUM_CHAN, firmwareConfig->SAMPLE_RATE);
     while (!sess.errorOccurred)
     {
         obtainAndProcessByteData(previousTimeSet, previousTime);
 
-        initilializeOutputFiles();  // uses the first time stamp from the first
-                                    // set of data
-
+        initilializeOutputFiles();      // uses the first time stamp from the first
+                                        // set of data
         terminateProgramIfNecessary();  // terminate if we have reached
                                         // specified duty cycle
 
@@ -103,7 +96,6 @@ void Pipeline::dataProcessor()
 
         filter->apply();
         Eigen::MatrixXcf savedFFTs = filter->getFrequencyDomainData();
-
         if (!frequencyDomainDetector->detect(savedFFTs.col(0)))
         {
             continue;
@@ -149,7 +141,6 @@ void Pipeline::obtainAndProcessByteData(bool& previousTimeSet, TimePoint& previo
     std::vector<TimePoint> currentTimestamp;
 
     // auto beforeD = std::chrono::steady_clock::now();
-    // std::cout << "dataBytes: " << dataBytes.size() << std::endl;
     waitForData(sess, dataBytes, firmwareConfig->NUM_PACKS_DETECT);
     // auto afterD = std::chrono::steady_clock::now();
     // std::chrono::duration<double> durationD = afterD - beforeD;
@@ -220,4 +211,30 @@ void Pipeline::terminateProgramIfNecessary()
         std::cout << "Terminating program... duration reached\n";
         std::exit(0);
     }
+}
+
+/**
+ * @brief Handles errors that occur during data processing.
+ *
+ * @param e The exception thrown during data processing.
+ */
+void Pipeline::handleProcessingError(const std::exception& e)
+{
+    std::cerr << "Error occurred in data processor thread:\n";
+
+    // Log the exception message
+    std::stringstream msg;
+    msg << e.what() << std::endl;
+    std::cerr << msg.str();
+
+    // Attempt to write data for debugging
+    try
+    {
+        writeDataToCerr(dataTimes, dataBytes);
+    } catch (...)
+    {
+        std::cerr << "Failed to write data to cerr\n";
+    }
+
+    sess.errorOccurred = true;  // Flag the error in the session
 }

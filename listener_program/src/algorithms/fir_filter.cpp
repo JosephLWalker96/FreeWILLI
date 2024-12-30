@@ -1,17 +1,17 @@
 #include "fir_filter.h"
 
-Eigen::MatrixXcf FrequencyDomainFilterStrategy::mSavedFFTs; // frequency domain data (outputs)
+Eigen::MatrixXcf FrequencyDomainFilterStrategy::mSavedFFTs;  // frequency domain data (outputs)
 
 void FrequencyDomainFilterStrategy::initialize(int fftOutputSize)
 {
     mSavedFFTs = Eigen::MatrixXcf::Zero(fftOutputSize, mNumChannels);
 }
 
-FrequencyDomainFilterStrategy::FrequencyDomainFilterStrategy(const std::string &filterWeightsPath, int channelSize, int numChannels)
+FrequencyDomainFilterStrategy::FrequencyDomainFilterStrategy(const std::string& filterWeightsPath, int channelSize,
+                                                             int numChannels)
     : mNumChannels(numChannels)
 
 {
-
     std::vector<float> filterWeights = readFirFilterFile(filterWeightsPath);
 
     // padded length needed for circular convolution to be same as linear convolution
@@ -26,42 +26,44 @@ FrequencyDomainFilterStrategy::FrequencyDomainFilterStrategy(const std::string &
 /**
  * @brief class destructor: ensure that the memory allocated for the FFTW forward plan is safely and correctly released
  **/
- FrequencyDomainFilterStrategy::~FrequencyDomainFilterStrategy() {
-        if (mForwardFftPlan) {
-            fftwf_destroy_plan(mForwardFftPlan);  // Release the FFTW plan resources
-            mForwardFftPlan = nullptr;           // Avoid dangling pointer
-        }
- }
+FrequencyDomainFilterStrategy::~FrequencyDomainFilterStrategy()
+{
+    if (mForwardFftPlan)
+    {
+        fftwf_destroy_plan(mForwardFftPlan);  // Release the FFTW plan resources
+        mForwardFftPlan = nullptr;            // Avoid dangling pointer
+    }
+}
 
-void FrequencyDomainFilterStrategy::initialize(Eigen::MatrixXf &channelData){
-    mForwardFftPlan = fftwf_plan_many_dft_r2c(
-        1,                                         // Rank of the transform (1D)
-        &mPaddedLength,                            // Pointer to the size of the transform
-        mNumChannels,                               // Number of transforms (channels)
-        channelData.data(),                        // Input data pointer
-        nullptr,                                   // No embedding
-        mNumChannels,                               // Input stride: elements of a single transform are spaced by numChannels
-        1,                                         // Input distance: distance between the start of consecutive transforms
-        reinterpret_cast<fftwf_complex *>(mSavedFFTs.data()), // Output data pointer
-        nullptr,                                   // No embedding
-        1,                                         // Output stride
-        mFftOutputSize,                             // Output distance
-        FFTW_ESTIMATE                              // Flag to measure and optimize the plan
-    );
-    
+void FrequencyDomainFilterStrategy::initialize(Eigen::MatrixXf& channelData)
+{
+    mForwardFftPlan =
+        fftwf_plan_many_dft_r2c(1,                   // Rank of the transform (1D)
+                                &mPaddedLength,      // Pointer to the size of the transform
+                                mNumChannels,        // Number of transforms (channels)
+                                channelData.data(),  // Input data pointer
+                                nullptr,             // No embedding
+                                mNumChannels,  // Input stride: elements of a single transform are spaced by numChannels
+                                1,             // Input distance: distance between the start of consecutive transforms
+                                reinterpret_cast<fftwf_complex*>(mSavedFFTs.data()),  // Output data pointer
+                                nullptr,                                              // No embedding
+                                1,                                                    // Output stride
+                                mFftOutputSize,                                       // Output distance
+                                FFTW_ESTIMATE  // Flag to measure and optimize the plan
+        );
 }
 
 void FrequencyDomainFilterStrategy::apply()
 {
     fftwf_execute(mForwardFftPlan);
-     
+
     for (int channelIndex = 0; channelIndex < mNumChannels; channelIndex++)
     {
         mSavedFFTs.col(channelIndex) = mSavedFFTs.col(channelIndex).array() * mFilterFreq.array();
     }
 }
 
-auto FrequencyDomainFilterStrategy::readFirFilterFile(const std::string &filePath) -> std::vector<float>
+auto FrequencyDomainFilterStrategy::readFirFilterFile(const std::string& filePath) -> std::vector<float>
 {
     std::ifstream inputFile(filePath);
     if (!inputFile.is_open())
@@ -83,8 +85,7 @@ auto FrequencyDomainFilterStrategy::readFirFilterFile(const std::string &filePat
             {
                 float value = std::stof(token);
                 filterCoefficients.push_back(value);
-            }
-            catch (const std::invalid_argument &e)
+            } catch (const std::invalid_argument& e)
             {
                 std::cerr << "Invalid numeric value: " << token << std::endl;
             }
@@ -96,17 +97,16 @@ auto FrequencyDomainFilterStrategy::readFirFilterFile(const std::string &filePat
 
 int FrequencyDomainFilterStrategy::getPaddedLength()
 {
-    return mPaddedLength; // Return a reference to the original matrix
+    return mPaddedLength;  // Return a reference to the original matrix
 }
 
-Eigen::MatrixXcf &FrequencyDomainFilterStrategy::getFrequencyDomainData()
+Eigen::MatrixXcf& FrequencyDomainFilterStrategy::getFrequencyDomainData()
 {
-    return mSavedFFTs; // Return a reference to the original matrix
+    return mSavedFFTs;  // Return a reference to the original matrix
 }
 
-void FrequencyDomainFilterStrategy::initializeFilterWeights(const std::vector<float> &filterWeights)
+void FrequencyDomainFilterStrategy::initializeFilterWeights(const std::vector<float>& filterWeights)
 {
-
     mFilterFreq.resize(mFftOutputSize);
 
     // Zero-pad filter weights to the required length
@@ -114,22 +114,17 @@ void FrequencyDomainFilterStrategy::initializeFilterWeights(const std::vector<fl
     std::copy(filterWeights.begin(), filterWeights.end(), paddedFilterWeights.begin());
 
     // Create frequency-domain filter
-    fftwf_plan fftFilter = fftwf_plan_dft_r2c_1d(
-        mPaddedLength,
-        paddedFilterWeights.data(),
-        reinterpret_cast<fftwf_complex *>(mFilterFreq.data()),
-        FFTW_ESTIMATE);
+    fftwf_plan fftFilter = fftwf_plan_dft_r2c_1d(mPaddedLength, paddedFilterWeights.data(),
+                                                 reinterpret_cast<fftwf_complex*>(mFilterFreq.data()), FFTW_ESTIMATE);
     fftwf_execute(fftFilter);
     fftwf_destroy_plan(fftFilter);
 }
-
-
 
 /*
 No filter strategy
 */
 
-Eigen::MatrixXcf FrequencyDomainNoFilterStrategy::mSavedFFTs; // frequency domain data (outputs)
+Eigen::MatrixXcf FrequencyDomainNoFilterStrategy::mSavedFFTs;  // frequency domain data (outputs)
 
 void FrequencyDomainNoFilterStrategy::initialize(int fftOutputSize)
 {
@@ -149,41 +144,40 @@ FrequencyDomainNoFilterStrategy::FrequencyDomainNoFilterStrategy(int channelSize
 /**
  * @brief class destructor: ensure that the memory allocated for the FFTW forward plan is safely and correctly released
  **/
- FrequencyDomainNoFilterStrategy::~FrequencyDomainNoFilterStrategy() {
-        if (mForwardFftPlan) {
-            fftwf_destroy_plan(mForwardFftPlan);  // Release the FFTW plan resources
-            mForwardFftPlan = nullptr;           // Avoid dangling pointer
-        }
- }
-
-void FrequencyDomainNoFilterStrategy::initialize(Eigen::MatrixXf &channelData){
-    mForwardFftPlan = fftwf_plan_many_dft_r2c(
-        1,                                         // Rank of the transform (1D)
-        &mPaddedLength,                            // Pointer to the size of the transform
-        mNumChannels,                               // Number of transforms (channels)
-        channelData.data(),                        // Input data pointer
-        nullptr,                                   // No embedding
-        mNumChannels,                               // Input stride: elements of a single transform are spaced by numChannels
-        1,                                         // Input distance: distance between the start of consecutive transforms
-        reinterpret_cast<fftwf_complex *>(mSavedFFTs.data()), // Output data pointer
-        nullptr,                                   // No embedding
-        1,                                         // Output stride
-        mFftOutputSize,                             // Output distance
-        FFTW_ESTIMATE                              // Flag to measure and optimize the plan
-    );
-    
-}
-void FrequencyDomainNoFilterStrategy::apply()
+FrequencyDomainNoFilterStrategy::~FrequencyDomainNoFilterStrategy()
 {
-    fftwf_execute(mForwardFftPlan);
+    if (mForwardFftPlan)
+    {
+        fftwf_destroy_plan(mForwardFftPlan);  // Release the FFTW plan resources
+        mForwardFftPlan = nullptr;            // Avoid dangling pointer
+    }
 }
 
-Eigen::MatrixXcf &FrequencyDomainNoFilterStrategy::getFrequencyDomainData()
+void FrequencyDomainNoFilterStrategy::initialize(Eigen::MatrixXf& channelData)
 {
-    return mSavedFFTs; // Return a reference to the original matrix
+    mForwardFftPlan =
+        fftwf_plan_many_dft_r2c(1,                   // Rank of the transform (1D)
+                                &mPaddedLength,      // Pointer to the size of the transform
+                                mNumChannels,        // Number of transforms (channels)
+                                channelData.data(),  // Input data pointer
+                                nullptr,             // No embedding
+                                mNumChannels,  // Input stride: elements of a single transform are spaced by numChannels
+                                1,             // Input distance: distance between the start of consecutive transforms
+                                reinterpret_cast<fftwf_complex*>(mSavedFFTs.data()),  // Output data pointer
+                                nullptr,                                              // No embedding
+                                1,                                                    // Output stride
+                                mFftOutputSize,                                       // Output distance
+                                FFTW_ESTIMATE  // Flag to measure and optimize the plan
+        );
+}
+void FrequencyDomainNoFilterStrategy::apply() { fftwf_execute(mForwardFftPlan); }
+
+Eigen::MatrixXcf& FrequencyDomainNoFilterStrategy::getFrequencyDomainData()
+{
+    return mSavedFFTs;  // Return a reference to the original matrix
 }
 
 int FrequencyDomainNoFilterStrategy::getPaddedLength()
 {
-    return mPaddedLength; // Return a reference to the original matrix
+    return mPaddedLength;  // Return a reference to the original matrix
 }

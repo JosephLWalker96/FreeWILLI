@@ -5,21 +5,6 @@
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-class FirmwareFactory
-{
-   public:
-    static std::unique_ptr<Firmware1240> create(const PipelineVariables& pipelineVariables)
-    {
-        if (pipelineVariables.useImu)
-        {
-            return std::make_unique<Firmware1240IMU>();
-        } else
-        {
-            return std::make_unique<Firmware1240>();
-        }
-    }
-};
-
 /**
  * @brief Base class for firmware configuration, providing constants and utility methods.
  */
@@ -87,4 +72,19 @@ class Firmware1240IMU : public Firmware1240
    private:
     int mImuByteSize;
     std::unique_ptr<ImuProcessor> imuManager = nullptr;  // Pointer to the IMU manager
+};
+
+class FirmwareFactory
+{
+   public:
+    static std::unique_ptr<Firmware1240> create(bool useImu)
+    {
+        if (useImu)
+        {
+            return std::make_unique<Firmware1240IMU>();
+        } else
+        {
+            return std::make_unique<Firmware1240>();
+        }
+    }
 };

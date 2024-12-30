@@ -1,4 +1,5 @@
 #pragma once
+//#include "../main_utils.h"
 #include "../pch.h"
 
 class IFrequencyDomainStrategy
@@ -11,27 +12,6 @@ class IFrequencyDomainStrategy
     virtual int getPaddedLength() = 0;
 
     virtual Eigen::MatrixXcf& getFrequencyDomainData() = 0;
-};
-
-class IFrequencyDomainStrategyFactory
-{
-   public:
-    static std::unique_ptr<IFrequencyDomainStrategy> create(const PipelineVariables& pipelineVariables,
-                                                            Firmware1240* firmwareConfig)
-    {
-        if (pipelineVariables.frequencyDomainStrategy == "None")
-        {
-            return std::make_unique<FrequencyDomainNoFilterStrategy>(firmwareConfig->CHANNEL_SIZE,
-                                                                     firmwareConfig->NUM_CHAN);
-        } else if (pipelineVariables.frequencyDomainStrategy == "Filter")
-        {
-            return std::make_unique<FrequencyDomainFilterStrategy>(
-                pipelineVariables.filterWeightsPath, firmwareConfig->CHANNEL_SIZE, firmwareConfig->NUM_CHAN);
-        } else
-        {
-            throw std::invalid_argument("Unknown frequency domain strategy: " + pipelineVariables.timeDomainDetector);
-        }
-    }
 };
 
 class FrequencyDomainFilterStrategy : public IFrequencyDomainStrategy
@@ -78,4 +58,24 @@ class FrequencyDomainNoFilterStrategy : public IFrequencyDomainStrategy
     int mFftOutputSize;
     Eigen::VectorXcf mFilterFreq;
     fftwf_plan mForwardFftPlan = nullptr;
+};
+
+class IFrequencyDomainStrategyFactory
+{
+   public:
+    static std::unique_ptr<IFrequencyDomainStrategy> create(const std::string& frequencyDomainStrategy,
+                                                            const std::string& filterWeightsPath, int channelSize,
+                                                            int numChannel)
+    {
+        if (frequencyDomainStrategy == "None")
+        {
+            return std::make_unique<FrequencyDomainNoFilterStrategy>(channelSize, numChannel);
+        } else if (frequencyDomainStrategy == "Filter")
+        {
+            return std::make_unique<FrequencyDomainFilterStrategy>(filterWeightsPath, channelSize, numChannel);
+        } else
+        {
+            throw std::invalid_argument("Unknown frequency domain strategy: " + std::string(frequencyDomainStrategy));
+        }
+    }
 };

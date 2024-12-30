@@ -1,12 +1,15 @@
 #include "main_utils.h"
+
 #include "pch.h"
 
 /**
  * @brief Parses the JSON configuration file to initialize socket and pipeline variables.
  */
-auto parseJsonConfig(const std::string &jsonFilePath) -> std::tuple<SocketVariables, PipelineVariables>{
+auto parseJsonConfig(const std::string& jsonFilePath) -> std::tuple<SocketVariables, PipelineVariables>
+{
     std::ifstream inputFile(jsonFilePath);
-    if (!inputFile.is_open()) {
+    if (!inputFile.is_open())
+    {
         throw std::runtime_error("Unable to open JSON file: " + jsonFilePath);
     }
 
@@ -24,15 +27,17 @@ auto parseJsonConfig(const std::string &jsonFilePath) -> std::tuple<SocketVariab
     pipelineVariables.useImu = jsonConfig.at("Firmware1240_with_IMU").get<bool>();
     pipelineVariables.speedOfSound = jsonConfig.at("SpeedOfSound").get<float>();
     pipelineVariables.timeDomainDetector = jsonConfig.at("Time_Domain_Detector").get<std::string>();
-    pipelineVariables.amplitudeDetectionThreshold = jsonConfig.at("Time_Domain_Threshold").get<float>();
+    pipelineVariables.timeDomainThreshold = jsonConfig.at("Time_Domain_Threshold").get<float>();
     pipelineVariables.frequencyDomainStrategy = jsonConfig.at("Frequency_Domain_Strategy").get<std::string>();
     pipelineVariables.frequencyDomainDetector = jsonConfig.at("Frequency_Domain_Detector").get<std::string>();
     pipelineVariables.energyDetectionThreshold = jsonConfig.at("Frequency_Domain_Threshold").get<float>();
     pipelineVariables.filterWeightsPath = jsonConfig.at("FilterWeights").get<std::string>();
     pipelineVariables.receiverPositionsPath = jsonConfig.at("ReceiverPositions").get<std::string>();
     pipelineVariables.enableTracking = jsonConfig.at("Enable_Tracking").get<bool>();
-    pipelineVariables.clusterFrequencyInSeconds = std::chrono::seconds(jsonConfig.at("Cluster_Frequency_In_Seconds").get<int>());
-    pipelineVariables.clusterWindowInSeconds = std::chrono::seconds(jsonConfig.at("Cluster_Window_In_Seconds").get<int>());
+    pipelineVariables.clusterFrequencyInSeconds =
+        std::chrono::seconds(jsonConfig.at("Cluster_Frequency_In_Seconds").get<int>());
+    pipelineVariables.clusterWindowInSeconds =
+        std::chrono::seconds(jsonConfig.at("Cluster_Window_In_Seconds").get<int>());
     pipelineVariables.onnxModelPath = jsonConfig.at("ONNX_model_path").get<std::string>();
     pipelineVariables.onnxModelNormalizationPath = jsonConfig.at("ONNX_model_normalization").get<std::string>();
 
@@ -42,7 +47,8 @@ auto parseJsonConfig(const std::string &jsonFilePath) -> std::tuple<SocketVariab
 /**
  * @brief Prints whether the program is running in Debug or Release mode.
  */
-void printMode() {
+void printMode()
+{
 #ifdef DEBUG
     std::cout << "Running Debug Mode" << std::endl;
 #else

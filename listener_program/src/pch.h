@@ -1,37 +1,36 @@
 #pragma once
 // Standard C++ Library Headers
-#include <vector>
-#include <iostream>
-#include <string>
-#include <chrono>
-#include <queue>
-#include <mutex>
 #include <atomic>
-#include <stdexcept>
-#include <cstdlib>
-#include <thread>
+#include <chrono>
 #include <cmath>
-#include <random>
-#include <sstream>
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
-#include <span>
-#include <tuple>
-#include <set>
+#include <iostream>
+#include <mutex>
 #include <optional>
+#include <queue>
+#include <random>
+#include <set>
+#include <span>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <thread>
+#include <tuple>
+#include <vector>
 
 // System Headers
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
+#include <fftw3.h>
+#include <netinet/in.h>
+#include <onnxruntime_cxx_api.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include <eigen3/Eigen/Dense>
-#include <fftw3.h>
-
-#include <onnxruntime_cxx_api.h>
-#include <nlohmann/json.hpp> // Use a JSON library to load JSON data
+#include <nlohmann/json.hpp>  // Use a JSON library to load JSON data
 
 #ifdef __ARM_NEON
-#include <arm_neon.h> // Include NEON intrinsics
+#include <arm_neon.h>  // Include NEON intrinsics
 #endif
