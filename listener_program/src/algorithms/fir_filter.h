@@ -1,5 +1,5 @@
 #pragma once
-//#include "../main_utils.h"
+// #include "../main_utils.h"
 #include "../pch.h"
 
 class IFrequencyDomainStrategy
@@ -12,6 +12,7 @@ class IFrequencyDomainStrategy
     virtual int getPaddedLength() = 0;
 
     virtual Eigen::MatrixXcf& getFrequencyDomainData() = 0;
+    Eigen::MatrixXcf mBeforeFilter;
 };
 
 class FrequencyDomainFilterStrategy : public IFrequencyDomainStrategy

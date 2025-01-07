@@ -1,5 +1,6 @@
 #pragma once
 #include "../pch.h"
+#include "madgwick_marg.h"
 
 /**
  * @class ImuProcessor
@@ -16,6 +17,7 @@ class ImuProcessor
     void setRotationMatrix(const std::vector<uint8_t>& dataBytes);
 
     Eigen::Matrix3f mRotationMatrix;
+    MadgwickMARG margFilter;
 
    private:
     // Calibration constants
@@ -30,7 +32,7 @@ class ImuProcessor
     const float mGyroscopeCalibration = 2000.0f / 32768.0f;
     const Eigen::Vector3f mMagnetometerCalibration{1150.0f / 32768.0f, 1150.0f / 32768.0f, 2250.0f / 32768.0f};
 
-    std::optional<Eigen::VectorXf> getImuDataFromBytes(const std::vector<uint8_t>& byteBlock, int imuByteSize);
+    std::optional<Eigen::VectorXf> getImuDataFromBytes(const std::vector<uint8_t>& byteBlock);
 
     void calibrateImuData(Eigen::VectorXf& imuData);
 

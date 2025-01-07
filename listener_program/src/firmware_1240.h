@@ -3,8 +3,6 @@
 #include "algorithms/imu_processing.h"
 #include "pch.h"
 
-using TimePoint = std::chrono::system_clock::time_point;
-
 /**
  * @brief Base class for firmware configuration, providing constants and utility methods.
  */
@@ -21,7 +19,8 @@ class Firmware1240
     static constexpr float SAMPLE_OFFSET = 32768.0f;  // Define a named constant
                                                       // for the sample offset
 
-    static constexpr int DATA_SIZE = SAMPS_PER_CHANNEL * NUM_CHAN * BYTES_PER_SAMP;  // Packet data size (bytes)
+    static constexpr int SAMPS_PER_PACKET = SAMPS_PER_CHANNEL * NUM_CHAN;  // Samples per packet
+    static constexpr int DATA_SIZE = SAMPS_PER_PACKET * BYTES_PER_SAMP;    // Packet data size (bytes)
     static constexpr int REQUIRED_BYTES = DATA_SIZE + HEAD_SIZE;
     static constexpr int DATA_BYTES_PER_CHANNEL = SAMPS_PER_CHANNEL * BYTES_PER_SAMP;  // Data bytes per channel
 
@@ -37,20 +36,21 @@ class Firmware1240
     /**
      * @brief Inserts data into a channel matrix.
      */
-    void insertDataIntoChannelMatrix(Eigen::MatrixXf& channelMatrix, std::span<uint8_t> dataBytes, int& counter,
+    void insertDataIntoChannelMatrix(Eigen::MatrixXf& channelMatrix, const std::vector<std::vector<uint8_t>>& dataBytes,
                                      int headSize = HEAD_SIZE, int dataSize = DATA_SIZE,
-                                     int bytesPerSamp = BYTES_PER_SAMP, float sampleOffset = SAMPLE_OFFSET);
+                                     int bytesPerSamp = BYTES_PER_SAMP, float sampleOffset = SAMPLE_OFFSET) const;
 
     /**
      * @brief Generates a vector of timestamps from raw data bytes.
      */
-    std::vector<TimePoint> generateTimestamp(std::vector<std::vector<uint8_t>>& dataBytes, int numChannels);
+    std::vector<TimePoint> generateTimestamp(std::vector<std::vector<uint8_t>>& dataBytes, int numChannels) const;
 
     /**
      * @brief Checks for data errors in a session.
      */
-    void throwIfDataErrors(const std::vector<uint8_t>& dataBytes, const int microIncrement, bool isPreviousTimeSet,
-                           const TimePoint& previousTime, const TimePoint& currentTime, const int packetSize);
+    void throwIfDataErrors(const std::vector<std::vector<uint8_t>>& dataBytes, const int microIncrement,
+                           bool& isPreviousTimeSet, TimePoint& previousTime, const std::vector<TimePoint>& currentTime,
+                           const int packetSize) const;
 
     /**
      * @brief Virtual function for IMU manager, returns nullptr
@@ -77,14 +77,14 @@ class Firmware1240IMU : public Firmware1240
 class FirmwareFactory
 {
    public:
-    static std::unique_ptr<Firmware1240> create(bool useImu)
+    static std::unique_ptr<const Firmware1240> create(bool useImu)
     {
         if (useImu)
         {
-            return std::make_unique<Firmware1240IMU>();
+            return std::make_unique<const Firmware1240IMU>();
         } else
         {
-            return std::make_unique<Firmware1240>();
+            return std::make_unique<const Firmware1240>();
         }
     }
 };

@@ -1,16 +1,19 @@
 #include "tracker.h"
-#include "tracker_utils.h"
-#include "../algorithms/kalman_filter.h"
 
-using TimePoint = std::chrono::system_clock::time_point;
+#include "../algorithms/kalman_filter.h"
+#include "tracker_utils.h"
 
 // Tracker class implementation
-Tracker::Tracker(double eps, int minSamples,
-                 int missedUpdateThreshold, const std::string &outputFile,
+Tracker::Tracker(double eps, int minSamples, int missedUpdateThreshold, const std::string& outputFile,
                  std::chrono::seconds clusteringFrequency, std::chrono::seconds clusteringWindow)
-    : mEps(eps), mMinSamples(minSamples), mMissedUpdateThreshold(missedUpdateThreshold),
-      mGlobalCounter(0), mNextLabel(0), mOutputfile(outputFile),
-      mClusterFrequency(clusteringFrequency), mClusterWindow(clusteringWindow),
+    : mEps(eps),
+      mMinSamples(minSamples),
+      mMissedUpdateThreshold(missedUpdateThreshold),
+      mGlobalCounter(0),
+      mNextLabel(0),
+      mOutputfile(outputFile),
+      mClusterFrequency(clusteringFrequency),
+      mClusterWindow(clusteringWindow),
       mNoClusterWindow(mClusterFrequency - mClusterWindow)
 {
     std::cout << "Initializing tracker: \n";
@@ -26,7 +29,7 @@ Tracker::Tracker(double eps, int minSamples,
  */
 auto Tracker::runDbscan() -> std::vector<Eigen::Vector3f>
 {
-    mGlobalCounter++; // Increment the global counter to track clustering operations
+    mGlobalCounter++;  // Increment the global counter to track clustering operations
 
     // Convert the observation buffer into a 3D point vector for clustering
     auto dataPoints3d = convertEigenToPointVector(mObservationBuffer);
@@ -69,7 +72,8 @@ void Tracker::destroyExpiredFilters()
  * @param labels Vector of cluster labels for each data point.
  * @return A vector of 3D cluster centroids.
  */
-auto Tracker::getClusterCentroids(const std::vector<point3> &data, const std::vector<size_t> &labels) -> std::vector<Eigen::Vector3f>
+auto Tracker::getClusterCentroids(const std::vector<point3>& data,
+                                  const std::vector<size_t>& labels) -> std::vector<Eigen::Vector3f>
 {
     std::vector<Eigen::Vector3f> clusterCenters;
 
@@ -80,7 +84,7 @@ auto Tracker::getClusterCentroids(const std::vector<point3> &data, const std::ve
     for (int label : uniqueLabels)
     {
         if (label != 0)
-        { // Ignore noise points (label 0)
+        {  // Ignore noise points (label 0)
 
             // Collect points belonging to the current cluster
             std::vector<point3> clusterPoints;
@@ -113,7 +117,7 @@ auto Tracker::getClusterCentroids(const std::vector<point3> &data, const std::ve
  *
  * @param associatedFilters Set of indices representing filters that were associated with clusters.
  */
-void Tracker::incrementMissedCounter(const std::set<int> &associatedFilters)
+void Tracker::incrementMissedCounter(const std::set<int>& associatedFilters)
 {
     for (size_t i = 0; i < mKalmanFilters.size(); ++i)
     {
@@ -131,7 +135,8 @@ void Tracker::incrementMissedCounter(const std::set<int> &associatedFilters)
  * @param unassignedClusters Vector of cluster indices that were not assigned to any filter.
  * @param clusterCenters Vector of cluster centers corresponding to the clusters.
  */
-void Tracker::initializeFiltersForClusters(const std::vector<int> &unassignedClusters, const std::vector<Eigen::Vector3f> &clusterCenters)
+void Tracker::initializeFiltersForClusters(const std::vector<int>& unassignedClusters,
+                                           const std::vector<Eigen::Vector3f>& clusterCenters)
 {
     for (int cluster : unassignedClusters)
     {
@@ -145,11 +150,12 @@ void Tracker::initializeFiltersForClusters(const std::vector<int> &unassignedClu
 }
 
 /**
- * @brief Updates Kalman filters based on the current cluster centers, creating new filters if needed and removing expired ones.
+ * @brief Updates Kalman filters based on the current cluster centers, creating new filters if needed and removing
+ * expired ones.
  *
  * @param clusterCenters Vector of current cluster centers.
  */
-void Tracker::updateKalmanFilters(const std::vector<Eigen::Vector3f> &clusterCenters)
+void Tracker::updateKalmanFilters(const std::vector<Eigen::Vector3f>& clusterCenters)
 {
     // Calculate the distance matrix between cluster centers and filter states
     Eigen::MatrixXf distanceMatrix = calculateDistanceMatrix(clusterCenters, mKalmanFilters);
@@ -184,10 +190,10 @@ void Tracker::updateKalmanFilters(const std::vector<Eigen::Vector3f> &clusterCen
  * @param observation Current observation vector.
  * @param timepoint Timestamp associated with the observation.
  */
-int Tracker::updateKalmanFiltersContinuous(const Eigen::VectorXf &observation, const TimePoint &timepoint)
+int Tracker::updateKalmanFiltersContinuous(const Eigen::VectorXf& observation, const TimePoint& timepoint)
 {
     int bestMatch = -1;
-    float bestDist = 0.14f; // Gating threshold for filter association
+    float bestDist = 0.14f;  // Gating threshold for filter association
 
     // Convert timepoint to a numerical representation (microseconds since epoch)
     auto time_since_epoch = std::chrono::duration_cast<std::chrono::microseconds>(timepoint.time_since_epoch());
@@ -196,7 +202,7 @@ int Tracker::updateKalmanFiltersContinuous(const Eigen::VectorXf &observation, c
     // Find the Kalman filter with the closest prediction to the current observation
     for (size_t idx = 0; idx < mKalmanFilters.size(); ++idx)
     {
-        KalmanFilter &kf = mKalmanFilters[idx];
+        KalmanFilter& kf = mKalmanFilters[idx];
         kf.predict();
 
         // Compute predicted state in observation space
@@ -216,7 +222,7 @@ int Tracker::updateKalmanFiltersContinuous(const Eigen::VectorXf &observation, c
     // If a valid match is found, update the matched Kalman filter
     if (bestMatch != -1)
     {
-        KalmanFilter &kf = mKalmanFilters[bestMatch];
+        KalmanFilter& kf = mKalmanFilters[bestMatch];
         kf.update(observation);
 
         // Extract current state and convert to elevation and azimuth
@@ -227,7 +233,8 @@ int Tracker::updateKalmanFiltersContinuous(const Eigen::VectorXf &observation, c
         mKalmanLog.emplace_back(timenum, mClusterAssignments[bestMatch], elevation, azimuth);
 
         // Check if it's time to flush the log to the file
-        auto timeSinceLastWrite = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - mLastFlushTime);
+        auto timeSinceLastWrite =
+            std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - mLastFlushTime);
         bool isTimeToWrite = mFlushInterval <= timeSinceLastWrite;
 
         if (mKalmanLog.size() > mBufferSizeThreshold || isTimeToWrite)
@@ -259,13 +266,13 @@ void Tracker::processBuffer()
  * @param indicesToKeep Vector of indices specifying which elements to retain.
  */
 template <typename T>
-void Tracker::filterByIndices(std::vector<T> &vector, const std::vector<int> &indicesToKeep)
+void Tracker::filterByIndices(std::vector<T>& vector, const std::vector<int>& indicesToKeep)
 {
     // Retain elements specified by indicesToKeep
     std::vector<T> filtered;
     filtered.reserve(indicesToKeep.size());
-    std::transform(indicesToKeep.begin(),indicesToKeep.end(),std::back_inserter(filtered),
-                 [&vector](int ind){return vector[ind];});
+    std::transform(indicesToKeep.begin(), indicesToKeep.end(), std::back_inserter(filtered),
+                   [&vector](int ind) { return vector[ind]; });
 
     // Replace the original vector with the filtered one
     vector.swap(filtered);
@@ -316,12 +323,9 @@ void Tracker::writeLogToFile()
     }
 
     // Write each log entry to the file
-    for (const auto &entry : mKalmanLog)
+    for (const auto& entry : mKalmanLog)
     {
-        ofs << entry.timestamp << ','
-            << entry.filterId << ','
-            << entry.updatedX << ','
-            << entry.updatedY << '\n';
+        ofs << entry.timestamp << ',' << entry.filterId << ',' << entry.updatedX << ',' << entry.updatedY << '\n';
     }
 
     // Check if writing was successful
@@ -375,7 +379,7 @@ void Tracker::scheduleCluster()
  * @param observationBuffer Buffer to store observations for the tracker.
  * @param directionOfArrival Direction of arrival (DOA) vector to be added to the observation buffer.
  */
-void Tracker::updateTrackerBuffer(const Eigen::VectorXf &directionOfArrival)
+void Tracker::updateTrackerBuffer(const Eigen::VectorXf& directionOfArrival)
 {
     auto currentTime = std::chrono::steady_clock::now();
     auto timeSinceLastCluster = std::chrono::duration_cast<std::chrono::seconds>(currentTime - mLastClusterTime);
@@ -386,6 +390,11 @@ void Tracker::updateTrackerBuffer(const Eigen::VectorXf &directionOfArrival)
     // Start collecting observations only in the last 30 seconds or if the tracker is not initialized
     if (isWithinLast30Seconds || !mIsTrackerInitialized)
     {
-        mObservationBuffer.push_back(directionOfArrival); // Collect data for tracking
+        mObservationBuffer.push_back(directionOfArrival);  // Collect data for tracking
     }
+}
+
+void Tracker::initializeOutputFile(const TimePoint& timestamp)
+{
+    mOutputfile = convertTimePointToString(timestamp) + "_tracker";
 }

@@ -31,6 +31,8 @@
 #include <eigen3/Eigen/Dense>
 #include <nlohmann/json.hpp>  // Use a JSON library to load JSON data
 
+using TimePoint = std::chrono::system_clock::time_point;
+
 #ifdef __ARM_NEON
 #include <arm_neon.h>  // Include NEON intrinsics
 #endif

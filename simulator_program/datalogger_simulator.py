@@ -204,7 +204,9 @@ class DataSimulator:
             startTime = time.time()
             dataChunkIndex = 0  # renamed 'flag' -> 'dataChunkIndex'
 
+            k = 0
             while True:
+                k+=1
                 # If not the first read, reset the start time for measuring interval
                 if not isFirstRead:
                     startTime = time.time()
@@ -269,6 +271,11 @@ class DataSimulator:
                     print('ERROR: Packet length mismatch.')
                     print('Data chunk index:', dataChunkIndex)
                     break
+                
+
+                #if k==130:
+                #    adsfasdf
+                
 
                 # Send the UDP packet
                 self.socket.sendto(packet, (self.arguments.ip, self.arguments.port))
@@ -310,12 +317,10 @@ class DataSimulator:
         self.socket.close()
 
 
-def main():
+
+
+if __name__ == "__main__":
     # Parse command-line arguments
     arguments = ArgumentParserService.parseArguments()
     dataSimulator = DataSimulator(arguments)
     dataSimulator.run()
-
-
-if __name__ == "__main__":
-    main()

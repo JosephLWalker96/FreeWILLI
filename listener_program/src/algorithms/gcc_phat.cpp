@@ -6,7 +6,7 @@ Eigen::VectorXf GCC_PHAT::mCrossCorrBuffer;
 void GCC_PHAT::initialize(int paddedLength)
 {
     if (mNormalizedCrossSpectra.size() == 0)
-    { // Prevent reinitialization
+    {  // Prevent reinitialization
         mNormalizedCrossSpectra = Eigen::VectorXcf::Zero(paddedLength);
         mCrossCorrBuffer = Eigen::VectorXf::Zero(paddedLength);
     }
@@ -18,20 +18,16 @@ void GCC_PHAT::initialize(int paddedLength)
  * @param paddedLength Length of zero-padding applied to the signals for FFT.
  */
 GCC_PHAT::GCC_PHAT(int paddedLength, int numChannels, int sampleRate)
-    : mPaddedLength(paddedLength),
-      mNumChannels(numChannels),
-      mSampleRate(sampleRate)
+    : mPaddedLength(paddedLength), mNumChannels(numChannels), mSampleRate(sampleRate)
 {
     GCC_PHAT::initialize(paddedLength);
-
+    std::cout << "vals: " << mPaddedLength << " " << mNumChannels << " " << mSampleRate << std::endl;
     mNumTdoas = numChannels * (numChannels - 1) / 2;
-    mMaxShift = paddedLength / 2; // change this if we have knowledge of max time offset
+    mMaxShift = paddedLength / 2;  // change this if we have knowledge of max time offset
 
-    mInverseFftPlan = fftwf_plan_dft_c2r_1d(
-        paddedLength,
-        reinterpret_cast<fftwf_complex *>(mNormalizedCrossSpectra.data()),
-        mCrossCorrBuffer.data(),
-        FFTW_ESTIMATE);
+    mInverseFftPlan =
+        fftwf_plan_dft_c2r_1d(paddedLength, reinterpret_cast<fftwf_complex*>(mNormalizedCrossSpectra.data()),
+                              mCrossCorrBuffer.data(), FFTW_ESTIMATE);
 }
 
 /**
@@ -48,7 +44,7 @@ GCC_PHAT::~GCC_PHAT()
 /**
  * @brief Compute TDOAs using GCC-PHAT method.
  */
-std::tuple<Eigen::VectorXf, Eigen::VectorXf> GCC_PHAT::process(const Eigen::MatrixXcf &savedFfts)
+std::tuple<Eigen::VectorXf, Eigen::VectorXf> GCC_PHAT::process(const Eigen::MatrixXcf& savedFfts)
 {
     Eigen::VectorXf tdoaEstimates(mNumTdoas);
     Eigen::VectorXf crossCorrPeaks(mNumTdoas);
@@ -58,10 +54,10 @@ std::tuple<Eigen::VectorXf, Eigen::VectorXf> GCC_PHAT::process(const Eigen::Matr
     {
         for (int signal2Index = signal1Index + 1; signal2Index < mNumChannels; ++signal2Index)
         {
-            const auto &signal1 = savedFfts.col(signal1Index);
-            const auto &signal2 = savedFfts.col(signal2Index);
-            //std::cout << "signal1 length: " << signal1.size() << std::endl;
-            //std::cout << "signal1: " << signal1.head(10) << std::endl;
+            const auto& signal1 = savedFfts.col(signal1Index);
+            const auto& signal2 = savedFfts.col(signal2Index);
+            // std::cout << "signal1 length: " << signal1.size() << std::endl;
+            // std::cout << "signal1: " << signal1.head(10) << std::endl;
 
             // Compute normalized cross-spectra
             calculateNormalizedCrossSpectra(signal1, signal2);
@@ -70,8 +66,7 @@ std::tuple<Eigen::VectorXf, Eigen::VectorXf> GCC_PHAT::process(const Eigen::Matr
             fftwf_execute(mInverseFftPlan);
 
             // Estimate TDOA from the computed cross-correlation
-            std::tie(tdoaEstimates(pairCounter), crossCorrPeaks(pairCounter)) =
-                estimateTdoaAndPeak();
+            std::tie(tdoaEstimates(pairCounter), crossCorrPeaks(pairCounter)) = estimateTdoaAndPeak();
 
             ++pairCounter;
         }
@@ -86,17 +81,16 @@ std::tuple<Eigen::VectorXf, Eigen::VectorXf> GCC_PHAT::process(const Eigen::Matr
  * @param inputSignal1 The first input signal in frequency domain.
  * @param inputSignal2 The second input signal in frequency domain.
  */
-void GCC_PHAT::calculateNormalizedCrossSpectra(const Eigen::VectorXcf &inputSignal1,
-                                               const Eigen::VectorXcf &inputSignal2)
+void GCC_PHAT::calculateNormalizedCrossSpectra(const Eigen::VectorXcf& inputSignal1,
+                                               const Eigen::VectorXcf& inputSignal2)
 {
-
     // Compute cross-spectrum
     Eigen::VectorXcf crossSpectrum = inputSignal1.array() * inputSignal2.conjugate().array();
 
     // Compute magnitude and handle zeros
     Eigen::VectorXf crossSpectrumMagnitude = crossSpectrum.cwiseAbs();
-    crossSpectrumMagnitude = crossSpectrumMagnitude.unaryExpr([](float magnitude)
-                                                              { return (magnitude == 0.0f) ? 1.0f : magnitude; });
+    crossSpectrumMagnitude =
+        crossSpectrumMagnitude.unaryExpr([](float magnitude) { return (magnitude == 0.0f) ? 1.0f : magnitude; });
     // Validate that all values are finite
     if (!crossSpectrumMagnitude.allFinite())
     {
@@ -116,7 +110,6 @@ void GCC_PHAT::calculateNormalizedCrossSpectra(const Eigen::VectorXcf &inputSign
  */
 std::tuple<float, float> GCC_PHAT::estimateTdoaAndPeak()
 {
-
     // Rearrange cross-correlation data
     Eigen::VectorXf rearrangedCrossCorrelation(2 * mMaxShift);
     rearrangedCrossCorrelation.head(mMaxShift) = mCrossCorrBuffer.tail(mMaxShift);

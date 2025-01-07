@@ -56,7 +56,7 @@ void FrequencyDomainFilterStrategy::initialize(Eigen::MatrixXf& channelData)
 void FrequencyDomainFilterStrategy::apply()
 {
     fftwf_execute(mForwardFftPlan);
-
+    mBeforeFilter = mSavedFFTs;
     for (int channelIndex = 0; channelIndex < mNumChannels; channelIndex++)
     {
         mSavedFFTs.col(channelIndex) = mSavedFFTs.col(channelIndex).array() * mFilterFreq.array();

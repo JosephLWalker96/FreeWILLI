@@ -13,7 +13,7 @@ int packetCounter = 0;  // this should only be used inside the UDPListener
  * @param packetCounter The total number of packets received so far.
  * @param printInterval The interval (in packets) at which to log statistics.
  * @param startPacketTime Start time of the last logged interval.
- * @param queueSize Current size of the session queue.
+ * @param queueSize Current size of the shared queue.
  * @param processedPackets Number of processed packets.
  * @param detectionCount Number of detections recorded by the session.
  */
@@ -36,14 +36,13 @@ void logPacketStatistics(int packetCounter, int printInterval, std::chrono::stea
  * @brief Listens for incoming UDP packets, processes them, and stores data in a
  * buffer.
  *
- * @param sess Reference to a Session object for managing shared buffers and
- * session state.
+ * @param sharedDataManager Reference to a SharedDataManager object for managing shared data across threads
  * @param socketManager Reference to a SocketManager object that manages the UDP
  * socket.
  * @throws std::runtime_error if there is an error receiving data from the
  * socket or if the buffer overflows.
  */
-void udpListener(SharedDataManager& sess, ISocketManager* socketManager)
+void runListenerLoop(SharedDataManager& sharedDataManager, ISocketManager* socketManager)
 {
     try
     {
@@ -58,7 +57,7 @@ void udpListener(SharedDataManager& sess, ISocketManager* socketManager)
 
         auto startPacketTime = std::chrono::steady_clock::now();
 
-        while (!sess.errorOccurred)
+        while (!sharedDataManager.errorOccurred)
         {
             // Receive data
             int bytesReceived = socketManager->receiveData(0, (struct sockaddr*)&addr, &addrLength);
@@ -72,13 +71,13 @@ void udpListener(SharedDataManager& sess, ISocketManager* socketManager)
 
             const std::vector<uint8_t>& dataBytes = socketManager->getReceivedData();
 
-            int queueSize = sess.pushDataToBuffer(dataBytes);
+            int queueSize = sharedDataManager.pushDataToBuffer(dataBytes);
 
             packetCounter += 1;
             if (packetCounter % printInterval == 0)
             {
                 logPacketStatistics(packetCounter, printInterval, startPacketTime, queueSize, packetCounter - queueSize,
-                                    sess.detectionCounter);
+                                    sharedDataManager.detectionCounter);
             }
 
             if (queueSize > 1000)
@@ -93,6 +92,6 @@ void udpListener(SharedDataManager& sess, ISocketManager* socketManager)
         msg << e.what() << std::endl;
         std::cerr << msg.str();
 
-        sess.errorOccurred = true;
+        sharedDataManager.errorOccurred = true;
     }
 }

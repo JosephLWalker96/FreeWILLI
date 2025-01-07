@@ -3,4 +3,4 @@
 class SharedDataManager;
 class ISocketManager;
 
-void udpListener(SharedDataManager &sess, ISocketManager *socketManager);
+void runListenerLoop(SharedDataManager& sess, ISocketManager* socketManager);

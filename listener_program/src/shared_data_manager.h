@@ -8,15 +8,17 @@
  */
 class SharedDataManager
 {
-private:
+   private:
     std::mutex dataBufferLock;
-    std::queue<std::vector<uint8_t>> dataBuffer;         ///< Holds incoming data packets (thread-safe via mutex).
+    std::queue<std::vector<uint8_t>> dataBuffer;  ///< Holds incoming data packets (thread-safe via mutex).
 
-public:
+    bool popDataFromBuffer(std::vector<std::vector<uint8_t>>& data, int numPacksToGet);
 
-    std::atomic<bool> errorOccurred = false;             ///< Indicates an error has occurred in processing or I/O operations.
-    std::atomic<int> detectionCounter = 0;                            ///< Tracks the number of successful detections.
+   public:
+    std::atomic<bool> errorOccurred = false;  ///< Indicates an error has occurred in processing or I/O operations.
+    std::atomic<int> detectionCounter = 0;    ///< Tracks the number of successful detections.
 
-    int pushDataToBuffer(const std::vector<uint8_t> &data);
-    bool popDataFromBuffer(std::vector<std::vector<uint8_t>> &data, int numPacksToGet);
+    int pushDataToBuffer(const std::vector<uint8_t>& data);
+
+    void waitForData(std::vector<std::vector<uint8_t>>& dataBytes, int numPacksToGet);
 };

@@ -1,13 +1,12 @@
-#include "gtest/gtest.h"
+#include <chrono>
 #include <fstream>
 #include <iostream>
-#include <chrono>
 #include <string>
 
-#include "../../src/threads/processor_thread_utils.h"
-#include "../../src/firmware_1240.h"
-#include "../../src/algorithms/time_domain_detectors.h"
 #include "../../src/algorithms/frequency_domain_detectors.h"
+#include "../../src/algorithms/time_domain_detectors.h"
+#include "../../src/firmware_1240.h"
+#include "gtest/gtest.h"
 
 using TimePoint = std::chrono::system_clock::time_point;
 
@@ -16,17 +15,17 @@ Firmware1240 firmwareConfig;
 // Helper function to create sample data and timestamps
 std::pair<Eigen::VectorXf, std::vector<TimePoint>> CreateTestData(int size, double peakValue, int peakIndex)
 {
-  Eigen::VectorXf data(size);
-  data.setZero();
-  data(peakIndex) = peakValue;
+    Eigen::VectorXf data(size);
+    data.setZero();
+    data(peakIndex) = peakValue;
 
-  std::vector<TimePoint> timestamps(size);
-  // Set timestamps based on your specific TimePoint implementation (adjust if needed)
-  for (int i = 0; i < size; ++i)
-  {
-    timestamps[i] = std::chrono::system_clock::now();
-  }
-  return std::make_pair(data, timestamps);
+    std::vector<TimePoint> timestamps(size);
+    // Set timestamps based on your specific TimePoint implementation (adjust if needed)
+    for (int i = 0; i < size; ++i)
+    {
+        timestamps[i] = std::chrono::system_clock::now();
+    }
+    return std::make_pair(data, timestamps);
 }
 /*
 TEST(ConvertDataTest, ValidData)
@@ -66,7 +65,8 @@ TEST(ConvertDataTest, ValidData)
     int counter = 0;
 
     // Call the function under test
-    firmwareConfig.convertAndInsertData(dataSegment, std::span<uint8_t>(dataBytes), counter, HEADER_SIZE, CONTENT_SIZE, BYTES_PER_SAMP, SAMPLE_OFFSET);
+    firmwareConfig.convertAndInsertData(dataSegment, std::span<uint8_t>(dataBytes), counter, HEADER_SIZE, CONTENT_SIZE,
+BYTES_PER_SAMP, SAMPLE_OFFSET);
 
     // Assert that the converted data matches the expectation
     EXPECT_TRUE(dataSegment.isApprox(expectedResult));
@@ -100,7 +100,8 @@ TEST(ConvertDataTest, EmptyData) {
     int counter = 0;
 
     // Call the function under test
-    firmwareConfig.convertAndInsertData(dataSegment, std::span<uint8_t>(dataBytes), counter, HEADER_SIZE, CONTENT_SIZE, BYTES_PER_SAMP, SAMPLE_OFFSET);
+    firmwareConfig.convertAndInsertData(dataSegment, std::span<uint8_t>(dataBytes), counter, HEADER_SIZE, CONTENT_SIZE,
+BYTES_PER_SAMP, SAMPLE_OFFSET);
 
     // Assert that the converted data is empty
     EXPECT_TRUE(dataSegment.isApprox(expectedResult));
@@ -149,7 +150,8 @@ TEST(ThresholdDetectTest, SinglePeak)
 
   // Verify peak time is within expected range (adjust tolerance based on your TimePoint implementation)
   // auto expectedPeakTime = times[peakIndex] + std::chrono::microseconds((long)(peakIndex * 1e6) / SAMPLE_RATE);
-  // EXPECT_LT(std::chrono::duration_cast<std::chrono::microseconds>(result.peakTimes[0] - expectedPeakTime).count(), 100); // Tolerance of 100 microseconds
+  // EXPECT_LT(std::chrono::duration_cast<std::chrono::microseconds>(result.peakTimes[0] - expectedPeakTime).count(),
+100); // Tolerance of 100 microseconds
 }
 
 TEST(ThresholdDetectTest, Infinity)
@@ -175,6 +177,7 @@ TEST(ThresholdDetectTest, Infinity)
 
   // Verify peak time is within expected range (adjust tolerance based on your TimePoint implementation)
   // auto expectedPeakTime = times[peakIndex] + std::chrono::microseconds((long)(peakIndex * 1e6) / SAMPLE_RATE);
-  // EXPECT_LT(std::chrono::duration_cast<std::chrono::microseconds>(result.peakTimes[0] - expectedPeakTime).count(), 100); // Tolerance of 100 microseconds
+  // EXPECT_LT(std::chrono::duration_cast<std::chrono::microseconds>(result.peakTimes[0] - expectedPeakTime).count(),
+100); // Tolerance of 100 microseconds
 }
 */

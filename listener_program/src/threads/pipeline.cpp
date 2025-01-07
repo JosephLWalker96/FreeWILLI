@@ -2,7 +2,6 @@
 
 #include "../main_utils.h"
 #include "../pch.h"
-#include "processor_thread_utils.h"
 
 /**
  * @brief Constructs a Pipeline object and initializes necessary components.
@@ -11,30 +10,24 @@
  * resources.
  * @param pipelineVariables Configuration parameters for the pipeline.
  */
-Pipeline::Pipeline(SharedDataManager& sharedSess, const PipelineVariables& pipelineVariables)
-    : sess(sharedSess),
-      speedOfSound(pipelineVariables.speedOfSound),
-      receiverPositionsPath(pipelineVariables.receiverPositionsPath),
-      firmwareConfig(FirmwareFactory::create(pipelineVariables.useImu)),
-      filter(IFrequencyDomainStrategyFactory::create(pipelineVariables.frequencyDomainStrategy,
-                                                     pipelineVariables.filterWeightsPath, firmwareConfig->CHANNEL_SIZE,
-                                                     firmwareConfig->NUM_CHAN)),
-      timeDomainDetector(ITimeDomainDetectorFactory::create(pipelineVariables.timeDomainDetector,
-                                                            pipelineVariables.timeDomainThreshold)),
-      frequencyDomainDetector(IFrequencyDomainDetectorFactory::create(pipelineVariables.frequencyDomainDetector,
-                                                                      pipelineVariables.energyDetectionThreshold))
+Pipeline::Pipeline(OutputManager& outputManager, SharedDataManager& sharedDataManager,
+                   const PipelineVariables& pipelineVariables)
+    : mFirmwareConfig(FirmwareFactory::create(pipelineVariables.useImu)),
+      mOutputManager(outputManager),
+      mSharedDataManager(sharedDataManager),
+      mSpeedOfSound(pipelineVariables.speedOfSound),
+      mReceiverPositionsPath(pipelineVariables.receiverPositionsPath),
+      mFilter(IFrequencyDomainStrategyFactory::create(pipelineVariables.frequencyDomainStrategy,
+                                                      pipelineVariables.filterWeightsPath,
+                                                      mFirmwareConfig->CHANNEL_SIZE, mFirmwareConfig->NUM_CHAN)),
+      mTimeDomainDetector(ITimeDomainDetectorFactory::create(pipelineVariables.timeDomainDetector,
+                                                             pipelineVariables.timeDomainThreshold)),
+      mFrequencyDomainDetector(IFrequencyDomainDetectorFactory::create(pipelineVariables.frequencyDomainDetector,
+                                                                       pipelineVariables.energyDetectionThreshold)),
+      mTracker(ITracker::create(pipelineVariables)),
+      mOnnxModel(IONNXModel::create(pipelineVariables)),
+      mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->NUM_CHAN, mFilter->getPaddedLength()))
 {
-    if (pipelineVariables.enableTracking)
-    {
-        tracker = std::make_unique<Tracker>(0.04f, 15, 4, "", pipelineVariables.clusterFrequencyInSeconds,
-                                            pipelineVariables.clusterWindowInSeconds);
-    }
-
-    if (!pipelineVariables.onnxModelPath.empty())
-    {
-        onnxModel =
-            std::make_unique<ONNXModel>(pipelineVariables.onnxModelPath, pipelineVariables.onnxModelNormalizationPath);
-    }
 }
 
 /**
@@ -60,157 +53,103 @@ void Pipeline::process()
  */
 void Pipeline::dataProcessor()
 {
-    int paddedLength = filter->getPaddedLength();
-    channelData.resize(firmwareConfig->NUM_CHAN, paddedLength);
-    channelData.setZero();
-    filter->initialize(channelData);
-
-    Eigen::MatrixXf hydrophonePositions = getHydrophoneRelativePositions(receiverPositionsPath);
+    std::cout << "rows: " << mChannelData.cols() << std::endl;
+    mFilter->initialize(mChannelData);
+    Eigen::MatrixXf hydrophonePositions = getHydrophoneRelativePositions(mReceiverPositionsPath);
     auto [precomputedP, basisMatrixU, rankOfHydrophoneMatrix] = hydrophoneMatrixDecomposition(hydrophonePositions);
 
     bool previousTimeSet = false;
     auto previousTime = TimePoint::min();
 
-    dataBytes.resize(firmwareConfig->NUM_PACKS_DETECT);
+    dataBytes.resize(mFirmwareConfig->NUM_PACKS_DETECT);
 
-    GCC_PHAT computeTDOAs(paddedLength, firmwareConfig->NUM_CHAN, firmwareConfig->SAMPLE_RATE);
-    while (!sess.errorOccurred)
+    // call function once outside of the loop below to initialize files.
+    initializeOutputFiles(previousTimeSet, previousTime);
+
+    GCC_PHAT mComputeTDOAs(mFilter->getPaddedLength(), mFirmwareConfig->NUM_CHAN, mFirmwareConfig->SAMPLE_RATE);
+    while (!mSharedDataManager.errorOccurred)
     {
         obtainAndProcessByteData(previousTimeSet, previousTime);
+        mOutputManager.terminateProgramIfNecessary();
 
-        initilializeOutputFiles();      // uses the first time stamp from the first
-                                        // set of data
-        terminateProgramIfNecessary();  // terminate if we have reached
-                                        // specified duty cycle
+        mOutputManager.flushBufferIfNecessary();
 
-        observationBuffer.flushBufferIfNecessary(detectionOutputFile);
-
-        if (tracker)
+        if (mTracker)
         {
-            tracker->scheduleCluster();
+            mTracker->scheduleCluster();
         }
-        if (!timeDomainDetector->detect(channelData.row(0)))
+        if (!mTimeDomainDetector->detect(mChannelData.row(0)))
         {
             continue;
         }
 
-        filter->apply();
-        Eigen::MatrixXcf savedFFTs = filter->getFrequencyDomainData();
-        if (!frequencyDomainDetector->detect(savedFFTs.col(0)))
+        mFilter->apply();
+        Eigen::MatrixXcf savedFFTs = mFilter->getFrequencyDomainData();
+        Eigen::MatrixXcf beforeFilter = mFilter->mBeforeFilter;
+
+        if (!mFrequencyDomainDetector->detect(savedFFTs.col(0)))
         {
             continue;
         }
 
-        sess.detectionCounter++;
+        mSharedDataManager.detectionCounter++;
         auto beforeGCC = std::chrono::steady_clock::now();
-        auto tdoasAndXCorrAmps = computeTDOAs.process(savedFFTs);
+        auto tdoasAndXCorrAmps = mComputeTDOAs.process(savedFFTs);
         auto afterGCC = std::chrono::steady_clock::now();
         std::chrono::duration<double> duration = afterGCC - beforeGCC;
         std::cout << "GCC time: " << duration.count() << std::endl;
 
         Eigen::VectorXf tdoaVector = std::get<0>(tdoasAndXCorrAmps);
         Eigen::VectorXf DOAs =
-            computeDoaFromTdoa(precomputedP, basisMatrixU, speedOfSound, tdoaVector, rankOfHydrophoneMatrix);
+            computeDoaFromTdoa(precomputedP, basisMatrixU, mSpeedOfSound, tdoaVector, rankOfHydrophoneMatrix);
         Eigen::VectorXf AzEl = convertDoaToElAz(DOAs);
         std::cout << "AzEl: " << AzEl << std::endl;
 
-        observationBuffer.appendToBuffer(timeDomainDetector->getLastDetection(), DOAs[0], DOAs[1], DOAs[2], tdoaVector,
-                                         std::get<1>(tdoasAndXCorrAmps), dataTimes[0]);
+        mOutputManager.appendToBuffer(mTimeDomainDetector->getLastDetection(), DOAs[0], DOAs[1], DOAs[2], tdoaVector,
+                                      std::get<1>(tdoasAndXCorrAmps), dataTimes[0]);
 
-        if (tracker)
+        int label = -1;
+        if (mTracker)
         {
-            tracker->updateTrackerBuffer(DOAs);
-            if (tracker->mIsTrackerInitialized)
+            mTracker->updateTrackerBuffer(DOAs);
+            if (mTracker->mIsTrackerInitialized)
             {
-                tracker->updateKalmanFiltersContinuous(DOAs, dataTimes[0]);
+                label = mTracker->updateKalmanFiltersContinuous(DOAs, dataTimes[0]);
+                mOutputManager.saveSpectraForTraining("training_data_fill.csv", label, beforeFilter);
             }
         }
 
-        if (onnxModel)
+        if (mOnnxModel)
         {
             std::vector<float> input_tensor_values = getExampleClick();
-            onnxModel->runInference(input_tensor_values);
+            mOnnxModel->runInference(input_tensor_values);
         }
+    }
+}
+void Pipeline::initializeOutputFiles(bool& previousTimeSet, TimePoint& previousTime)
+{
+    obtainAndProcessByteData(previousTimeSet, previousTime);
+    mOutputManager.initializeOutputFile(dataTimes[0], mFirmwareConfig->NUM_CHAN);
+    if (mTracker)
+    {
+        mTracker->initializeOutputFile(dataTimes[0]);
     }
 }
 
 void Pipeline::obtainAndProcessByteData(bool& previousTimeSet, TimePoint& previousTime)
 {
-    dataTimes.clear();
-    // dataBytesSaved.clear();
-    std::vector<TimePoint> currentTimestamp;
+    mSharedDataManager.waitForData(dataBytes, mFirmwareConfig->NUM_PACKS_DETECT);
 
-    // auto beforeD = std::chrono::steady_clock::now();
-    waitForData(sess, dataBytes, firmwareConfig->NUM_PACKS_DETECT);
-    // auto afterD = std::chrono::steady_clock::now();
-    // std::chrono::duration<double> durationD = afterD - beforeD;
-    // std::cout << "wait for data: " << durationD.count() << std::endl;
+    dataTimes = mFirmwareConfig->generateTimestamp(dataBytes, mFirmwareConfig->NUM_CHAN);
 
-    // dataBytesSaved = dataBytes;
-    //  auto beforeGCC = std::chrono::steady_clock::now();
-    currentTimestamp = firmwareConfig->generateTimestamp(dataBytes, firmwareConfig->NUM_CHAN);
-    // auto afterGCC = std::chrono::steady_clock::now();
-    // std::chrono::duration<double> duration = afterGCC - beforeGCC;
-    // std::cout << "Timestamps: " << duration.count() << std::endl;
-
-    dataTimes = currentTimestamp;
-
-    // firmwareConfig.throwIfDataErrors(dataBytes, firmwareConfig.MICRO_INCR,
-    // previousTimeSet,
-    //                                   previousTime, currentTimestamp,
-    //                                   firmwareConfig.packetSize());
-    // previousTime = currentTimestamp;
-
-    previousTimeSet = true;
+    mFirmwareConfig->throwIfDataErrors(dataBytes, mFirmwareConfig->MICRO_INCR, previousTimeSet, previousTime, dataTimes,
+                                       mFirmwareConfig->packetSize());
 
     auto before2l = std::chrono::steady_clock::now();
-    for (int nthPacketInSegment = 0; nthPacketInSegment < firmwareConfig->NUM_PACKS_DETECT; ++nthPacketInSegment)
-    {
-        firmwareConfig->insertDataIntoChannelMatrix(channelData, dataBytes[nthPacketInSegment], nthPacketInSegment);
-
-        if (auto imu = firmwareConfig->getImuManager())
-        {
-            // Call a method on the IMU manager
-            imu->setRotationMatrix(dataBytes[nthPacketInSegment]);
-            std::cout << "rotationMat: " << imu->mRotationMatrix << std::endl;
-        }
-    }
-
+    mFirmwareConfig->insertDataIntoChannelMatrix(mChannelData, dataBytes);
     auto after2l = std::chrono::steady_clock::now();
     std::chrono::duration<double> duration2l = after2l - before2l;
     // std::cout << "append : " << duration2l.count() << std::endl;
-}
-
-void Pipeline::initilializeOutputFiles()
-{
-    if ((detectionOutputFile).empty()) [[unlikely]]
-    {
-        std::string outputFile = "deployment_files/" + convertTimePointToString(dataTimes[0]);
-        detectionOutputFile = outputFile;
-
-        if (tracker)
-        {
-            tracker->mOutputfile = outputFile + "_tracker";
-        }
-        observationBuffer.initializeOutputFile(outputFile, firmwareConfig->NUM_CHAN);
-    }
-}
-
-/**
- * @brief Determines if the program should terminate based on the runtime
- * duration.
- *
- */
-void Pipeline::terminateProgramIfNecessary()
-{
-    TimePoint currentTime = std::chrono::system_clock::now();
-    auto elapsedTime = currentTime - programStartTime;
-    if (elapsedTime >= programRuntime)
-    {
-        observationBuffer.write(detectionOutputFile);
-        std::cout << "Terminating program... duration reached\n";
-        std::exit(0);
-    }
 }
 
 /**
@@ -230,11 +169,11 @@ void Pipeline::handleProcessingError(const std::exception& e)
     // Attempt to write data for debugging
     try
     {
-        writeDataToCerr(dataTimes, dataBytes);
+        mOutputManager.writeDataToCerr(dataTimes, dataBytes);
     } catch (...)
     {
         std::cerr << "Failed to write data to cerr\n";
     }
 
-    sess.errorOccurred = true;  // Flag the error in the session
+    mSharedDataManager.errorOccurred = true;  // Flag the error in the session
 }
