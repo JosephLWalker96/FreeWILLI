@@ -110,9 +110,9 @@ void Pipeline::dataProcessor()
         mOutputManager.appendToBuffer(mTimeDomainDetector->getLastDetection(), DOAs[0], DOAs[1], DOAs[2], tdoaVector,
                                       std::get<1>(tdoasAndXCorrAmps), dataTimes[0]);
 
-        int label = -1;
         if (mTracker)
         {
+            int label = -1;
             mTracker->updateTrackerBuffer(DOAs);
             if (mTracker->mIsTrackerInitialized)
             {

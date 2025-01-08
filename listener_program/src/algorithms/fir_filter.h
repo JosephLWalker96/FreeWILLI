@@ -7,21 +7,17 @@ class IFrequencyDomainStrategy
    public:
     virtual ~IFrequencyDomainStrategy() = default;
 
-    // We no longer need an 'initialize' method; everything can happen in the constructor
     virtual void apply() = 0;
     virtual int getPaddedLength() const = 0;
 
     virtual Eigen::MatrixXcf& getFrequencyDomainData() = 0;
 
-    // If you still want to keep 'mBeforeFilter' accessible, make it protected or provide a getter
     Eigen::MatrixXcf mBeforeFilter;
 };
 
 class FrequencyDomainFilterStrategy : public IFrequencyDomainStrategy
 {
    public:
-    // Now we pass channelData by reference (or pointer).
-    // The constructor itself will figure out filter length, resize channelData, and create plan.
     FrequencyDomainFilterStrategy(const std::string& filterPath, Eigen::MatrixXf& channelData, int numChannels);
     ~FrequencyDomainFilterStrategy();
 
@@ -40,10 +36,8 @@ class FrequencyDomainFilterStrategy : public IFrequencyDomainStrategy
     int mFftOutputSize;
     Eigen::VectorXcf mFilterFreq;
 
-    // The FFT plan
     fftwf_plan mForwardFftPlan = nullptr;
 
-    // We'll store the frequency-domain data in a non-static member
     Eigen::MatrixXcf mSavedFFTs;
 };
 
