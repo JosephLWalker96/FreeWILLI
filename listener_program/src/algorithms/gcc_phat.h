@@ -3,7 +3,7 @@
 class GCC_PHAT
 {
    public:
-    GCC_PHAT(int paddedLength, int numChannels, int sampleRate);
+    GCC_PHAT(int paddedLength, int spectraLength, int numChannels, int sampleRate);
     ~GCC_PHAT();
 
     std::tuple<Eigen::VectorXf, Eigen::VectorXf> process(const Eigen::MatrixXcf& savedFfts);

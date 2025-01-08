@@ -33,12 +33,13 @@ class Pipeline
     std::vector<TimePoint> dataTimes;
 
     std::unique_ptr<const Firmware1240> mFirmwareConfig = nullptr;
-    std::unique_ptr<ITimeDomainDetector> mTimeDomainDetector = nullptr;
+    Eigen::MatrixXf mChannelData;
     std::unique_ptr<IFrequencyDomainStrategy> mFilter = nullptr;
+    std::unique_ptr<ITimeDomainDetector> mTimeDomainDetector = nullptr;
     std::unique_ptr<IFrequencyDomainDetector> mFrequencyDomainDetector = nullptr;
     std::unique_ptr<ONNXModel> mOnnxModel = nullptr;
     std::unique_ptr<Tracker> mTracker = nullptr;
-    Eigen::MatrixXf mChannelData;
+    GCC_PHAT mComputeTDOAs;
     void dataProcessor();
     void initializeOutputFiles(bool& previousTimeSet, TimePoint& previousTime);
     void obtainAndProcessByteData(bool& previousTimeSet, TimePoint& previousTime);

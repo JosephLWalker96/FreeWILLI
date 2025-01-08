@@ -18,15 +18,18 @@ Pipeline::Pipeline(OutputManager& outputManager, SharedDataManager& sharedDataMa
       mSpeedOfSound(pipelineVariables.speedOfSound),
       mReceiverPositionsPath(pipelineVariables.receiverPositionsPath),
       mFilter(IFrequencyDomainStrategyFactory::create(pipelineVariables.frequencyDomainStrategy,
-                                                      pipelineVariables.filterWeightsPath,
-                                                      mFirmwareConfig->CHANNEL_SIZE, mFirmwareConfig->NUM_CHAN)),
+                                                      pipelineVariables.filterWeightsPath, mChannelData,
+                                                      mFirmwareConfig->NUM_CHAN)),
       mTimeDomainDetector(ITimeDomainDetectorFactory::create(pipelineVariables.timeDomainDetector,
                                                              pipelineVariables.timeDomainThreshold)),
       mFrequencyDomainDetector(IFrequencyDomainDetectorFactory::create(pipelineVariables.frequencyDomainDetector,
                                                                        pipelineVariables.energyDetectionThreshold)),
       mTracker(ITracker::create(pipelineVariables)),
       mOnnxModel(IONNXModel::create(pipelineVariables)),
-      mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->NUM_CHAN, mFilter->getPaddedLength()))
+      mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->NUM_CHAN, mFirmwareConfig->CHANNEL_SIZE)),
+      mComputeTDOAs(mFilter->getPaddedLength(), mFilter->getFrequencyDomainData().rows(), mFirmwareConfig->NUM_CHAN,
+                    mFirmwareConfig->SAMPLE_RATE)
+
 {
 }
 
@@ -53,20 +56,16 @@ void Pipeline::process()
  */
 void Pipeline::dataProcessor()
 {
-    std::cout << "rows: " << mChannelData.cols() << std::endl;
-    mFilter->initialize(mChannelData);
     Eigen::MatrixXf hydrophonePositions = getHydrophoneRelativePositions(mReceiverPositionsPath);
     auto [precomputedP, basisMatrixU, rankOfHydrophoneMatrix] = hydrophoneMatrixDecomposition(hydrophonePositions);
 
     bool previousTimeSet = false;
     auto previousTime = TimePoint::min();
-
     dataBytes.resize(mFirmwareConfig->NUM_PACKS_DETECT);
 
     // call function once outside of the loop below to initialize files.
     initializeOutputFiles(previousTimeSet, previousTime);
 
-    GCC_PHAT mComputeTDOAs(mFilter->getPaddedLength(), mFirmwareConfig->NUM_CHAN, mFirmwareConfig->SAMPLE_RATE);
     while (!mSharedDataManager.errorOccurred)
     {
         obtainAndProcessByteData(previousTimeSet, previousTime);
@@ -83,8 +82,11 @@ void Pipeline::dataProcessor()
             continue;
         }
 
+        // std::cout << "apply addr channelData: " << mChannelData.data() << std::endl;
         mFilter->apply();
         Eigen::MatrixXcf savedFFTs = mFilter->getFrequencyDomainData();
+
+        // std::cout << "creat addr mSavedFFTs: " << savedFFTs.data() << std::endl;
         Eigen::MatrixXcf beforeFilter = mFilter->mBeforeFilter;
 
         if (!mFrequencyDomainDetector->detect(savedFFTs.col(0)))

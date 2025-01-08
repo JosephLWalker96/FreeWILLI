@@ -1,11 +1,11 @@
 #include "gcc_phat.h"
-GCC_PHAT::GCC_PHAT(int paddedLength, int numChannels, int sampleRate)
+GCC_PHAT::GCC_PHAT(int paddedLength, int spectraLength, int numChannels, int sampleRate)
     : mPaddedLength(paddedLength),
       mNumChannels(numChannels),
       mSampleRate(sampleRate),
       mNumTdoas(numChannels * (numChannels - 1) / 2),
       mMaxShift(paddedLength / 2),
-      mNormalizedCrossSpectra(Eigen::VectorXcf::Zero(paddedLength)),
+      mNormalizedCrossSpectra(Eigen::VectorXcf::Zero(spectraLength)),
       mCrossCorrBuffer(Eigen::VectorXf::Zero(paddedLength))
 {
     mInverseFftPlan =
@@ -26,6 +26,7 @@ std::tuple<Eigen::VectorXf, Eigen::VectorXf> GCC_PHAT::process(const Eigen::Matr
         for (int ch2 = ch1 + 1; ch2 < mNumChannels; ++ch2)
         {
             calculateNormalizedCrossSpectra(savedFfts.col(ch1), savedFfts.col(ch2));
+
             fftwf_execute(mInverseFftPlan);
             auto [tdoa, peak] = estimateTdoaAndPeak();
             tdoaEstimates(pairIndex) = tdoa;
@@ -46,8 +47,9 @@ void GCC_PHAT::calculateNormalizedCrossSpectra(const Eigen::VectorXcf& s1, const
     {
         throw std::runtime_error("Cross-spectrum contains invalid (inf/NaN) values.");
     }
-
-    mNormalizedCrossSpectra = crossSpectrum.array() / magnitudes.array();
+    assert(mNormalizedCrossSpectra.size() == crossSpectrum.size() &&
+           "Sizes of mNormalizedCrossSpectra and crossSpectrum do not match");
+    mNormalizedCrossSpectra.array() = crossSpectrum.array() / magnitudes.array();
 }
 
 std::tuple<float, float> GCC_PHAT::estimateTdoaAndPeak()
