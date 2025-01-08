@@ -1,33 +1,25 @@
 #pragma once
 #include "../pch.h"
-
 class GCC_PHAT
 {
-public:
+   public:
     GCC_PHAT(int paddedLength, int numChannels, int sampleRate);
-
     ~GCC_PHAT();
 
-    std::tuple<Eigen::VectorXf, Eigen::VectorXf> process(const Eigen::MatrixXcf &savedFfts);
+    std::tuple<Eigen::VectorXf, Eigen::VectorXf> process(const Eigen::MatrixXcf& savedFfts);
 
-private:
-    static void initialize(int paddedLength); // Helper to initialize static members
-
-    void calculateNormalizedCrossSpectra(const Eigen::VectorXcf &inputSignal1,
-                                         const Eigen::VectorXcf &inputSignal2);
-
+   private:
+    void calculateNormalizedCrossSpectra(const Eigen::VectorXcf& s1, const Eigen::VectorXcf& s2);
     std::tuple<float, float> estimateTdoaAndPeak();
 
-    fftwf_plan mInverseFftPlan;
     int mPaddedLength;
-
+    int mNumChannels;
+    int mSampleRate;
+    int mNumTdoas;
     int mMaxShift;
 
-    // Reusable buffers
-    static Eigen::VectorXcf mNormalizedCrossSpectra;
-    static Eigen::VectorXf mCrossCorrBuffer;
+    Eigen::VectorXcf mNormalizedCrossSpectra;
+    Eigen::VectorXf mCrossCorrBuffer;
 
-    int mNumChannels;
-    int mNumTdoas;
-    int mSampleRate;
+    fftwf_plan mInverseFftPlan;
 };
