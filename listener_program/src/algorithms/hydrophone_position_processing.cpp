@@ -102,11 +102,51 @@ Eigen::MatrixXf calculateRelativePositions(const Eigen::MatrixXf &positions)
  * @return Eigen::MatrixXf A matrix containing the relative positions between hydrophones.
  * @throws std::ios_base::failure If the file cannot be opened or read.
  */
+
+ /*
 Eigen::MatrixXf getHydrophoneRelativePositions(const std::string &filename)
 {
     Eigen::MatrixXf positions = loadHydrophonePositionsFromFile(filename);
 
     return calculateRelativePositions(positions);
+}
+*/
+
+//Function by Tanish
+Eigen::MatrixXf getHydrophoneRelativePositions()
+{
+    //Eigen::MatrixXf positions;
+    std::vector<std::vector<float>> tempPositions;
+    std::string line;
+
+    std::cout << "Taking in hydrophone positions (format: x y z per line, empty line to stop):\n";
+
+    while (std::getline(std::cin, line)) {
+        if (line.empty()) break;  // Stop reading when an empty line is entered
+
+        std::istringstream iss(line);
+        float x, y, z;
+        if (iss >> x >> y >> z) {
+            tempPositions.push_back({x, y, z});
+        } else {
+            std::cerr << "Invalid format. Expected: x y z\n";
+        }
+    }
+    // Convert std::vector to Eigen::MatrixXf
+    int rows = tempPositions.size();
+    Eigen::MatrixXf positions(rows, 3);
+    
+    for (int i = 0; i < rows; ++i) {
+        positions(i, 0) = tempPositions[i][0];
+        positions(i, 1) = tempPositions[i][1];
+        positions(i, 2) = tempPositions[i][2];
+    }
+
+    return positions;
+    
+    //Eigen::MatrixXf positions = loadHydrophonePositionsFromFile(filename);
+
+    //return calculateRelativePositions(positions);
 }
 
 /**
