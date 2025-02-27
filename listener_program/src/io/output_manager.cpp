@@ -1,11 +1,13 @@
 #include "output_manager.h"
 
-OutputManager::OutputManager(std::chrono::seconds programRuntime)
+OutputManager::OutputManager(std::chrono::seconds programRuntime, bool integrationTesting, const std::string& loggingDirectory)
     : mFlushInterval(std::chrono::seconds(30)),
       mBufferSizeThreshold(1000),
       mLastFlushTime(std::chrono::steady_clock::now()),
       mProgramRuntime(programRuntime),
-      mProgramStartTime(std::chrono::system_clock::now())
+      mProgramStartTime(std::chrono::system_clock::now()),
+      mIntegrationTesting(integrationTesting),
+      mLoggingDirectory(loggingDirectory)
 {
 }
 
@@ -21,7 +23,7 @@ OutputManager::OutputManager(std::chrono::seconds programRuntime)
  */
 void OutputManager::initializeOutputFile(const TimePoint& timestamp, const int numChannels)
 {
-    mDetectionOutputFile = "deployment_files/" + convertTimePointToString(timestamp);
+    mDetectionOutputFile = mLoggingDirectory + convertTimePointToString(timestamp);
     // initializeOutputFile(numChannels);
     std::cout << "Creating and writing to file: " << mDetectionOutputFile << std::endl;
 
@@ -109,9 +111,9 @@ void OutputManager::clearBuffer()
 /**
  * @brief Appends a single data row to the buffer.
  */
-void OutputManager::appendToBuffer(const float peakAmp, const float doaX, const float doaY, const float doaZ,
-                                   const Eigen::VectorXf& tdoaVector, const Eigen::VectorXf& xCorrAmps,
-                                   const TimePoint& peakTime)
+void OutputManager::appendToBuffer(
+    const float peakAmp, const float doaX, const float doaY, const float doaZ, const Eigen::VectorXf& tdoaVector,
+    const Eigen::VectorXf& xCorrAmps, const TimePoint& peakTime)
 {
     mBuffer.mAmps.push_back(peakAmp);
     mBuffer.mDoaX.push_back(doaX);
@@ -202,7 +204,7 @@ void OutputManager::flushBufferIfNecessary()
     auto timeSinceLastFlush =
         std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - mLastFlushTime);
 
-    if (bufferSize >= mBufferSizeThreshold || mFlushInterval <= timeSinceLastFlush)
+    if (mIntegrationTesting || bufferSize >= mBufferSizeThreshold || mFlushInterval <= timeSinceLastFlush)
     {
         write();
         clearBuffer();
@@ -214,8 +216,8 @@ void OutputManager::flushBufferIfNecessary()
  * standard error stream.
  *
  */
-void OutputManager::writeDataToCerr(std::span<TimePoint> errorTimestamps,
-                                    const std::vector<std::vector<uint8_t>>& erroredDataBytes)
+void OutputManager::writeDataToCerr(
+    std::span<TimePoint> errorTimestamps, const std::vector<std::vector<uint8_t>>& erroredDataBytes)
 {
     std::stringstream errorMessage;  // Compose message to dispatch
 
@@ -253,11 +255,15 @@ void OutputManager::writeDataToCerr(std::span<TimePoint> errorTimestamps,
  * @param label The label to save as the first column.
  * @param frequencyDomainData The frequency domain data (complex values).
  */
-void OutputManager::saveSpectraForTraining(const std::string& filename, int label,
-                                           const Eigen::VectorXcf& frequencyDomainData)
+void OutputManager::saveSpectraForTraining(
+    const std::string& filename, int label, const Eigen::VectorXcf& frequencyDomainData)
 {
     // Compute the magnitude of the spectra
     Eigen::VectorXf spectraToSave = frequencyDomainData.array().abs();
+
+    std::cout << "Saved spectra: " << std::endl;
+    std::cout << spectraToSave.tail(500).head(5).transpose() << std::endl;
+    std::cout << spectraToSave.tail(500).tail(5).transpose() << std::endl;
 
     // Check if the file exists
     std::ifstream fileCheck(filename);

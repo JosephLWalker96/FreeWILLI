@@ -42,7 +42,7 @@ def plot_log(path_doa, kalman_log, grouped_time_intervals):
     #color_mapping = {uid: colormap(i) for i, uid in enumerate(unique_ids)}
     color_mapping = {i: colormap(i) for i in np.arange(0,np.max(unique_filter_ids)+1,1)}
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 4), sharex=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(5, 4), sharex=True)
     
     # Plot predicted_ys
     #ax1.scatter(times, predicted_ys, c=[color_mapping[fid] for fid in filter_ids], alpha=0.1)
@@ -50,12 +50,14 @@ def plot_log(path_doa, kalman_log, grouped_time_intervals):
     ax1.set_ylim(-180, 200)
     ax1.set_ylabel("Azimuth [degrees]")
     ax1.grid(True)
+    ax1.set_xlim(-3, 64.0188)
     # Plot predicted_xs
     ax2.scatter(times, predicted_xs,s=6, c=[color_mapping[fid] for fid in filter_ids], alpha=0.1)
     ax2.set_ylim(30, 200)
     ax2.set_ylabel("Elevation [degrees]")
     ax2.set_xlabel("Time [minutes]")
     ax2.grid(True)
+    ax2.set_xlim(-3, 64.0188)
     
     # Shade regions specified by grouped_time_intervals
     normalized_intervals = [(interval[0] - times[0]) / 60 for interval in grouped_time_intervals]
@@ -65,7 +67,7 @@ def plot_log(path_doa, kalman_log, grouped_time_intervals):
     
     # Create a simplified legend
     legend_elements = [Line2D([0], [0], marker='o', color='w', markerfacecolor=color_mapping[uid], markersize=8, label=f"{uid}") for uid in unique_ids]
-    ax1.legend(handles=legend_elements, title="Track IDs", loc='upper right', bbox_to_anchor=(1.25, 1.1))
+    ax1.legend(handles=legend_elements, title="Track IDs", loc='upper right', bbox_to_anchor=(1.35, 1.1))
     
     plt.tight_layout()
 

@@ -1,6 +1,6 @@
 #pragma once
-#include "../main_utils.h"
 #include "../pch.h"
+#include "../utils.h"
 
 class ONNXModel
 {
@@ -30,8 +30,8 @@ class IONNXModel
     {
         if (!pipelineVariables.onnxModelPath.empty())
         {
-            return std::make_unique<ONNXModel>(pipelineVariables.onnxModelPath,
-                                               pipelineVariables.onnxModelNormalizationPath);
+            return std::make_unique<ONNXModel>(
+                pipelineVariables.onnxModelPath, pipelineVariables.onnxModelNormalizationPath);
         }
         return nullptr;
     }

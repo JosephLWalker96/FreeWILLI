@@ -1,4 +1,6 @@
 {
+    "IntegrationTesting": false,
+    "LoggingDirectory": "deployment_files/",
     "IPAddress": "self",
     "Port": 1045,
     "SpeedOfSound": 1482.965459,

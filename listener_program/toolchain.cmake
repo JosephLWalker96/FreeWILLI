@@ -9,7 +9,15 @@ set(CMAKE_C_COMPILER /usr/bin/aarch64-linux-gnu-gcc)
 set(CMAKE_CXX_COMPILER /usr/bin/aarch64-linux-gnu-g++)
 
 # Specify the sysroot
-set(CMAKE_SYSROOT /home/harp/rpi-sysroot)
+# Detect if running inside Docker
+if (EXISTS "/.dockerenv")
+    message(STATUS "Running inside Docker: Setting sysroot to /rpi-sysroot")
+    set(CMAKE_SYSROOT /rpi-sysroot)
+else()
+    message(STATUS "Running on host: Setting sysroot to /home/harp/rpi-sysroot")
+    set(CMAKE_SYSROOT /home/harp/rpi-sysroot)
+endif()
+#set(CMAKE_SYSROOT /home/harp/rpi-sysroot)
 
 # Set the sysroot and root path
 set(CMAKE_FIND_ROOT_PATH ${CMAKE_SYSROOT})

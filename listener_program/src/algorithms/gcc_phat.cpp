@@ -8,9 +8,9 @@ GCC_PHAT::GCC_PHAT(int paddedLength, int spectraLength, int numChannels, int sam
       mNormalizedCrossSpectra(Eigen::VectorXcf::Zero(spectraLength)),
       mCrossCorrBuffer(Eigen::VectorXf::Zero(paddedLength))
 {
-    mInverseFftPlan =
-        fftwf_plan_dft_c2r_1d(mPaddedLength, reinterpret_cast<fftwf_complex*>(mNormalizedCrossSpectra.data()),
-                              mCrossCorrBuffer.data(), FFTW_ESTIMATE);
+    mInverseFftPlan = fftwf_plan_dft_c2r_1d(
+        mPaddedLength, reinterpret_cast<fftwf_complex*>(mNormalizedCrossSpectra.data()), mCrossCorrBuffer.data(),
+        FFTW_ESTIMATE);
 }
 
 GCC_PHAT::~GCC_PHAT() { fftwf_destroy_plan(mInverseFftPlan); }
@@ -41,17 +41,18 @@ std::tuple<Eigen::VectorXf, Eigen::VectorXf> GCC_PHAT::process(const Eigen::Matr
 void GCC_PHAT::calculateNormalizedCrossSpectra(const Eigen::VectorXcf& s1, const Eigen::VectorXcf& s2)
 {
     Eigen::VectorXcf crossSpectrum = s1.array() * s2.conjugate().array();
-    /*Eigen::VectorXf magnitudes = crossSpectrum.cwiseAbs().unaryExpr([](float x) { return (x == 0.0f) ? 1.0f : x; });
+    Eigen::VectorXf magnitudes = crossSpectrum.cwiseAbs().unaryExpr([](float x) { return (x == 0.0f) ? 1.0f : x; });
 
     if (!magnitudes.allFinite())
     {
         throw std::runtime_error("Cross-spectrum contains invalid (inf/NaN) values.");
     }
-    assert(mNormalizedCrossSpectra.size() == crossSpectrum.size() &&
-           "Sizes of mNormalizedCrossSpectra and crossSpectrum do not match");
-    */
-    // mNormalizedCrossSpectra.array() = crossSpectrum.array() / magnitudes.array();
-    mNormalizedCrossSpectra.array() = crossSpectrum.array();
+    assert(
+        mNormalizedCrossSpectra.size() == crossSpectrum.size() &&
+        "Sizes of mNormalizedCrossSpectra and crossSpectrum do not match");
+
+    mNormalizedCrossSpectra.array() = crossSpectrum.array() / magnitudes.array();
+    // mNormalizedCrossSpectra.array() = crossSpectrum.array();
 }
 
 std::tuple<float, float> GCC_PHAT::estimateTdoaAndPeak()

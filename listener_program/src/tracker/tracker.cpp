@@ -4,19 +4,22 @@
 #include "tracker_utils.h"
 
 // Tracker class implementation
-Tracker::Tracker(double eps, int minSamples, int missedUpdateThreshold, const std::string& outputFile,
-                 std::chrono::seconds clusteringFrequency, std::chrono::seconds clusteringWindow)
+Tracker::Tracker(
+    double eps, int minSamples, int missedUpdateThreshold, const std::string& outputFile,
+    const std::string& outputDirectory, std::chrono::seconds clusteringFrequency, std::chrono::seconds clusteringWindow)
     : mEps(eps),
       mMinSamples(minSamples),
       mMissedUpdateThreshold(missedUpdateThreshold),
       mGlobalCounter(0),
       mNextLabel(0),
       mOutputfile(outputFile),
+      mOutputDirectory(outputDirectory),
       mClusterFrequency(clusteringFrequency),
       mClusterWindow(clusteringWindow),
       mNoClusterWindow(mClusterFrequency - mClusterWindow)
 {
     std::cout << "Initializing tracker: \n";
+    std::cout << "    output directory: " << mOutputDirectory << std::endl;
     std::cout << "    clustering frequency: " << mClusterFrequency.count() << std::endl;
     std::cout << "    clustering window: " << mClusterWindow.count() << std::endl;
     std::cout << "    no clustering window: " << mNoClusterWindow.count() << std::endl;
@@ -72,8 +75,8 @@ void Tracker::destroyExpiredFilters()
  * @param labels Vector of cluster labels for each data point.
  * @return A vector of 3D cluster centroids.
  */
-auto Tracker::getClusterCentroids(const std::vector<point3>& data,
-                                  const std::vector<size_t>& labels) -> std::vector<Eigen::Vector3f>
+auto Tracker::getClusterCentroids(const std::vector<point3>& data, const std::vector<size_t>& labels)
+    -> std::vector<Eigen::Vector3f>
 {
     std::vector<Eigen::Vector3f> clusterCenters;
 
@@ -135,8 +138,8 @@ void Tracker::incrementMissedCounter(const std::set<int>& associatedFilters)
  * @param unassignedClusters Vector of cluster indices that were not assigned to any filter.
  * @param clusterCenters Vector of cluster centers corresponding to the clusters.
  */
-void Tracker::initializeFiltersForClusters(const std::vector<int>& unassignedClusters,
-                                           const std::vector<Eigen::Vector3f>& clusterCenters)
+void Tracker::initializeFiltersForClusters(
+    const std::vector<int>& unassignedClusters, const std::vector<Eigen::Vector3f>& clusterCenters)
 {
     for (int cluster : unassignedClusters)
     {
@@ -271,8 +274,9 @@ void Tracker::filterByIndices(std::vector<T>& vector, const std::vector<int>& in
     // Retain elements specified by indicesToKeep
     std::vector<T> filtered;
     filtered.reserve(indicesToKeep.size());
-    std::transform(indicesToKeep.begin(), indicesToKeep.end(), std::back_inserter(filtered),
-                   [&vector](int ind) { return vector[ind]; });
+    std::transform(
+        indicesToKeep.begin(), indicesToKeep.end(), std::back_inserter(filtered),
+        [&vector](int ind) { return vector[ind]; });
 
     // Replace the original vector with the filtered one
     vector.swap(filtered);
@@ -396,5 +400,5 @@ void Tracker::updateTrackerBuffer(const Eigen::VectorXf& directionOfArrival)
 
 void Tracker::initializeOutputFile(const TimePoint& timestamp)
 {
-    mOutputfile = convertTimePointToString(timestamp) + "_tracker";
+    mOutputfile = mOutputDirectory + convertTimePointToString(timestamp) + "_tracker";
 }

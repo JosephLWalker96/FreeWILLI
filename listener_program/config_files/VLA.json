@@ -1,4 +1,6 @@
 {
+    "IntegrationTesting": false,
+    "LoggingDirectory": "deployment_files/",
     "IPAddress": "self",
     "Port": 1045,
     "Firmware1240_with_IMU": false,

@@ -1,8 +1,17 @@
 Presentations/
+
+# Ignore everything inside simulator_data/
+simulator_program/simulator_data/*
+
+# But keep the integration_test/ directory and its contents
+!simulator_program/simulator_data/integration_test/
+!simulator_program/simulator_data/integration_test/**  # Track all subdirectories and files
+
+
+supplemental/crosscomp/
 ML_models/*
 !ML_models/model_quantized_static.onnx
 Private/
-simulator_data/
 __pycache__/
 *.o
 nohup.out

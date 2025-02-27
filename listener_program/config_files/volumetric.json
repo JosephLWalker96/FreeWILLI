@@ -1,10 +1,12 @@
 {
+    "IntegrationTesting": false,
+    "LoggingDirectory": "deployment_files/",
     "IPAddress": "self",
     "Port": 1045,
     "Firmware1240_with_IMU": false,
     "SpeedOfSound": 1482.965459,
-    "Time_Domain_Detector": "None",
-    "Time_Domain_Threshold": 1,
+    "Time_Domain_Detector": "PeakAmplitude",
+    "Time_Domain_Threshold": 50,
     "Frequency_Domain_Strategy": "Filter",
     "Frequency_Domain_Detector": "AverageEnergy",
     "Frequency_Domain_Threshold": 100,
@@ -13,6 +15,6 @@
     "Enable_Tracking": true,
     "Cluster_Frequency_In_Seconds": 60,
     "Cluster_Window_In_Seconds": 30,
-    "ONNX_model_path": "",
-    "ONNX_model_normalization": "../../TestOnnx/scaler_params.json"
+    "ONNX_model_path": "ML_models/model_quantized_static103.onnx",
+    "ONNX_model_normalization": "ML_models/scaler_params103.json"
 }

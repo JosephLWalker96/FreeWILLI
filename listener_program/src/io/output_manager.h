@@ -23,7 +23,7 @@ struct BufferStruct
 class OutputManager
 {
    public:
-    OutputManager(std::chrono::seconds programRuntime);
+    OutputManager(std::chrono::seconds programRuntimei, bool integrationTesting, const std::string& loggingDirectory);
 
     void appendToBuffer(const float peakAmp, const float doaX, const float doaY, const float doaZ,
                         const Eigen::VectorXf& tdoaVector, const Eigen::VectorXf& xCorrAmps, const TimePoint& peakTime);
@@ -53,4 +53,6 @@ class OutputManager
 
     std::chrono::seconds mProgramRuntime;
     TimePoint mProgramStartTime;
+    bool mIntegrationTesting;
+    std::string mLoggingDirectory;
 };

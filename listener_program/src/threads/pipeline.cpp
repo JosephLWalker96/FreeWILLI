@@ -1,7 +1,7 @@
 #include "pipeline.h"
 
-#include "../main_utils.h"
 #include "../pch.h"
+#include "../utils.h"
 
 /**
  * @brief Constructs a Pipeline object and initializes necessary components.
@@ -98,6 +98,31 @@ void Pipeline::dataProcessor()
             continue;
         }
 
+        if (mOnnxModel)
+        {
+            // std::vector<float> input_tensor_values = getExampleClick();
+            Eigen::VectorXf spectraToInference = beforeFilter.array().abs();
+
+            // std::cout << "Inference spectra: " << std::endl;
+            // std::cout << spectraToInference.tail(500).head(5).transpose() << std::endl;
+            // std::cout << spectraToInference.tail(500).tail(5).transpose() << std::endl;
+
+            Eigen::VectorXf spectraToInferenceFinal = spectraToInference.tail(500);
+            std::vector<float> spectraVector(
+                spectraToInferenceFinal.data(), spectraToInferenceFinal.data() + spectraToInferenceFinal.size());
+            std::vector<float> output = mOnnxModel->runInference(spectraVector);
+            // std::cout << "Classification: \n";
+            // for (const auto& val : output)
+            //{
+            //     std::cout << val << " ";
+            // }
+            // std::cout << std::endl;
+            if (output[1] < output[0])
+            {
+                std::cout << "Noise detected: \n";
+                continue;
+            }
+        }
         mSharedDataManager.detectionCounter++;
         auto beforeGCC = std::chrono::steady_clock::now();
         auto tdoasAndXCorrAmps = mComputeTDOAs.process(savedFFTs);
@@ -122,14 +147,8 @@ void Pipeline::dataProcessor()
             if (mTracker->mIsTrackerInitialized)
             {
                 label = mTracker->updateKalmanFiltersContinuous(DOAs, dataTimes[0]);
-                mOutputManager.saveSpectraForTraining("training_data_fill.csv", label, beforeFilter);
+                // mOutputManager.saveSpectraForTraining("training_data_fill.csv", label, beforeFilter);
             }
-        }
-
-        if (mOnnxModel)
-        {
-            std::vector<float> input_tensor_values = getExampleClick();
-            mOnnxModel->runInference(input_tensor_values);
         }
     }
 }
