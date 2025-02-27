@@ -106,9 +106,24 @@ Eigen::MatrixXf calculateRelativePositions(const Eigen::MatrixXf& positions)
 
 Eigen::MatrixXf getHydrophoneRelativePositions(const std::string& filename)
 {
-    Eigen::MatrixXf positions = loadHydrophonePositionsFromFile(filename);
+    // Eigen::MatrixXf positions = loadHydrophonePositionsFromFile(filename);
 
-    return calculateRelativePositions(positions);
+    Eigen::MatrixXf relativePositions(6, 3);  // 6 rows, 3 columns
+    // VLA
+    /*
+    relativePositions << 0, 0, -1,
+                 0, 0, -2,
+                 0, 0, -3,
+                 0, 0, -1,
+                 0, 0, -2,
+                 0, 0, -1;
+
+    */
+    relativePositions << -0.491908, 0.352788, -0.82416, -0.142433, -0.586049, -0.835787, 0.482502, 0.182323, -0.876019,
+        0.349476, -0.938837, -0.0116273, 0.974411, -0.170464, -0.0518591, 0.624935, 0.768372, -0.0402318;
+
+    // return calculateRelativePositions(positions);
+    return relativePositions;
 }
 
 /**

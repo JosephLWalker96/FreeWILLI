@@ -7,6 +7,8 @@
  */
 auto parseJsonConfig(const std::string& jsonFilePath) -> std::tuple<SocketVariables, PipelineVariables>
 {
+    // We do not parse JSON file for microcontroller implementation
+    /*
     std::ifstream inputFile(jsonFilePath);
     if (!inputFile.is_open())
     {
@@ -15,46 +17,49 @@ auto parseJsonConfig(const std::string& jsonFilePath) -> std::tuple<SocketVariab
 
     nlohmann::json jsonConfig;
     inputFile >> jsonConfig;
+    */
 
     SocketVariables socketVariables;
     PipelineVariables pipelineVariables;
 
     // Configure SocketVariables parameters
-    //socketVariables.udpIp = jsonConfig.at("IPAddress").get<std::string>();
-    socketVariables.udpIp = "self";//Tanish
-    //socketVariables.udpPort = jsonConfig.at("Port").get<int>();
-    socketVariables.udpPort = 1045;//Tanish
+    // socketVariables.udpIp = jsonConfig.at("IPAddress").get<std::string>();
+    socketVariables.udpIp = "self";  // Tanish
+    // socketVariables.udpPort = jsonConfig.at("Port").get<int>();
+    socketVariables.udpPort = 1045;  // Tanish
 
     // Configure PipelineVariables parameters
-    //pipelineVariables.useImu = jsonConfig.at("Firmware1240_with_IMU").get<bool>();
-    pipelineVariables.useImu = false;//Tanish
-    //pipelineVariables.speedOfSound = jsonConfig.at("SpeedOfSound").get<float>();
-    pipelineVariables.speedOfSound = 1482.965459;//Tanish
-    //pipelineVariables.timeDomainDetector = jsonConfig.at("Time_Domain_Detector").get<std::string>();
-     pipelineVariables.timeDomainDetector = "None";//Tanish
-    //pipelineVariables.timeDomainThreshold = jsonConfig.at("Time_Domain_Threshold").get<float>();
-    pipelineVariables.timeDomainThreshold= 1;//Tanish
-    //pipelineVariables.frequencyDomainStrategy = jsonConfig.at("Frequency_Domain_Strategy").get<std::string>();
-     pipelineVariables.frequencyDomainStrategy = "Filter";//Tanish
-    //pipelineVariables.frequencyDomainDetector = jsonConfig.at("Frequency_Domain_Detector").get<std::string>();
-    pipelineVariables.frequencyDomainDetector = "AverageEnergy";//Tanish
-    //pipelineVariables.energyDetectionThreshold = jsonConfig.at("Frequency_Domain_Threshold").get<float>();
-     pipelineVariables.energyDetectionThreshold = 100;//Tanish
-    //pipelineVariables.filterWeightsPath = jsonConfig.at("FilterWeights").get<std::string>();
-      pipelineVariables.filterWeightsPath = "filters/highpass_taps@101_cutoff@20k_window@hamming_fs@100k.txt";//Tanish
-    //pipelineVariables.receiverPositionsPath = jsonConfig.at("ReceiverPositions").get<std::string>();
-    pipelineVariables.receiverPositionsPath = "receiver_pos/SOCAL_H_72_HS_harp4chPar_recPos.txt";//Tanish
-    //pipelineVariables.enableTracking = jsonConfig.at("Enable_Tracking").get<bool>();
-    pipelineVariables.enableTracking = true;//Tanish
-    //pipelineVariables.clusterFrequencyInSeconds = std::chrono::seconds(jsonConfig.at("Cluster_Frequency_In_Seconds").get<int>());
-        pipelineVariables.clusterFrequencyInSeconds = std::chrono::seconds(60);//Tanish
-    //pipelineVariables.clusterWindowInSeconds = std::chrono::seconds(jsonConfig.at("Cluster_Window_In_Seconds").get<int>());
-           pipelineVariables.clusterWindowInSeconds = std::chrono::seconds(30);//Tanish
-    //pipelineVariables.onnxModelPath = jsonConfig.at("ONNX_model_path").get<std::string>();
-    pipelineVariables.onnxModelPath = "";//Tanish
+    // pipelineVariables.useImu = jsonConfig.at("Firmware1240_with_IMU").get<bool>();
+    pipelineVariables.useImu = false;  // Tanish
+    // pipelineVariables.speedOfSound = jsonConfig.at("SpeedOfSound").get<float>();
+    pipelineVariables.speedOfSound = 1482.965459;  // Tanish
+    // pipelineVariables.timeDomainDetector = jsonConfig.at("Time_Domain_Detector").get<std::string>();
+    pipelineVariables.timeDomainDetector = "None";  // Tanish
+    // pipelineVariables.timeDomainThreshold = jsonConfig.at("Time_Domain_Threshold").get<float>();
+    pipelineVariables.timeDomainThreshold = 1;  // Tanish
+    // pipelineVariables.frequencyDomainStrategy = jsonConfig.at("Frequency_Domain_Strategy").get<std::string>();
+    pipelineVariables.frequencyDomainStrategy = "Filter";  // Tanish
+    // pipelineVariables.frequencyDomainDetector = jsonConfig.at("Frequency_Domain_Detector").get<std::string>();
+    pipelineVariables.frequencyDomainDetector = "AverageEnergy";  // Tanish
+    // pipelineVariables.energyDetectionThreshold = jsonConfig.at("Frequency_Domain_Threshold").get<float>();
+    pipelineVariables.energyDetectionThreshold = 100;  // Tanish
+    // pipelineVariables.filterWeightsPath = jsonConfig.at("FilterWeights").get<std::string>();
+    pipelineVariables.filterWeightsPath = "filters/highpass_taps@101_cutoff@20k_window@hamming_fs@100k.txt";  // Tanish
+    // pipelineVariables.receiverPositionsPath = jsonConfig.at("ReceiverPositions").get<std::string>();
+    pipelineVariables.receiverPositionsPath = "receiver_pos/SOCAL_H_72_HS_harp4chPar_recPos.txt";  // Tanish
+    // pipelineVariables.enableTracking = jsonConfig.at("Enable_Tracking").get<bool>();
+    pipelineVariables.enableTracking = true;  // Tanish
+    // pipelineVariables.clusterFrequencyInSeconds =
+    // std::chrono::seconds(jsonConfig.at("Cluster_Frequency_In_Seconds").get<int>());
+    pipelineVariables.clusterFrequencyInSeconds = std::chrono::seconds(60);  // Tanish
+    // pipelineVariables.clusterWindowInSeconds =
+    // std::chrono::seconds(jsonConfig.at("Cluster_Window_In_Seconds").get<int>());
+    pipelineVariables.clusterWindowInSeconds = std::chrono::seconds(30);  // Tanish
+    // pipelineVariables.onnxModelPath = jsonConfig.at("ONNX_model_path").get<std::string>();
+    pipelineVariables.onnxModelPath = "";  // Tanish
     //    pipelineVariables.onnxModelNormalizationPath = jsonConfig.at("ONNX_model_normalization").get<std::string>();
 
-    pipelineVariables.onnxModelNormalizationPath ="../../TestOnnx/scaler_params.json" ;//Tanish
+    pipelineVariables.onnxModelNormalizationPath = "../../TestOnnx/scaler_params.json";  // Tanish
 
     return std::make_tuple(socketVariables, pipelineVariables);
 }
