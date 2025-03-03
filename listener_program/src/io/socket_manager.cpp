@@ -1,11 +1,6 @@
 #include "socket_manager.h"
-#include "../main_utils.h"
-#include <stdexcept>
-#include <iostream>
-#include <cstring>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <unistd.h>
+
+#include "../utils.h"
 
 /**
  * @brief Constructs a new SocketManager and initializes the UDP socket.
@@ -17,12 +12,11 @@ SocketManager::SocketManager(const SocketVariables& socketVariables)
       mUdpIp(socketVariables.udpIp),
       mDataBytes()
 {
-
     if (mUdpIp == "self")
     {
         mUdpIp = "127.0.0.1";
     }
-    
+
     if (mDatagramSocket == -1)
     {
         throw std::runtime_error("Error creating socket\n");
@@ -59,18 +53,19 @@ void SocketManager::restartListener()
     if (mUdpIp == "192.168.100.220")
     {
         std::cout << "Sending wake-up data to IP address of data logger\n";
-        const char *message1 = "Open";
+        const char* message1 = "Open";
         unsigned char message2[96] = {0};
         unsigned char fullMessage[100];
         std::memcpy(fullMessage, message1, 4);
         std::memcpy(fullMessage + 4, message2, 96);
-        if (sendto(mDatagramSocket, fullMessage, sizeof(fullMessage), 0,
-                   (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
+        if (sendto(
+                mDatagramSocket, fullMessage, sizeof(fullMessage), 0, (struct sockaddr*)&serverAddr,
+                sizeof(serverAddr)) < 0)
         {
             throw std::runtime_error("Error sending wake-up data packet to data logger\n");
         }
     }
-    else if (bind(mDatagramSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1)
+    else if (bind(mDatagramSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1)
     {
         throw std::runtime_error("Error binding socket\n");
     }
@@ -86,11 +81,13 @@ void SocketManager::restartListener()
  * @param addrlen Pointer to the size of the addr structure.
  * @return Number of bytes received, or -1 on error.
  */
-int SocketManager::receiveData(int flags, struct sockaddr *addr, socklen_t *addrlen)
+int SocketManager::receiveData(int flags, struct sockaddr* addr, socklen_t* addrlen)
 {
     int bytesReceived = recvfrom(mDatagramSocket, mDataBytes.data(), mDataBytes.size(), flags, addr, addrlen);
-    if (bytesReceived > 0) {
-        mDataBytes.assign(static_cast<uint8_t*>(mDataBytes.data()), static_cast<uint8_t*>(mDataBytes.data()) + bytesReceived);
+    if (bytesReceived > 0)
+    {
+        mDataBytes.assign(
+            static_cast<uint8_t*>(mDataBytes.data()), static_cast<uint8_t*>(mDataBytes.data()) + bytesReceived);
     }
     return bytesReceived;
 }

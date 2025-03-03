@@ -1,9 +1,9 @@
 #include "firmware_1240.h"
 #include "io/socket_manager.h"
-#include "main_utils.h"
 #include "shared_data_manager.h"
 #include "threads/listener_thread.h"
 #include "threads/pipeline.h"
+#include "utils.h"
 
 int main(int argc, char* argv[])
 {
@@ -18,7 +18,8 @@ int main(int argc, char* argv[])
         socketManager->restartListener();
 
         SharedDataManager sharedDataManager;
-        OutputManager outputManager(std::chrono::seconds(std::stoi(argv[2])), pipelineVars.integrationTesting, pipelineVars.loggingDirectory);
+        OutputManager outputManager(
+            std::chrono::seconds(std::stoi(argv[2])), pipelineVars.integrationTesting, pipelineVars.loggingDirectory);
 
         Pipeline pipeline(outputManager, sharedDataManager, pipelineVars);
 

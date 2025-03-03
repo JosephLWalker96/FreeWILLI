@@ -1,4 +1,5 @@
 #include "hydrophone_position_processing.h"
+
 #include "linear_algebra_utils.h"
 
 /**
@@ -10,13 +11,13 @@
  * @return Eigen::MatrixXf A matrix containing the hydrophone positions.
  * @throws std::ios_base::failure If the file cannot be opened or read.
  */
-Eigen::MatrixXf loadHydrophonePositionsFromFile(const std::string &filename)
+Eigen::MatrixXf loadHydrophonePositionsFromFile(const std::string& filename)
 {
     std::ifstream inputFile(filename);
 
     if (!inputFile.is_open())
     {
-        std::stringstream msg; // compose message to dispatch
+        std::stringstream msg;  // compose message to dispatch
         msg << "Error: Unable to open hydrophone position file '" << filename << "'." << std::endl;
         throw std::ios_base::failure(msg.str());
     }
@@ -36,11 +37,11 @@ Eigen::MatrixXf loadHydrophonePositionsFromFile(const std::string &filename)
         std::vector<float> rowData;
         while (std::getline(ss, token, ','))
         {
-            rowData.push_back(std::stof(token)); // Convert token to double
+            rowData.push_back(std::stof(token));  // Convert token to double
         }
         if (numCols == 0)
         {
-            numCols = rowData.size(); // Set number of columns based on the first row
+            numCols = rowData.size();  // Set number of columns based on the first row
         }
         tempPositions.push_back(rowData);
         numRows++;
@@ -68,7 +69,7 @@ Eigen::MatrixXf loadHydrophonePositionsFromFile(const std::string &filename)
  * @param positions An Eigen matrix containing the absolute positions of hydrophones.
  * @return Eigen::MatrixXf A matrix containing the relative positions between hydrophones.
  */
-Eigen::MatrixXf calculateRelativePositions(const Eigen::MatrixXf &positions)
+Eigen::MatrixXf calculateRelativePositions(const Eigen::MatrixXf& positions)
 {
     int numRows = positions.rows();
     int numCols = positions.cols();
@@ -102,11 +103,27 @@ Eigen::MatrixXf calculateRelativePositions(const Eigen::MatrixXf &positions)
  * @return Eigen::MatrixXf A matrix containing the relative positions between hydrophones.
  * @throws std::ios_base::failure If the file cannot be opened or read.
  */
-Eigen::MatrixXf getHydrophoneRelativePositions(const std::string &filename)
-{
-    Eigen::MatrixXf positions = loadHydrophonePositionsFromFile(filename);
 
-    return calculateRelativePositions(positions);
+Eigen::MatrixXf getHydrophoneRelativePositions(const std::string& filename)
+{
+    // Eigen::MatrixXf positions = loadHydrophonePositionsFromFile(filename);
+
+    Eigen::MatrixXf relativePositions(6, 3);  // 6 rows, 3 columns
+    // VLA
+    /*
+    relativePositions << 0, 0, -1,
+                 0, 0, -2,
+                 0, 0, -3,
+                 0, 0, -1,
+                 0, 0, -2,
+                 0, 0, -1;
+
+    */
+    relativePositions << -0.491908, 0.352788, -0.82416, -0.142433, -0.586049, -0.835787, 0.482502, 0.182323, -0.876019,
+        0.349476, -0.938837, -0.0116273, 0.974411, -0.170464, -0.0518591, 0.624935, 0.768372, -0.0402318;
+
+    // return calculateRelativePositions(positions);
+    return relativePositions;
 }
 
 /**
@@ -117,7 +134,8 @@ Eigen::MatrixXf getHydrophoneRelativePositions(const std::string &filename)
  * @param basisMatrixU Reference to a matrix for storing the U matrix from SVD decomposition.
  * @param rankOfHydrophoneMatrix Reference to an integer for storing the rank of the hydrophone position matrix.
  */
-auto hydrophoneMatrixDecomposition(const Eigen::MatrixXf& hydrophonePositions) -> std::tuple<Eigen::MatrixXf, Eigen::MatrixXf, int>
+auto hydrophoneMatrixDecomposition(const Eigen::MatrixXf& hydrophonePositions)
+    -> std::tuple<Eigen::MatrixXf, Eigen::MatrixXf, int>
 {
     // Compute SVD and rank
     auto svdDecomposition = computeSvd(hydrophonePositions);

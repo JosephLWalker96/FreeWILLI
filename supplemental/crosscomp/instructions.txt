@@ -1,0 +1,17 @@
+docker build -t josephlwalker96/cross-compiler .
+docker push josephlwalker96/cross-compiler:latest
+
+docker pull josephlwalker96/cross-compiler:latest
+
+
+docker run --rm -it -v $(pwd):/app josephlwalker96/cross-compiler:latest
+
+Compile with:
+cmake -DCMAKE_TOOLCHAIN_FILE=../toolchain.cmake ..
+...
+
+
+copy binary from container
+docker ps
+docker cp CONTAINER_ID:/app/listener_program/bin/ListenX ~/Desktop/
+docker cp CONTAINER_ID:/app/listener_program/bin/UnitTestsX ~/Desktop/
