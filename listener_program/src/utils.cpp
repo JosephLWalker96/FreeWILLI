@@ -5,7 +5,7 @@
 /**
  * @brief Parses the JSON configuration file to initialize socket and pipeline variables.
  */
-auto parseJsonConfig(const std::string& jsonFilePath) -> std::tuple<SocketVariables, PipelineVariables>
+auto parseJsonConfig() -> std::tuple<SocketVariables, PipelineVariables>
 {
     // We do not parse JSON file for microcontroller implementation
     /*

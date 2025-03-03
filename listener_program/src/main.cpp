@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
 {
     printMode();
 
-    auto [socketVariables, pipelineVars] = parseJsonConfig(std::string(argv[1]));
+    auto [socketVariables, pipelineVars] = parseJsonConfig();
 
     std::unique_ptr<ISocketManager> socketManager = std::make_unique<SocketManager>(socketVariables);
 
@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 
         SharedDataManager sharedDataManager;
         OutputManager outputManager(
-            std::chrono::seconds(std::stoi(argv[2])), pipelineVars.integrationTesting, pipelineVars.loggingDirectory);
+            std::chrono::seconds(5000), pipelineVars.integrationTesting, pipelineVars.loggingDirectory);
 
         Pipeline pipeline(outputManager, sharedDataManager, pipelineVars);
 

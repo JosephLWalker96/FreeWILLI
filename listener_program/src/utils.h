@@ -27,7 +27,7 @@ struct SocketVariables
     int udpPort = -1;
 };
 
-auto parseJsonConfig(const std::string& jsonFilePath) -> std::tuple<SocketVariables, PipelineVariables>;
+auto parseJsonConfig() -> std::tuple<SocketVariables, PipelineVariables>;
 
 void printMode();
 
