@@ -25,7 +25,7 @@ Pipeline::Pipeline(
       mFrequencyDomainDetector(IFrequencyDomainDetectorFactory::create(
           pipelineVariables.frequencyDomainDetector, pipelineVariables.energyDetectionThreshold)),
       mTracker(ITracker::create(pipelineVariables)),
-      mOnnxModel(IONNXModel::create(pipelineVariables)),
+      // mOnnxModel(IONNXModel::create(pipelineVariables)),
       mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->NUM_CHAN, mFirmwareConfig->CHANNEL_SIZE)),
       mComputeTDOAs(
           mFilter->getPaddedLength(), mFilter->getFrequencyDomainData().rows(), mFirmwareConfig->NUM_CHAN,
@@ -98,6 +98,7 @@ void Pipeline::dataProcessor()
             continue;
         }
 
+        /*
         if (mOnnxModel)
         {
             // std::vector<float> input_tensor_values = getExampleClick();
@@ -123,6 +124,7 @@ void Pipeline::dataProcessor()
                 continue;
             }
         }
+        */
         mSharedDataManager.detectionCounter++;
         auto beforeGCC = std::chrono::steady_clock::now();
         auto tdoasAndXCorrAmps = mComputeTDOAs.process(savedFFTs);
