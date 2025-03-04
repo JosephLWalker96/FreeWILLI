@@ -34,9 +34,12 @@ auto parseJsonConfig() -> std::tuple<SocketVariables, PipelineVariables>
     // pipelineVariables.speedOfSound = jsonConfig.at("SpeedOfSound").get<float>();
     pipelineVariables.speedOfSound = 1482.965459;  // Tanish
     // pipelineVariables.timeDomainDetector = jsonConfig.at("Time_Domain_Detector").get<std::string>();
-    pipelineVariables.timeDomainDetector = "None";  // Tanish
+    pipelineVariables.timeDomainDetector = "PeakAmplitude";  // Tanish
     // pipelineVariables.timeDomainThreshold = jsonConfig.at("Time_Domain_Threshold").get<float>();
-    pipelineVariables.timeDomainThreshold = 1;  // Tanish
+    pipelineVariables.timeDomainThreshold = 50;  // Tanish
+
+    // Variables defined bellow are not used
+
     // pipelineVariables.frequencyDomainStrategy = jsonConfig.at("Frequency_Domain_Strategy").get<std::string>();
     pipelineVariables.frequencyDomainStrategy = "Filter";  // Tanish
     // pipelineVariables.frequencyDomainDetector = jsonConfig.at("Frequency_Domain_Detector").get<std::string>();
@@ -48,7 +51,7 @@ auto parseJsonConfig() -> std::tuple<SocketVariables, PipelineVariables>
     // pipelineVariables.receiverPositionsPath = jsonConfig.at("ReceiverPositions").get<std::string>();
     pipelineVariables.receiverPositionsPath = "receiver_pos/SOCAL_H_72_HS_harp4chPar_recPos.txt";  // Tanish
     // pipelineVariables.enableTracking = jsonConfig.at("Enable_Tracking").get<bool>();
-    pipelineVariables.enableTracking = true;  // Tanish
+    pipelineVariables.enableTracking = false;  // Tanish
     // pipelineVariables.clusterFrequencyInSeconds =
     // std::chrono::seconds(jsonConfig.at("Cluster_Frequency_In_Seconds").get<int>());
     pipelineVariables.clusterFrequencyInSeconds = std::chrono::seconds(60);  // Tanish
@@ -58,11 +61,14 @@ auto parseJsonConfig() -> std::tuple<SocketVariables, PipelineVariables>
     // pipelineVariables.onnxModelPath = jsonConfig.at("ONNX_model_path").get<std::string>();
     pipelineVariables.onnxModelPath = "";  // Tanish
     //    pipelineVariables.onnxModelNormalizationPath = jsonConfig.at("ONNX_model_normalization").get<std::string>();
-
     pipelineVariables.onnxModelNormalizationPath = "../../TestOnnx/scaler_params.json";  // Tanish
 
     return std::make_tuple(socketVariables, pipelineVariables);
 }
+
+/**
+ * @brief Prints whether the program is running in Debug or Release mode.
+ */
 void printMode()
 {
 #ifdef DEBUG
@@ -71,9 +77,6 @@ void printMode()
     std::cout << "Running Release Mode" << std::endl;
 #endif
 }
-/**
- * @brief Prints whether the program is running in Debug or Release mode.
- */
 
 /**
  * @brief Converts a `TimePoint` object to a formatted string representation.

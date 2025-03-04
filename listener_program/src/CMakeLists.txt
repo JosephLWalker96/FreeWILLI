@@ -17,6 +17,9 @@ if (STATIC_BUILD)
     list(FILTER MAINLIB_SOURCES EXCLUDE REGEX "${CMAKE_CURRENT_SOURCE_DIR}/ML/.*\\.cpp")
 endif()
 
+# The following line is to forcefully exclude the ML related source files from the compilation 
+list(FILTER MAINLIB_SOURCES EXCLUDE REGEX ".*/ML/.*\\.cpp$")
+
 # Create the MainLib target
 add_library(MainLib STATIC ${MAINLIB_SOURCES})
 
@@ -31,9 +34,9 @@ target_include_directories(MainLib PRIVATE
 )
 
 # Conditionally include ML only for non-static builds
-if (NOT STATIC_BUILD)
-    target_include_directories(MainLib PRIVATE ${PROJECT_SOURCE_DIR}/src/ML)
-endif()
+#if (NOT STATIC_BUILD)
+#    target_include_directories(MainLib PRIVATE ${PROJECT_SOURCE_DIR}/src/ML)
+#endif()
 
 # Link libraries to MainLib
 target_link_libraries(MainLib PRIVATE

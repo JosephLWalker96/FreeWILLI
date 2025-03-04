@@ -71,32 +71,34 @@ void Pipeline::dataProcessor()
     while (!mSharedDataManager.errorOccurred)
     {
         obtainAndProcessByteData(previousTimeSet, previousTime);
-        mOutputManager.terminateProgramIfNecessary();
+        // mOutputManager.terminateProgramIfNecessary();
 
-        mOutputManager.flushBufferIfNecessary();
+        // mOutputManager.flushBufferIfNecessary();
 
+        /*
         if (mTracker)
         {
             mTracker->scheduleCluster();
         }
+        */
+
         if (!mTimeDomainDetector->detect(mChannelData.row(0)))
         {
             continue;
         }
+        std::cout << mTimeDomainDetector->getLastDetection() << std::endl;
 
-        // std::cout << "apply addr channelData: " << mChannelData.data() <<
-        // std::endl;
+        /*
         mFilter->apply();
         Eigen::MatrixXcf savedFFTs = mFilter->getFrequencyDomainData();
 
-        // std::cout << "creat addr mSavedFFTs: " << savedFFTs.data() <<
-        // std::endl;
         Eigen::MatrixXcf beforeFilter = mFilter->mBeforeFilter;
 
         if (!mFrequencyDomainDetector->detect(savedFFTs.col(0)))
         {
             continue;
         }
+        */
 
         /*
         if (mOnnxModel)
@@ -125,7 +127,9 @@ void Pipeline::dataProcessor()
             }
         }
         */
+
         mSharedDataManager.detectionCounter++;
+        /*
         auto beforeGCC = std::chrono::steady_clock::now();
         auto tdoasAndXCorrAmps = mComputeTDOAs.process(savedFFTs);
         auto afterGCC = std::chrono::steady_clock::now();
@@ -152,6 +156,7 @@ void Pipeline::dataProcessor()
                 // mOutputManager.saveSpectraForTraining("training_data_fill.csv", label, beforeFilter);
             }
         }
+        */
     }
 }
 void Pipeline::initializeOutputFiles(bool& previousTimeSet, TimePoint& previousTime)
