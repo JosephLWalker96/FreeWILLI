@@ -1,5 +1,4 @@
 #pragma once
-// #include "../main_utils.h"
 #include "../pch.h"
 
 class IFrequencyDomainStrategy
@@ -18,9 +17,7 @@ class IFrequencyDomainStrategy
 class FrequencyDomainFilterStrategy : public IFrequencyDomainStrategy
 {
    public:
-    FrequencyDomainFilterStrategy(
-        const std::string& filterPath, Eigen::MatrixXf& channelData,
-        int numChannels);
+    FrequencyDomainFilterStrategy(const std::string& filterPath, Eigen::MatrixXf& channelData, int numChannels);
     ~FrequencyDomainFilterStrategy();
 
     void apply() override;
@@ -46,9 +43,7 @@ class FrequencyDomainFilterStrategy : public IFrequencyDomainStrategy
 class FrequencyDomainNoFilterStrategy : public IFrequencyDomainStrategy
 {
    public:
-    FrequencyDomainNoFilterStrategy(
-        Eigen::MatrixXf& channelData, int numChannels)
-        : mNumChannels(numChannels)
+    FrequencyDomainNoFilterStrategy(Eigen::MatrixXf& channelData, int numChannels) : mNumChannels(numChannels)
     {
         // Suppose you don't need padding, so just take channelData.cols() as is
         mPaddedLength = channelData.cols();
@@ -57,10 +52,8 @@ class FrequencyDomainNoFilterStrategy : public IFrequencyDomainStrategy
         mSavedFFTs = Eigen::MatrixXcf::Zero(mFftOutputSize, mNumChannels);
 
         mForwardFftPlan = fftwf_plan_many_dft_r2c(
-            1, &mPaddedLength, mNumChannels, channelData.data(), nullptr,
-            mNumChannels, 1,
-            reinterpret_cast<fftwf_complex*>(mSavedFFTs.data()), nullptr, 1,
-            mFftOutputSize, FFTW_ESTIMATE);
+            1, &mPaddedLength, mNumChannels, channelData.data(), nullptr, mNumChannels, 1,
+            reinterpret_cast<fftwf_complex*>(mSavedFFTs.data()), nullptr, 1, mFftOutputSize, FFTW_ESTIMATE);
     }
 
     ~FrequencyDomainNoFilterStrategy()
@@ -84,27 +77,21 @@ class IFrequencyDomainStrategyFactory
 {
    public:
     static std::unique_ptr<IFrequencyDomainStrategy> create(
-        const std::string& frequencyDomainStrategy,
-        const std::string& filterWeightsPath,
-        Eigen::MatrixXf&
-            channelData,  // pass by ref, so it can be resized if needed
+        const std::string& frequencyDomainStrategy, const std::string& filterWeightsPath,
+        Eigen::MatrixXf& channelData,  // pass by ref, so it can be resized if needed
         int numChannels)
     {
         if (frequencyDomainStrategy == "None")
         {
-            return std::make_unique<FrequencyDomainNoFilterStrategy>(
-                channelData, numChannels);
+            return std::make_unique<FrequencyDomainNoFilterStrategy>(channelData, numChannels);
         }
         else if (frequencyDomainStrategy == "Filter")
         {
-            return std::make_unique<FrequencyDomainFilterStrategy>(
-                filterWeightsPath, channelData, numChannels);
+            return std::make_unique<FrequencyDomainFilterStrategy>(filterWeightsPath, channelData, numChannels);
         }
         else
         {
-            throw std::invalid_argument(
-                "Unknown frequency domain strategy: " +
-                frequencyDomainStrategy);
+            throw std::invalid_argument("Unknown frequency domain strategy: " + frequencyDomainStrategy);
         }
     }
 };

@@ -9,10 +9,6 @@ file(GLOB_RECURSE TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 # Add the UnitTests target with all found test sources
 add_executable(UnitTests ${TEST_SOURCES})
 
-
-
-
-
 # Include directories properly set
 target_include_directories(UnitTests PRIVATE
         ${THIRD_PARTY_INCLUDE_DIRS}

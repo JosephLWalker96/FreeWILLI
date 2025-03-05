@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -24,15 +25,15 @@
 #include <arpa/inet.h>
 #include <fftw3.h>
 #include <netinet/in.h>
-#include <onnxruntime_cxx_api.h>
+// #include <onnxruntime_cxx_api.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #include <eigen3/Eigen/Dense>
-#include <nlohmann/json.hpp>  // Use a JSON library to load JSON data
+// #include <nlohmann/json.hpp>  // Use a JSON library to load JSON data
 
 using TimePoint = std::chrono::system_clock::time_point;
 
-#ifdef __ARM_NEON
-#include <arm_neon.h>  // Include NEON intrinsics
-#endif
+// #ifdef __ARM_NEON
+// #include <arm_neon.h>  // Include NEON intrinsics
+// #endif
