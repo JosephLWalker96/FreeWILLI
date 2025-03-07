@@ -1,3 +1,10 @@
+/**
+ * @file udp_server_task.cpp
+ * @brief This file implements the UDP server required to receive data packets
+ * and pass them over to the DSP Pipeline. This is the equivalent of
+ * "Producer Thread" as used in the RPi implementation.
+ */
+
 #include <Arduino.h>
 #include <arduino_freertos.h>
 #include "QNEthernet.h"
@@ -28,7 +35,7 @@ int32_t InitUDPServer(void)
   // QNEthernet uses the Teensy's internal MAC address by default, so we can
   // retrieve it here
   Ethernet.macAddress(mac);
-  Serial.printf("MAC = %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+  arduino::Serial.printf("MAC = %02x:%02x:%02x:%02x:%02x:%02x\r\n",
          mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
   // Add listeners
@@ -37,13 +44,13 @@ int32_t InitUDPServer(void)
 
   // Listen for link changes
   Ethernet.onLinkState([](bool state) {
-    Serial.printf("[Ethernet] Link %s\r\n", state ? "ON" : "OFF");
+    arduino::Serial.printf("[Ethernet] Link %s\r\n", state ? "ON" : "OFF");
   });
 
   // Using the static IP accepted as params
-  Serial.printf("Starting Ethernet with static IP...\r\n");
+  arduino::Serial.printf("Starting Ethernet with static IP...\r\n");
   if (!Ethernet.begin(staticIP, subnetMask, gateway)) {
-    Serial.printf("Failed to start Ethernet\r\n");
+    arduino::Serial.printf("Failed to start Ethernet\r\n");
     return UDP_ERR_CONNECT_FAILED;
   }
 
@@ -76,15 +83,18 @@ void UDPServerTask(void*)
 {
   IPAddress ip;
 
-  Serial.println("Executing UDP Server Task.");
+  arduino::Serial.println("Executing UDP Server Task.");
 
   // Start UDP listening on the port
   udp.begin(udpPort_g);
 
+  // YJ// Surround with try/catch
   while(true) {
+    // YJ// This only gets one packet at a time.
+    // Update this to aggregate 8 packets and pass them over to the "Consumer thread" somehow
     int size = udp.parsePacket();
     if (size < 0) {
-      vTaskDelay(pdTICKS_TO_MS(1));
+      vTaskDelay(pdTICKS_TO_MS(1));   // YJ// Set timeout accordingly
       continue;
     }
 
@@ -92,20 +102,22 @@ void UDPServerTask(void*)
     const uint8_t *data = udp.data();
     ip = udp.remoteIP();
 
-    Serial.printf("[%u.%u.%u.%u][%d] ", ip[0], ip[1], ip[2], ip[3], size);
+    arduino::Serial.printf("[%u.%u.%u.%u][%d] ", ip[0], ip[1], ip[2], ip[3], size);
 
     // Print each character
     for (int i = 0; i < size; i++) {
       // uint8_t b = data[i];
       // if (b < 0x20) {
-      //   Serial.printf("<%s>", kCtrlNames[b]);
+      //   arduino::Serial.printf("<%s>", kCtrlNames[b]);
       // } else if (b < 0x7f) {
       //   putchar(data[i]);
       // } else {
-      //   Serial.printf("<%02xh>", data[i]);
+      //   arduino::Serial.printf("<%02xh>", data[i]);
       // }
-      Serial.printf("%c", data[i]);
+      arduino::Serial.printf("%c", data[i]);
     }
-    Serial.printf("\r\n");
+    arduino::Serial.printf("\r\n");
+
+    // YJ// Print optional statistics
   }
 }
