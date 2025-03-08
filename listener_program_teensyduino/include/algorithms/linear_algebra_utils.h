@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Eigen/Dense"
+// #include "Eigen/Dense"
+#include <ArduinoEigenDense.h>
 
 Eigen::JacobiSVD<Eigen::MatrixXf> computeSvd(const Eigen::MatrixXf &H);
 Eigen::MatrixXf precomputePseudoInverse(const Eigen::JacobiSVD<Eigen::MatrixXf> &svd);

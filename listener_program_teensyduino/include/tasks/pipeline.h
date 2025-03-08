@@ -36,7 +36,7 @@ class Pipeline
     std::unique_ptr<ITimeDomainDetector> mTimeDomainDetector = nullptr;
     std::unique_ptr<IFrequencyDomainDetector> mFrequencyDomainDetector = nullptr;
     // std::unique_ptr<ONNXModel> mOnnxModel = nullptr;
-    std::unique_ptr<Tracker> mTracker = nullptr;
+    // std::unique_ptr<Tracker> mTracker = nullptr;
     GCC_PHAT mComputeTDOAs;
     void dataProcessor();
     void initializeOutputFiles(bool& previousTimeSet, TimePoint& previousTime);

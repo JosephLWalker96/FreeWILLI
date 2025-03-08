@@ -1,5 +1,8 @@
 #pragma once
 
+#include <ArduinoEigen.h>
+#include <ArduinoEigenDense.h>
+
 void normalizeDoa(Eigen::VectorXf &doaVector, int solutionRank);
 auto computeDoaFromTdoa(const Eigen::MatrixXf &precomputedP, 
                                             const Eigen::MatrixXf &basisMatrixU, 

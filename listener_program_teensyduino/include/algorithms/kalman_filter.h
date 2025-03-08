@@ -1,5 +1,6 @@
 #pragma once
-#include "Eigen/Dense"
+// #include "Eigen/Dense"
+#include <ArduinoEigenDense.h>
 
 /**
  * @class KalmanFilter

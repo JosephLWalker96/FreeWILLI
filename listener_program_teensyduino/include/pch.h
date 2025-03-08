@@ -30,7 +30,9 @@
 // #include <sys/socket.h>  // Not used in MCU env
 #include <unistd.h>
 
-#include "Eigen/Dense"  // YJ// Ignoring for now
+// #include "Eigen/Dense"  // YJ// Ignoring for now
+#include <ArduinoEigen.h>
+#include <ArduinoEigenDense.h>
 // #include <nlohmann/json.hpp>  // Use a JSON library to load JSON data
 
 using TimePoint = std::chrono::system_clock::time_point;

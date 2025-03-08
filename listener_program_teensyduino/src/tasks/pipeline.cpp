@@ -1,4 +1,4 @@
-#include "pipeline.h"
+#include "tasks/pipeline.h"
 
 #include "pch.h"
 #include "utils.h"
@@ -21,7 +21,7 @@ Pipeline::Pipeline(const PipelineVariables& pipelineVariables)
           pipelineVariables.timeDomainDetector, pipelineVariables.timeDomainThreshold)),
       mFrequencyDomainDetector(IFrequencyDomainDetectorFactory::create(
           pipelineVariables.frequencyDomainDetector, pipelineVariables.energyDetectionThreshold)),
-      mTracker(ITracker::create(pipelineVariables)),
+      // mTracker(ITracker::create(pipelineVariables)),
       // mOnnxModel(IONNXModel::create(pipelineVariables)),
       mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->NUM_CHAN, mFirmwareConfig->CHANNEL_SIZE)),
       mComputeTDOAs(
@@ -44,7 +44,7 @@ void Pipeline::process()
     }
     catch (const std::exception& e)
     {
-        handleProcessingError(e);
+        // handleProcessingError(e);
     }
 }
 
@@ -66,7 +66,7 @@ void Pipeline::dataProcessor()
     // call function once outside of the loop below to initialize files.
     initializeOutputFiles(previousTimeSet, previousTime);
 
-    while (!mSharedDataManager.errorOccurred)
+    while (true)
     {
         obtainAndProcessByteData(previousTimeSet, previousTime);
         // mOutputManager.terminateProgramIfNecessary();
@@ -126,7 +126,7 @@ void Pipeline::dataProcessor()
         }
         */
 
-        mSharedDataManager.detectionCounter++;
+        // mSharedDataManager.detectionCounter++;
         /*
         auto beforeGCC = std::chrono::steady_clock::now();
         auto tdoasAndXCorrAmps = mComputeTDOAs.process(savedFFTs);
@@ -160,16 +160,16 @@ void Pipeline::dataProcessor()
 void Pipeline::initializeOutputFiles(bool& previousTimeSet, TimePoint& previousTime)
 {
     obtainAndProcessByteData(previousTimeSet, previousTime);
-    mOutputManager.initializeOutputFile(dataTimes[0], mFirmwareConfig->NUM_CHAN);
-    if (mTracker)
-    {
-        mTracker->initializeOutputFile(dataTimes[0]);
-    }
+    // mOutputManager.initializeOutputFile(dataTimes[0], mFirmwareConfig->NUM_CHAN);
+    // if (mTracker)
+    // {
+    //     mTracker->initializeOutputFile(dataTimes[0]);
+    // }
 }
 
 void Pipeline::obtainAndProcessByteData(bool& previousTimeSet, TimePoint& previousTime)
 {
-    mSharedDataManager.waitForData(dataBytes, mFirmwareConfig->NUM_PACKS_DETECT);
+    // mSharedDataManager.waitForData(dataBytes, mFirmwareConfig->NUM_PACKS_DETECT);
 
     dataTimes = mFirmwareConfig->generateTimestamp(dataBytes, mFirmwareConfig->NUM_CHAN);
 
@@ -201,12 +201,12 @@ void Pipeline::handleProcessingError(const std::exception& e)
     // Attempt to write data for debugging
     try
     {
-        mOutputManager.writeDataToCerr(dataTimes, dataBytes);
+        // mOutputManager.writeDataToCerr(dataTimes, dataBytes);
     }
     catch (...)
     {
         std::cerr << "Failed to write data to cerr\n";
     }
 
-    mSharedDataManager.errorOccurred = true;  // Flag the error in the session
+    // mSharedDataManager.errorOccurred = true;  // Flag the error in the session
 }
