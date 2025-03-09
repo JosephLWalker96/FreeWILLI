@@ -14,22 +14,22 @@ Pipeline::Pipeline(const PipelineVariables& pipelineVariables)
     : mFirmwareConfig(FirmwareFactory::create(pipelineVariables.useImu)),
       mSpeedOfSound(pipelineVariables.speedOfSound),
       mReceiverPositionsPath(pipelineVariables.receiverPositionsPath),
-      mFilter(IFrequencyDomainStrategyFactory::create(
-          pipelineVariables.frequencyDomainStrategy, pipelineVariables.filterWeightsPath, mChannelData,
-          mFirmwareConfig->NUM_CHAN)),
+      // mFilter(IFrequencyDomainStrategyFactory::create(
+      //     pipelineVariables.frequencyDomainStrategy, pipelineVariables.filterWeightsPath, mChannelData,
+      //     mFirmwareConfig->NUM_CHAN)),
       mTimeDomainDetector(ITimeDomainDetectorFactory::create(
           pipelineVariables.timeDomainDetector, pipelineVariables.timeDomainThreshold)),
       mFrequencyDomainDetector(IFrequencyDomainDetectorFactory::create(
           pipelineVariables.frequencyDomainDetector, pipelineVariables.energyDetectionThreshold)),
       // mTracker(ITracker::create(pipelineVariables)),
       // mOnnxModel(IONNXModel::create(pipelineVariables)),
-      mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->NUM_CHAN, mFirmwareConfig->CHANNEL_SIZE)),
-      mComputeTDOAs(
-          mFilter->getPaddedLength(), mFilter->getFrequencyDomainData().rows(), mFirmwareConfig->NUM_CHAN,
-          mFirmwareConfig->SAMPLE_RATE)
+      mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->NUM_CHAN, mFirmwareConfig->CHANNEL_SIZE))
+// mComputeTDOAs(
+//     mFilter->getPaddedLength(), mFilter->getFrequencyDomainData().rows(), mFirmwareConfig->NUM_CHAN,
+//     mFirmwareConfig->SAMPLE_RATE)
 
 {
-  // mFirmwareConfig = FirmwareFactory::create(pipelineVariables.useImu);
+    // mFirmwareConfig = FirmwareFactory::create(pipelineVariables.useImu);
 }
 
 /**

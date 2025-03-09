@@ -5,11 +5,11 @@
 /**
  * @brief Inserts data into a channel matrix.
  */
-void Firmware1240::insertDataIntoChannelMatrix(Eigen::MatrixXf& channelMatrix,
-                                               const std::vector<std::vector<uint8_t>>& dataBytes, int headSize,
-                                               int dataSize, int bytesPerSamp, float sampleOffset) const
+void Firmware1240::insertDataIntoChannelMatrix(
+    Eigen::MatrixXf& channelMatrix, const std::vector<std::vector<uint8_t>>& dataBytes, int headSize, int dataSize,
+    int bytesPerSamp, float sampleOffset) const
 {
-    for (int i = 0; i < dataBytes.size(); i++)
+    for (std::size_t i = 0; i < dataBytes.size(); i++)
     {
         float* __restrict__ matrixPtr = channelMatrix.data();
         const uint8_t* __restrict__ inPtr = dataBytes[i].data() + headSize;
@@ -41,8 +41,8 @@ void Firmware1240::insertDataIntoChannelMatrix(Eigen::MatrixXf& channelMatrix,
 /**
  * @brief Generates a vector of timestamps from raw data bytes.
  */
-std::vector<TimePoint> Firmware1240::generateTimestamp(std::vector<std::vector<uint8_t>>& dataBytes,
-                                                       int numChannels) const
+std::vector<TimePoint> Firmware1240::generateTimestamp(
+    std::vector<std::vector<uint8_t>>& dataBytes, int numChannels) const
 {
     const size_t dataSize = dataBytes.size();
     std::vector<std::chrono::system_clock::time_point> outputTimes(dataSize);
@@ -80,9 +80,9 @@ std::vector<TimePoint> Firmware1240::generateTimestamp(std::vector<std::vector<u
 /**
  * @brief Checks for data errors in a session.
  */
-void Firmware1240::throwIfDataErrors(const std::vector<std::vector<uint8_t>>& dataBytes, const int microIncrement,
-                                     bool& isPreviousTimeSet, TimePoint& previousTime,
-                                     const std::vector<TimePoint>& dataVector, const int packetSize) const
+void Firmware1240::throwIfDataErrors(
+    const std::vector<std::vector<uint8_t>>& dataBytes, const int microIncrement, bool& isPreviousTimeSet,
+    TimePoint& previousTime, const std::vector<TimePoint>& dataVector, const int packetSize) const
 {
     for (int i = 0; i < dataVector.size(); i++)
     {
@@ -93,7 +93,8 @@ void Firmware1240::throwIfDataErrors(const std::vector<std::vector<uint8_t>>& da
             std::stringstream errorMsg;
             errorMsg << "Error: Time not incremented by " << microIncrement << std::endl;
             throw std::runtime_error(errorMsg.str());
-        } else if (dataBytes[i].size() != packetSize)
+        }
+        else if (dataBytes[i].size() != packetSize)
         {
             std::stringstream errorMsg;
             errorMsg << "Error: Incorrect number of bytes in packet. Expected: " << packetSize

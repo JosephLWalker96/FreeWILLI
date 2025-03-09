@@ -16,7 +16,7 @@ class SharedDataManager
 
    public:
     std::atomic<bool> errorOccurred = false;  ///< Indicates an error has occurred in processing or I/O operations.
-    std::atomic<int> detectionCounter = 0;    ///< Tracks the number of successful detections.
+    std::atomic<int> detectionCounter = 0;  ///< Tracks the number of successful detections.
 
     int pushDataToBuffer(const std::vector<uint8_t>& data);
 
