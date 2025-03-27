@@ -8,14 +8,13 @@
 #include <Arduino.h>
 #include <arduino_freertos.h>
 #include "QNEthernet.h"
-#include "freewilli_udp.h"
+#include "tasks/FW_udp.h"
 #include <stdint.h>
 
 using namespace qindesign::network;
 
 // UDP port.
-EthernetUDP udp;
-uint16_t udpPort_g;
+static EthernetUDP udp;
 
 // Set the static IP to something other than INADDR_NONE (all zeros)
 // to not use DHCP. The values here are just examples.
@@ -28,7 +27,7 @@ static uint16_t udpPort = 9600;
 // instead rely on the listener to inform us of a link.
 constexpr uint32_t kLinkTimeout = 5'000;  // 5 seconds
 
-int32_t InitUDPServer(void)
+FLASHMEM int32_t InitUDPServer(void)
 {
   uint8_t mac[6];
 
@@ -54,9 +53,6 @@ int32_t InitUDPServer(void)
     return UDP_ERR_CONNECT_FAILED;
   }
 
-  // Set UDP Port global variable
-  udpPort_g = udpPort;
-
   // When setting a static IP, the address is changed immediately,
   // but the link may not be up; optionally wait for the link here
   // if (kLinkTimeout > 0) {
@@ -79,14 +75,14 @@ static const char *kCtrlNames[]{
   "CAN", "EM",  "SUB", "ESC", "FS",  "GS",  "RS",  "US",
 };
 
-void UDPServerTask(void*)
+FLASHMEM void UDPServerTask(void*)
 {
   IPAddress ip;
 
   arduino::Serial.println("Executing UDP Server Task.");
 
   // Start UDP listening on the port
-  udp.begin(udpPort_g);
+  udp.begin(udpPort);
 
   // YJ// Surround with try/catch
   while(true) {

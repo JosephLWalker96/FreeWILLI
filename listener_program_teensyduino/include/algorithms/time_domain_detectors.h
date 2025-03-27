@@ -66,7 +66,9 @@ class ITimeDomainDetectorFactory
             return std::make_unique<NoTimeDomainDetector>();
         } else
         {
-            throw std::invalid_argument("Unknown TimeDomainDetector type: " + timeDomainDetector);
+            // throw std::invalid_argument("Unknown TimeDomainDetector type: " + timeDomainDetector);
+            printf("Error here!\n");
+            return NULL;
         }
     }
 };

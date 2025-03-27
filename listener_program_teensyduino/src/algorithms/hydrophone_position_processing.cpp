@@ -16,9 +16,10 @@ Eigen::MatrixXf loadHydrophonePositionsFromFile(const std::string& filename)
 
     if (!inputFile.is_open())
     {
-        std::stringstream msg;  // compose message to dispatch
-        msg << "Error: Unable to open hydrophone position file '" << filename << "'." << std::endl;
-        throw std::ios_base::failure(msg.str());
+        // std::stringstream msg;  // compose message to dispatch
+        // msg << "Error: Unable to open hydrophone position file '" << filename << "'." << std::endl;
+        // throw std::ios_base::failure(msg.str());
+        std::cout << "Error Here!\n";
     }
 
     std::cout << "Reading hydrophone positions..." << std::endl;

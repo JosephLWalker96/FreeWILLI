@@ -24,7 +24,7 @@ void Firmware1240::insertDataIntoChannelMatrix(
         if (auto imu = getImuManager())
         {
             // Call a method on the IMU manager
-            imu->setRotationMatrix(dataBytes[i]);
+            // YJ// imu->setRotationMatrix(dataBytes[i]);
             // std::cout << imu->mRotationMatrix << std::endl;
             // Eigen::Quaternionf q(imu->mRotationMatrix);
 
@@ -92,14 +92,16 @@ void Firmware1240::throwIfDataErrors(
         {
             std::stringstream errorMsg;
             errorMsg << "Error: Time not incremented by " << microIncrement << std::endl;
-            throw std::runtime_error(errorMsg.str());
+            // throw std::runtime_error(errorMsg.str());
+            std::cout << "Error Here!\n";
         }
         else if (dataBytes[i].size() != packetSize)
         {
             std::stringstream errorMsg;
             errorMsg << "Error: Incorrect number of bytes in packet. Expected: " << packetSize
                      << ", Received: " << dataBytes.size() << std::endl;
-            throw std::runtime_error(errorMsg.str());
+            // throw std::runtime_error(errorMsg.str());
+            std::cout << "Error Here!\n";
         }
         previousTime = dataVector[i];
         isPreviousTimeSet = true;

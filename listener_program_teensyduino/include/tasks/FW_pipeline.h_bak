@@ -21,7 +21,7 @@ class Pipeline
    public:
     Pipeline(const PipelineVariables& pipelineVariables);
 
-    void process();
+    void PipelineTask(void);
 
    private:
     // Private member variables
@@ -30,16 +30,15 @@ class Pipeline
     std::vector<std::vector<uint8_t>> dataBytes;
     std::vector<TimePoint> dataTimes;
 
-    std::unique_ptr<const Firmware1240> mFirmwareConfig = nullptr;
+    std::unique_ptr<const Firmware1240> mFirmwareConfig;
     Eigen::MatrixXf mChannelData;
     // std::unique_ptr<IFrequencyDomainStrategy> mFilter = nullptr;
-    std::unique_ptr<ITimeDomainDetector> mTimeDomainDetector = nullptr;
-    std::unique_ptr<IFrequencyDomainDetector> mFrequencyDomainDetector = nullptr;
+    std::unique_ptr<ITimeDomainDetector> mTimeDomainDetector;
+    std::unique_ptr<IFrequencyDomainDetector> mFrequencyDomainDetector;
     // std::unique_ptr<ONNXModel> mOnnxModel = nullptr;
     // std::unique_ptr<Tracker> mTracker = nullptr;
     // GCC_PHAT mComputeTDOAs;
-    void dataProcessor();
-    void initializeOutputFiles(bool& previousTimeSet, TimePoint& previousTime);
+
     void obtainAndProcessByteData(bool& previousTimeSet, TimePoint& previousTime);
     void handleProcessingError(const std::exception& e);
 };

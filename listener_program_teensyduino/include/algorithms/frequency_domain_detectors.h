@@ -51,7 +51,9 @@ class IFrequencyDomainDetectorFactory
             return std::make_unique<NoFrequencyDomainDetector>();
         } else
         {
-            throw std::invalid_argument("Unknown TimeDomainDetector type: " + frequencyDomainDetector);
+            // throw std::invalid_argument("Unknown TimeDomainDetector type: " + frequencyDomainDetector);
+            printf("Error here!\n");
+            return NULL;
         }
     }
 };
