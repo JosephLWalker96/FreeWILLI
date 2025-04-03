@@ -25,7 +25,7 @@ class Firmware1240
     static constexpr int DATA_BYTES_PER_CHANNEL = SAMPS_PER_CHANNEL * BYTES_PER_SAMP;  // Data bytes per channel
 
     static constexpr float TIME_WINDOW = 0.01;  // Fraction of a second for cross-correlation
-    static constexpr int NUM_PACKS_DETECT = static_cast<int>(TIME_WINDOW * SAMPLE_RATE / SAMPS_PER_CHANNEL);
+    static constexpr int NUM_PACKS_DETECT = static_cast<int>(TIME_WINDOW * sampleRate() / SAMPS_PER_CHANNEL);
     static constexpr int DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN;
     static constexpr int CHANNEL_SIZE = DATA_SEGMENT_LENGTH / NUM_CHAN;
 

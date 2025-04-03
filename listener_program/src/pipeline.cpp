@@ -12,7 +12,7 @@
  */
 Pipeline::Pipeline(
     OutputManager& outputManager, SharedDataManager& sharedDataManager, const PipelineVariables& pipelineVariables)
-    : mFirmwareConfig(FirmwareFactory::create(pipelineVariables.useImu)),
+    : mFirmwareConfig(FirmwareFactory::create(pipelineVariables.firmware)),
       mOutputManager(outputManager),
       mSharedDataManager(sharedDataManager),
       mSpeedOfSound(pipelineVariables.speedOfSound),

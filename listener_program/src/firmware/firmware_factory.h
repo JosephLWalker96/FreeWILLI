@@ -8,23 +8,27 @@
 class FirmwareFactory
 {
    public:
-    static std::unique_ptr<const Firmware1240> create(const std::string& useImu)
+    static std::unique_ptr<const Firmware1240> create(const std::string& firmware)
     {
-        if (useImu == "FW1240")
+        if (firmware == "FW1240")
         {
             return std::make_unique<const Firmware1240>();
         }
-        else if (useImu == "FW1240-IMU")
+        else if (firmware == "FW1240-IMU")
         {
             return std::make_unique<const Firmware1240IMU>();
         }
-        else if (useImu == "FW1240-Fs2x")
+        else if (firmware == "FW1240-Fs2x")
         {
             return std::make_unique<const Firmware1240Fs2x>();
         }
-        else if (useImu = "FW1240-Fs2x-IMU")
+        else if (firmware = "FW1240-Fs2x-IMU")
         {
             return std::make_unique<const Firmware1240Fs2xIMU>();
+        }
+        else
+        {
+            std::throw // check on this :)
         }
     }
 };
