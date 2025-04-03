@@ -29,7 +29,7 @@ Pipeline::Pipeline(
       mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->NUM_CHAN, mFirmwareConfig->CHANNEL_SIZE)),
       mComputeTDOAs(
           mFilter->getPaddedLength(), mFilter->getFrequencyDomainData().rows(), mFirmwareConfig->NUM_CHAN,
-          mFirmwareConfig->SAMPLE_RATE)
+          mFirmwareConfig->sampleRate())
 
 {
 }

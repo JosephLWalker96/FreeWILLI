@@ -15,7 +15,7 @@ class Firmware1240
     static constexpr int SAMPS_PER_CHANNEL = 124;  // Samples per packet per channel
     static constexpr int BYTES_PER_SAMP = 2;  // Bytes per sample
     static constexpr int MICRO_INCR = 1240;  // Time between packets
-    static constexpr int SAMPLE_RATE = 1e5;  // Sample rate in Hz
+    static constexpr int sampleRate() { return 1e5; }  // Sample rate in Hz - WASD changed to function to allow override
     static constexpr float SAMPLE_OFFSET = 32768.0f;  // Define a named constant
                                                       // for the sample offset
 
