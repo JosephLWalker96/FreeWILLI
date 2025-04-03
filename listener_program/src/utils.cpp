@@ -25,7 +25,7 @@ auto parseJsonConfig(const std::string& jsonFilePath) -> std::tuple<SocketVariab
 
     // PipelineVariables parameters
     pipelineVariables.integrationTesting = jsonConfig.at("enableIntegrationTesting").get<bool>();
-    pipelineVariables.useImu = jsonConfig.at("useFirmware1240WithIMU").get<bool>();
+    pipelineVariables.useImu = jsonConfig.at("useFirmware1240WithIMU").get<std:string>();
     pipelineVariables.speedOfSound = jsonConfig.at("speedOfSound_mps").get<float>();
     pipelineVariables.loggingDirectory = jsonConfig.at("logDirectory").get<std::string>();
     pipelineVariables.timeDomainDetector = jsonConfig.at("timeDomainDetector").get<std::string>();
