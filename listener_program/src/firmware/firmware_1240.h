@@ -29,7 +29,7 @@ class Firmware1240
     static constexpr int DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN;
     static constexpr int CHANNEL_SIZE = DATA_SEGMENT_LENGTH / NUM_CHAN;
 
-    virtual constexpr int imuByteSize() const { return 0; }
+    virtual int imuByteSize() const { return 0; }
 
     constexpr int packetSize() const { return DATA_SIZE + HEAD_SIZE + imuByteSize(); }
 
