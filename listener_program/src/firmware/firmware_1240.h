@@ -15,7 +15,7 @@ class Firmware1240
     static constexpr int SAMPS_PER_CHANNEL = 124;  // Samples per packet per channel
     static constexpr int BYTES_PER_SAMP = 2;  // Bytes per sample
     static constexpr int MICRO_INCR = 1240;  // Time between packets
-    static constexpr int sampleRate() { return 1e5; }  // Sample rate in Hz - WASD changed to function to allow override
+    static int sampleRate();  // Sample rate in Hz - WASD changed to function to allow override
     static constexpr float SAMPLE_OFFSET = 32768.0f;  // Define a named constant
                                                       // for the sample offset
 
@@ -25,9 +25,9 @@ class Firmware1240
     static constexpr int DATA_BYTES_PER_CHANNEL = SAMPS_PER_CHANNEL * BYTES_PER_SAMP;  // Data bytes per channel
 
     static constexpr float TIME_WINDOW = 0.01;  // Fraction of a second for cross-correlation
-    static constexpr int NUM_PACKS_DETECT = static_cast<int>(TIME_WINDOW * sampleRate() / SAMPS_PER_CHANNEL);
-    static constexpr int DATA_SEGMENT_LENGTH = NUM_PACKS_DETECT * SAMPS_PER_CHANNEL * NUM_CHAN;
-    static constexpr int CHANNEL_SIZE = DATA_SEGMENT_LENGTH / NUM_CHAN;
+    int numPacksDetect;
+    int dataSegmentLength;
+    int channelSize;
 
     virtual int imuByteSize() const { return 0; }
 

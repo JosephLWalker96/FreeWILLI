@@ -1,5 +1,11 @@
 #include "firmware_1240.h"
 
+Firmware1240::Firmware1240() {
+    numPacksDetect = static_cast<int>(TIME_WINDOW * sampleRate() / SAMPS_PER_CHANNEL);
+    dataSegmentLength = numPacksDetect * SAMPS_PER_CHANNEL * NUM_CHAN;
+    channelSize = dataSegmentLength / NUM_CHAN;
+}
+
 /**
  * @brief Inserts data into a channel matrix by decoding raw byte data.
  *
@@ -127,4 +133,9 @@ void Firmware1240::throwIfDataErrors(
         previousTime = dataVector[i];
         isPreviousTimeSet = true;
     }
+}
+
+// Define sample rate as a static function
+int Firmware1240::sampleRate() {
+    return 1e5; // Firmware 1240 uses 100 kHz as default sample rate
 }
