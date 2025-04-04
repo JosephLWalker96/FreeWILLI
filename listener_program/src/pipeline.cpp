@@ -26,7 +26,7 @@ Pipeline::Pipeline(
           pipelineVariables.frequencyDomainDetector, pipelineVariables.energyDetectionThreshold)),
       mTracker(ITracker::create(pipelineVariables)),
       mOnnxModel(IONNXModel::create(pipelineVariables)),
-      mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->NUM_CHAN, mFirmwareConfig->CHANNEL_SIZE)),
+      mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->NUM_CHAN, mFirmwareConfig->channelSize)),
       mComputeTDOAs(
           mFilter->getPaddedLength(), mFilter->getFrequencyDomainData().rows(), mFirmwareConfig->NUM_CHAN,
           mFirmwareConfig->sampleRate())
@@ -66,7 +66,7 @@ void Pipeline::dataProcessor()
 
     bool previousTimeSet = false;
     auto previousTime = TimePoint::min();
-    dataBytes.resize(mFirmwareConfig->NUM_PACKS_DETECT);
+    dataBytes.resize(mFirmwareConfig->numPacksDetect);
 
     // call function once outside of the loop below to initialize files.
     initializeOutputFiles(previousTimeSet, previousTime);
@@ -174,7 +174,7 @@ void Pipeline::initializeOutputFiles(bool& previousTimeSet, TimePoint& previousT
 
 void Pipeline::obtainAndProcessByteData(bool& previousTimeSet, TimePoint& previousTime)
 {
-    mSharedDataManager.waitForData(dataBytes, mFirmwareConfig->NUM_PACKS_DETECT);
+    mSharedDataManager.waitForData(dataBytes, mFirmwareConfig->numPacksDetect);
 
     dataTimes = mFirmwareConfig->generateTimestamp(dataBytes);
 

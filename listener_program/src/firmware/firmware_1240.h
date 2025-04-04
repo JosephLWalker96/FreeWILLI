@@ -9,6 +9,8 @@
 class Firmware1240
 {
    public:
+    Firmware1240(); // Declare constructor
+
     // UDP packet information
     static constexpr int HEAD_SIZE = 12;  // Packet head size (bytes)
     static constexpr int NUM_CHAN = 4;  // Number of channels per packet

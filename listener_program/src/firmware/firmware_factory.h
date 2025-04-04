@@ -22,13 +22,13 @@ class FirmwareFactory
         {
             return std::make_unique<const Firmware1240Fs2x>();
         }
-        else if (firmware = "FW1240-Fs2x-IMU")
+        else if (firmware == "FW1240-Fs2x-IMU")
         {
             return std::make_unique<const Firmware1240Fs2xIMU>();
         }
         else
         {
-            std::throw // check on this :)
+            throw std::runtime_error("Invalid firmware option specified in config file!");
         }
     }
 };
