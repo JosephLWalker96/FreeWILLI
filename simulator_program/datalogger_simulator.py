@@ -33,7 +33,8 @@ class ArgumentParserService:
         parser.add_argument('--data_glitch', default=0, type=int, help='Simulate data glitch at specific data chunk index')
         parser.add_argument('--tdoa_sim', nargs='?', const=0, type=int, default=False, action=TDOASimAction, help='Channel offset amount')
         parser.add_argument('--imu', action='store_true', help='Read in IMU data from file')
-        parsedArgs = parser.parse_args()
+        parser.add_argument('--fs', )
+        parsedArgs = parser.parse_args(default=10000, type=int, help='Data sampling rate')
         return parsedArgs
 
 class NpyFileProcessor:
@@ -86,14 +87,18 @@ class DataSimulator:
         if self.arguments.ip == "self":
             self.arguments.ip = "127.0.0.1"
 
-        # Firmware-specific imports
-        if self.arguments.fw == 1550:
-            import firmware_config.firmware_1550 as fwConfig
-        elif self.arguments.fw == 1240:
-            import firmware_config.firmware_1240 as fwConfig
-        else:
-            print('ERROR: Unknown firmware version')
-            sys.exit()
+        # Firmware-specific imports (firmware- and samplerate-dependent)
+        if self.arguments.fs == 100000:
+            if self.arguments.fw == 1550:
+                import firmware_config.firmware_1550 as fwConfig
+            elif self.arguments.fw == 1240:
+                import firmware_config.firmware_1240 as fwConfig
+            else:
+                print('ERROR: Unknown firmware version')
+                sys.exit()
+        elif self.arguments.fs == 200000:
+            if self.arguments.fw == 1240:
+                import firmware_config.firmware_1240_Fs2x as fwConfig
 
         # Store firmware constants for use throughout
         self.packetSize = fwConfig.PACKET_SIZE
