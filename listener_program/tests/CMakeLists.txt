@@ -39,8 +39,11 @@ target_link_libraries(UnitTests PRIVATE
 )
 
 # Enable GoogleTest Framework
-include(GoogleTest)
-gtest_discover_tests(UnitTests)
+# Enable GoogleTest Framework only if auto test is enabled
+if (ENABLE_AUTO_TEST)
+    include(GoogleTest)
+    gtest_discover_tests(UnitTests)
+endif()
 
 set_target_properties(UnitTests PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin
