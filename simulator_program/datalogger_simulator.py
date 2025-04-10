@@ -301,7 +301,8 @@ class DataSimulator:
 
                 # Attempt to maintain real-time pacing
                 elapsedRuntime = time.time() - startTime
-                sleepTime = (self.microIncrement * (1 / self.sampleRate)) - elapsedRuntime
+                sleepTime = (self.microIncrement * 1e-1 / self.sampleRate) - elapsedRuntime
+                # print(sleepTime)
                 Sleep(sleepTime)
 
                 dataChunkIndex += 1
