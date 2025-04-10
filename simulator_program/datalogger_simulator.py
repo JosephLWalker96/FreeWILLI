@@ -99,6 +99,12 @@ class DataSimulator:
         elif self.arguments.fs == 200000:
             if self.arguments.fw == 1240:
                 import firmware_config.firmware_1240_Fs2x as fwConfig
+            else:
+                print('ERROR: Unknown firmware version')
+                sys.exit()
+        else:
+            print('ERROR: Invalid firmware-sampling rate combination')
+            sys.exit()
 
         # Store firmware constants for use throughout
         self.packetSize = fwConfig.PACKET_SIZE
