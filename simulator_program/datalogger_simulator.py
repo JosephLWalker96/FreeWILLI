@@ -112,6 +112,7 @@ class DataSimulator:
         self.dataSize = fwConfig.DATA_SIZE
         self.bytesPerSample = fwConfig.BYTES_PER_SAMP
         self.microIncrement = fwConfig.MICRO_INCR
+        self.sampleRate = fwConfig.SAMPLE_RATE
 
         # If certain firmware files define additional constants, reference them conditionally:
         # E.g. firmware_1550 or firmware_1240 might define `highAmplitudeIndex`
@@ -300,7 +301,7 @@ class DataSimulator:
 
                 # Attempt to maintain real-time pacing
                 elapsedRuntime = time.time() - startTime
-                sleepTime = (self.microIncrement * 1e-6) - elapsedRuntime
+                sleepTime = (self.microIncrement * (1 / self.sampleRate)) - elapsedRuntime
                 Sleep(sleepTime)
 
                 dataChunkIndex += 1
