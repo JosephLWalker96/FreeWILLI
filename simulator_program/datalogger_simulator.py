@@ -33,8 +33,8 @@ class ArgumentParserService:
         parser.add_argument('--data_glitch', default=0, type=int, help='Simulate data glitch at specific data chunk index')
         parser.add_argument('--tdoa_sim', nargs='?', const=0, type=int, default=False, action=TDOASimAction, help='Channel offset amount')
         parser.add_argument('--imu', action='store_true', help='Read in IMU data from file')
-        parser.add_argument('--fs', )
-        parsedArgs = parser.parse_args(default=10000, type=int, help='Data sampling rate')
+        parser.add_argument('--fs', default=10000, type=int, help='Data sampling rate')
+        parsedArgs = parser.parse_args()
         return parsedArgs
 
 class NpyFileProcessor:
