@@ -1,9 +1,9 @@
 {
     "enableIntegrationTesting": false,
     "logDirectory": "deployment_files/",
-    "networkIPAddress": "self",
+    "networkIPAddress": "192.168.100.251",
     "networkPort": 1045,
-    "firmware": "FW1240",
+    "firmware": "FW1240-Fs2x",
     "speedOfSound_mps": 1482.965459,
     "timeDomainDetector": "PeakAmplitude",
     "timeDomainThreshold": 1,
