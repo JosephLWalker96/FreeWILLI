@@ -33,6 +33,7 @@ class ArgumentParserService:
         parser.add_argument('--data_glitch', default=0, type=int, help='Simulate data glitch at specific data chunk index')
         parser.add_argument('--tdoa_sim', nargs='?', const=0, type=int, default=False, action=TDOASimAction, help='Channel offset amount')
         parser.add_argument('--imu', action='store_true', help='Read in IMU data from file')
+        parser.add_argument('--fs', default=10000, type=int, help='Data sampling rate')
         parsedArgs = parser.parse_args()
         return parsedArgs
 
@@ -86,13 +87,23 @@ class DataSimulator:
         if self.arguments.ip == "self":
             self.arguments.ip = "127.0.0.1"
 
-        # Firmware-specific imports
-        if self.arguments.fw == 1550:
-            import firmware_config.firmware_1550 as fwConfig
-        elif self.arguments.fw == 1240:
-            import firmware_config.firmware_1240 as fwConfig
+        # Firmware-specific imports (firmware- and samplerate-dependent)
+        if self.arguments.fs == 100000:
+            if self.arguments.fw == 1550:
+                import firmware_config.firmware_1550 as fwConfig
+            elif self.arguments.fw == 1240:
+                import firmware_config.firmware_1240 as fwConfig
+            else:
+                print('ERROR: Unknown firmware version')
+                sys.exit()
+        elif self.arguments.fs == 200000:
+            if self.arguments.fw == 1240:
+                import firmware_config.firmware_1240_Fs2x as fwConfig
+            else:
+                print('ERROR: Unknown firmware version')
+                sys.exit()
         else:
-            print('ERROR: Unknown firmware version')
+            print('ERROR: Invalid firmware-sampling rate combination')
             sys.exit()
 
         # Store firmware constants for use throughout
@@ -101,6 +112,7 @@ class DataSimulator:
         self.dataSize = fwConfig.DATA_SIZE
         self.bytesPerSample = fwConfig.BYTES_PER_SAMP
         self.microIncrement = fwConfig.MICRO_INCR
+        self.sampleRate = fwConfig.SAMPLE_RATE
 
         # If certain firmware files define additional constants, reference them conditionally:
         # E.g. firmware_1550 or firmware_1240 might define `highAmplitudeIndex`
@@ -289,7 +301,8 @@ class DataSimulator:
 
                 # Attempt to maintain real-time pacing
                 elapsedRuntime = time.time() - startTime
-                sleepTime = (self.microIncrement * 1e-6) - elapsedRuntime
+                sleepTime = (self.microIncrement * 1e-1 / self.sampleRate) - elapsedRuntime
+                # print(sleepTime)
                 Sleep(sleepTime)
 
                 dataChunkIndex += 1
