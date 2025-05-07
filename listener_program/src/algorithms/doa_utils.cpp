@@ -45,13 +45,6 @@ void normalizeDoa(Eigen::VectorXf& doaVector, int solutionRank)
 auto computeDoaFromTdoa(const Eigen::MatrixXf& cachedLeastSquaresResult, const Eigen::VectorXf& tdoa, int rank)
     -> Eigen::VectorXf
 {
-    // Scale the TDOA vector by the speed of sound
-    // Eigen::VectorXf scaledTdoa = tdoa * speedOfSound;
-
-    // Compute the product of U^T and the scaled TDOA vector
-    // Eigen::VectorXf uTransposeTdoa = basisMatrixU.transpose() * scaledTdoa;
-
-    // Compute the DOA vector using the precomputed matrix P
     Eigen::VectorXf doaVector = cachedLeastSquaresResult * tdoa;
 
     // Normalize the DOA vector if the rank is greater than 1

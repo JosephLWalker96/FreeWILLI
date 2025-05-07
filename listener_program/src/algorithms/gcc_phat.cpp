@@ -63,10 +63,13 @@ auto GCC_PHAT::process(const Eigen::MatrixXcf& savedFfts) -> std::tuple<Eigen::V
  *
  * @throws std::runtime_error If the computed cross-spectrum contains NaN or infinite values.
  */
+
 void GCC_PHAT::calculateNormalizedCrossSpectra(const Eigen::VectorXcf& s1, const Eigen::VectorXcf& s2)
 {
     Eigen::VectorXcf crossSpectrum = s1.array() * s2.conjugate().array();
     Eigen::VectorXf magnitudes = crossSpectrum.cwiseAbs().unaryExpr([](float x) { return (x == 0.0f) ? 1.0f : x; });
+    // std::cout << "######################" << std::endl;
+    // std::cout << magnitudes.head(500) << std::endl;
 
     if (!magnitudes.allFinite())
     {
@@ -75,6 +78,37 @@ void GCC_PHAT::calculateNormalizedCrossSpectra(const Eigen::VectorXcf& s1, const
 
     mNormalizedCrossSpectra.array() = crossSpectrum.array() / magnitudes.array();
 }
+
+/*
+void GCC_PHAT::calculateNormalizedCrossSpectra(const Eigen::VectorXcf& s1, const Eigen::VectorXcf& s2)
+{
+    // 1. Cross‐spectrum
+    Eigen::ArrayXcf cs = s1.array() * s2.conjugate().array();
+
+    // 2. Magnitudes
+    Eigen::ArrayXf mag = cs.abs();
+
+    // 3. Threshold & mask
+    constexpr float eps = 1.0f;  // your gate
+    Eigen::Array<bool, Eigen::Dynamic, 1> keep = mag > eps;
+
+    // 4. Prepare denominator (avoid div‐by‐zero)
+    Eigen::ArrayXf denom = keep.select(mag, Eigen::ArrayXf::Ones(mag.size()));
+
+    // 5. PHAT normalization + zero‐force
+    Eigen::ArrayXcf phat = cs / denom;  // divide everywhere
+    phat = keep.select(phat, Eigen::ArrayXcf::Zero(phat.size()));
+
+    // 6. Sanity check
+    if (!phat.allFinite())
+    {
+        throw std::runtime_error("PHAT contains invalid (inf/NaN) values.");
+    }
+
+    // 7. Store result
+    mNormalizedCrossSpectra = phat.matrix();
+}
+*/
 
 /**
  * @brief Estimates the Time Difference of Arrival (TDOA) and cross-correlation peak value.

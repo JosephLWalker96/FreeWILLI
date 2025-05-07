@@ -36,27 +36,28 @@ TEST(LinearAlgebraUtilsTest, PrecomputePseudoInverseBasic)
     matrix << 4, 7, 2, 6;
 
     Eigen::JacobiSVD<Eigen::MatrixXf> svd = computeSvd(matrix);
-    Eigen::MatrixXf precomputed = precomputePseudoInverse(svd);
-
+    auto tuple = precomputePseudoInverseAndRank(svd, 1.0f);
+    auto precomputed = std::get<0>(tuple);
     // Check dimensions
     EXPECT_EQ(precomputed.rows(), 2);
     EXPECT_EQ(precomputed.cols(), 2);
 
     // Ensure Pseudo-inverse is correct by verifying A * A^+ ≈ I
-    Eigen::MatrixXf pseudoInverse = precomputed * svd.matrixU().transpose();
-    Eigen::MatrixXf identityApprox = matrix * pseudoInverse;
+    Eigen::MatrixXf identityApprox = matrix * precomputed;
 
     EXPECT_NEAR(identityApprox(0, 0), 1.0, 1e-3);
     EXPECT_NEAR(identityApprox(1, 1), 1.0, 1e-3);
 }
 
 // Test: Compute rank of a full-rank matrix
+
 TEST(LinearAlgebraUtilsTest, ComputeRankFullRankMatrix)
 {
     Eigen::MatrixXf matrix(3, 3);
     matrix << 2, -1, 0, -1, 2, -1, 0, -1, 2;
 
-    int rank = computeRank(matrix, 1e-6);
+    auto tuple = precomputePseudoInverseAndRank(computeSvd(matrix), 1.0f);
+    auto rank = std::get<1>(tuple);
     EXPECT_EQ(rank, 3);
 }
 
@@ -66,7 +67,8 @@ TEST(LinearAlgebraUtilsTest, ComputeRankDeficientMatrix)
     Eigen::MatrixXf matrix(3, 3);
     matrix << 1, 2, 3, 4, 5, 6, 7, 8, 9;  // Linearly dependent rows
 
-    int rank = computeRank(matrix, 1e-6);
+    auto tuple = precomputePseudoInverseAndRank(computeSvd(matrix), 1.0f);
+    auto rank = std::get<1>(tuple);
     EXPECT_EQ(rank, 2);
 }
 
@@ -74,16 +76,19 @@ TEST(LinearAlgebraUtilsTest, ComputeRankDeficientMatrix)
 TEST(LinearAlgebraUtilsTest, ComputeRankZeroMatrix)
 {
     Eigen::MatrixXf zeroMatrix = Eigen::MatrixXf::Zero(4, 4);
-    int rank = computeRank(zeroMatrix, 1e-6);
+    auto tuple = precomputePseudoInverseAndRank(computeSvd(zeroMatrix), 1.0f);
+    auto rank = std::get<1>(tuple);
     EXPECT_EQ(rank, 0);
 }
 
 // Test: Compute rank of a non-square matrix
+
 TEST(LinearAlgebraUtilsTest, ComputeRankNonSquareMatrix)
 {
     Eigen::MatrixXf matrix(4, 2);
     matrix << 1, 2, 3, 4, 5, 6, 7, 8;
 
-    int rank = computeRank(matrix, 1e-6);
+    auto tuple = precomputePseudoInverseAndRank(computeSvd(matrix), 1.0f);
+    auto rank = std::get<1>(tuple);
     EXPECT_EQ(rank, 2);
 }

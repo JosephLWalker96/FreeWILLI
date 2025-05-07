@@ -1,5 +1,6 @@
 #include "pipeline.h"
 
+#include "algorithms/linear_algebra_utils.h"
 #include "pch.h"
 #include "utils.h"
 
@@ -17,13 +18,16 @@ Pipeline::Pipeline(
       mSharedDataManager(sharedDataManager),
       mSpeedOfSound(pipelineVariables.speedOfSound),
       mReceiverPositionsPath(pipelineVariables.receiverPositionsPath),
-      mFilter(IFrequencyDomainStrategyFactory::create(
-          pipelineVariables.frequencyDomainStrategy, pipelineVariables.filterWeightsPath, mChannelData,
-          mFirmwareConfig->numChannels())),
-      mTimeDomainDetector(ITimeDomainDetectorFactory::create(
-          pipelineVariables.timeDomainDetector, pipelineVariables.timeDomainThreshold)),
-      mFrequencyDomainDetector(IFrequencyDomainDetectorFactory::create(
-          pipelineVariables.frequencyDomainDetector, pipelineVariables.energyDetectionThreshold)),
+      mFilter(
+          IFrequencyDomainStrategyFactory::create(
+              pipelineVariables.frequencyDomainStrategy, pipelineVariables.filterWeightsPath, mChannelData,
+              mFirmwareConfig->numChannels())),
+      mTimeDomainDetector(
+          ITimeDomainDetectorFactory::create(
+              pipelineVariables.timeDomainDetector, pipelineVariables.timeDomainThreshold)),
+      mFrequencyDomainDetector(
+          IFrequencyDomainDetectorFactory::create(
+              pipelineVariables.frequencyDomainDetector, pipelineVariables.energyDetectionThreshold)),
       mTracker(ITracker::create(pipelineVariables)),
       mOnnxModel(IONNXModel::create(pipelineVariables)),
       mChannelData(Eigen::MatrixXf::Zero(mFirmwareConfig->numChannels(), mFirmwareConfig->channelSize())),
@@ -59,10 +63,13 @@ void Pipeline::process()
 void Pipeline::dataProcessor()
 {
     Eigen::MatrixXf hydrophonePositions = getHydrophoneRelativePositions(mReceiverPositionsPath);
-    auto [precomputedP, basisMatrixU, rankOfHydrophoneMatrix] = hydrophoneMatrixDecomposition(hydrophonePositions);
+
+    auto svdDecomposition = computeSvd(hydrophonePositions);
+    auto [cachedLeastSquaresResult, rankOfHydrophoneMatrix] =
+        precomputePseudoInverseAndRank(svdDecomposition, mSpeedOfSound);
 
     // precompute the leastsquares matrix. Use for efficient DOA estiation
-    Eigen::MatrixXf cachedLeastSquaresResult = precomputedP * basisMatrixU.transpose() * mSpeedOfSound;
+    // Eigen::MatrixXf cachedLeastSquaresResult = precomputedInverse * mSpeedOfSound;
 
     bool previousTimeSet = false;
     auto previousTime = TimePoint::min();
