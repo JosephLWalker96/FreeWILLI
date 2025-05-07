@@ -292,7 +292,8 @@ class DataSimulator:
 
                 # Attempt to maintain real-time pacing
                 elapsedRuntime = time.time() - startTime
-                sleepTime = (self.microIncrement * 1e-1 / self.sampleRate) - elapsedRuntime
+                # sleepTime = (self.microIncrement * 1e-1 / self.sampleRate) - elapsedRuntime
+                sleepTime = (self.microIncrement * 1e-6) - elapsedRuntime # Convert microIncrement to TRULY micro, then subtract elapsedRuntime
                 # print(sleepTime)
                 Sleep(sleepTime)
 
