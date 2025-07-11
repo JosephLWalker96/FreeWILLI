@@ -63,7 +63,9 @@ class NpyFileProcessor:
             shiftedDataMatrix = np.copy(rawDataMatrix)
 
         # Only firmware 1240 interleaving logic is implemented
-        if fw == 1240:
+        if fw == '1240':
+            interleavedData = InterleaveData(shiftedDataMatrix)
+        elif fw == '1240_Fs2x':
             interleavedData = InterleaveData(shiftedDataMatrix)
         else:
             print("Error: Only firmware 1240 interleaving is implemented in this script.")
