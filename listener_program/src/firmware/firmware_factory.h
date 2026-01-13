@@ -2,6 +2,8 @@
 
 #include "firmware_1240.h"
 #include "firmware_1240_imu.h"
+#include "firmware_1240_fs2x.h"
+#include "firmware_1240_fs2x_imu.h"
 
 class FirmwareFactory
 {
@@ -15,6 +17,14 @@ class FirmwareFactory
         else if (firmwareToUse == "1240")
         {
             return std::make_shared<const Firmware1240>();
+        }
+        else if (firmwareToUse == "1240_fs2x")
+        {
+            return std::make_unique<const Firmware1240Fs2x>();
+        }
+        else if (firmwareToUse == "1240_fs2x_imu")
+        {
+            return std::make_unique<const Firmware1240Fs2xIMU>();
         }
         else
         {

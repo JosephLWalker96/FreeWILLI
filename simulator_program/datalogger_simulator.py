@@ -24,7 +24,7 @@ class ArgumentParserService:
         parser.add_argument('--port', default=1045, type=int, help='UDP port to send data to')
         parser.add_argument('--ip', default="192.168.7.2", type=str, help='IP address to send data to')
         parser.add_argument('--data_dir', default="simulator_data/track132_5minchunks/", type=str, help='Directory containing .npy data files')
-        parser.add_argument('--fw', default=1240, type=int, help='Firmware version to simulate')
+        parser.add_argument('--fw', default='1240', type=str, help='Firmware version to simulate')
         parser.add_argument('--loop', action='store_true', help='Enable looping over the data')
         parser.add_argument('--stretch', action='store_true', help='Normalize data values to the min/max range of 16-bit unsigned int')
         parser.add_argument('--high_act', action='store_true', help='Enable high activity mode')
@@ -63,7 +63,9 @@ class NpyFileProcessor:
             shiftedDataMatrix = np.copy(rawDataMatrix)
 
         # Only firmware 1240 interleaving logic is implemented
-        if fw == 1240:
+        if fw == '1240':
+            interleavedData = InterleaveData(shiftedDataMatrix)
+        elif fw == '1240_Fs2x':
             interleavedData = InterleaveData(shiftedDataMatrix)
         else:
             print("Error: Only firmware 1240 interleaving is implemented in this script.")
@@ -86,11 +88,13 @@ class DataSimulator:
         if self.arguments.ip == "self":
             self.arguments.ip = "127.0.0.1"
 
-        # Firmware-specific imports
-        if self.arguments.fw == 1550:
+        # Firmware-specific imports (firmware- and samplerate-dependent)
+        if self.arguments.fw == '1550':
             import firmware_config.firmware_1550 as fwConfig
-        elif self.arguments.fw == 1240:
+        elif self.arguments.fw == '1240':
             import firmware_config.firmware_1240 as fwConfig
+        elif self.arguments.fw == '1240_Fs2x':
+            import firmware_config.firmware_1240_Fs2x as fwConfig
         else:
             print('ERROR: Unknown firmware version')
             sys.exit()
@@ -101,6 +105,7 @@ class DataSimulator:
         self.dataSize = fwConfig.DATA_SIZE
         self.bytesPerSample = fwConfig.BYTES_PER_SAMP
         self.microIncrement = fwConfig.MICRO_INCR
+        self.sampleRate = fwConfig.SAMPLE_RATE
 
         # If certain firmware files define additional constants, reference them conditionally:
         # E.g. firmware_1550 or firmware_1240 might define `highAmplitudeIndex`
@@ -292,7 +297,9 @@ class DataSimulator:
 
                 # Attempt to maintain real-time pacing
                 elapsedRuntime = time.time() - startTime
-                sleepTime = (self.microIncrement * 1e-6) - elapsedRuntime
+                # sleepTime = (self.microIncrement * 1e-1 / self.sampleRate) - elapsedRuntime
+                sleepTime = (self.microIncrement * 1e-6) - elapsedRuntime # Convert microIncrement to TRULY micro, then subtract elapsedRuntime
+                # print(sleepTime)
                 Sleep(sleepTime)
 
                 dataChunkIndex += 1
