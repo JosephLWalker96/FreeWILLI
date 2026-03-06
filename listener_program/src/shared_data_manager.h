@@ -14,7 +14,8 @@ class SharedDataManager
 
     int pushDataToBuffer(const std::vector<uint8_t>& data);
 
-    void waitForData(std::vector<std::vector<uint8_t>>& dataBytes, int numPacksToGet);
+    void waitForData(std::vector<std::vector<uint8_t>>& dataBytes, int numPacksToGet,
+                     std::chrono::seconds timeout = std::chrono::seconds(10));
 
    private:
     std::mutex dataBufferLock;

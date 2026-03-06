@@ -2,6 +2,7 @@
 
 #include "firmware/firmware_interface.h"
 #include "pch.h"
+#include "session_metrics.h"
 // Forward declarations
 /*
 class IFirmware;
@@ -38,12 +39,15 @@ struct ProcessingContext
 
     DetectionResult currentResult;
 
-    ProcessingContext() = default;
+    std::shared_ptr<SessionMetrics> metrics;
+
+    ProcessingContext() : metrics(std::make_shared<SessionMetrics>()) {}
 
     ProcessingContext(const std::shared_ptr<const IFirmware> firmware)
         : channelData(Eigen::MatrixXf::Zero(firmware->numChannels(), firmware->channelSize())),
           firmware(firmware),
-          dataBytes(firmware->numPacketsToDetect())
+          dataBytes(firmware->numPacketsToDetect()),
+          metrics(std::make_shared<SessionMetrics>())
     {
     }
 

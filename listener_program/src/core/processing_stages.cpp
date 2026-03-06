@@ -22,6 +22,12 @@ bool DataAcquisitionStage::process(std::shared_ptr<ProcessingContext> context)
 
     context->firmware->insertDataIntoChannelMatrix(context->channelData, context->dataBytes);
 
+    // Keep lastDataTime current so encounter duration is computed from data timestamps
+    if (!context->dataTimes.empty())
+    {
+        context->metrics->lastDataTime = context->dataTimes.back();
+    }
+
     return true;
 }
 
@@ -43,6 +49,16 @@ bool TimeDomainDetectionStage::process(std::shared_ptr<ProcessingContext> contex
     {
         // Store detection amplitude and timestamp
         context->currentResult.peakAmplitude = mFunction->getLastDetection();
+
+        // Metric 2 & 10: count every time-domain detection
+        if (!context->dataTimes.empty())
+        {
+            context->metrics->recordTimeDomainDetection(context->dataTimes[0]);
+        }
+        else
+        {
+            context->metrics->timeDomainDetections++;
+        }
     }
 
     return detected;
@@ -208,6 +224,9 @@ bool DirectionEstimationStage::process(std::shared_ptr<ProcessingContext> contex
         context->currentResult.crossCorrelationAmps = xCorrAmps;
         context->currentResult.isValid = true;
 
+        // Metric 3: count valid DOA estimates
+        context->metrics->validDoaEstimates++;
+
         return true;
     }
     catch (const std::exception& e)
@@ -241,6 +260,12 @@ bool TrackingStage::process(std::shared_ptr<ProcessingContext> context)
 
             // Store tracking label in result
             context->currentResult.trackingLabel = trackingLabel;
+
+            // Metrics 4 & 5: count DOAs that matched an active track
+            if (trackingLabel >= 0)
+            {
+                context->metrics->trackedDoaCount++;
+            }
         }
 
         return true;
@@ -260,6 +285,11 @@ void TrackingStage::initialize(std::shared_ptr<ProcessingContext> context)
     {
         // Initialize tracker output file with first timestamp
         mFunction->initializeOutputFile(context->dataTimes[0]);
+    }
+
+    if (mFunction)
+    {
+        mFunction->setMetrics(context->metrics);
     }
 }
 

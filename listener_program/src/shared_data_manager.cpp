@@ -25,14 +25,33 @@ int SharedDataManager::pushDataToBuffer(const std::vector<uint8_t>& data)
  * @param numPacksToGet Number of packets to fetch from the buffer.
  * @return None (blocks until data is available).
  */
-void SharedDataManager::waitForData(std::vector<std::vector<uint8_t>>& dataBytes, int numPacksToGet)
+void SharedDataManager::waitForData(std::vector<std::vector<uint8_t>>& dataBytes, int numPacksToGet,
+                                    std::chrono::seconds timeout)
 {
+    auto startTime = std::chrono::steady_clock::now();
+
     while (true)
     {
+        if (errorOccurred)
+        {
+            throw std::runtime_error("Stopping: error flag set by another thread");
+        }
+
         if (popDataFromBuffer(dataBytes, numPacksToGet))
         {
             return;
         }
+
+        auto elapsed = std::chrono::steady_clock::now() - startTime;
+        if (elapsed >= timeout)
+        {
+            errorOccurred = true;
+            throw std::runtime_error(
+                "Stream timeout: no data received for " +
+                std::to_string(std::chrono::duration_cast<std::chrono::seconds>(elapsed).count()) +
+                " seconds");
+        }
+
         std::this_thread::sleep_for(std::chrono::milliseconds(15));
     }
 }

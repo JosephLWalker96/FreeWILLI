@@ -2,6 +2,7 @@
 #include "../../libs/dbscan/dbscan.hpp"
 #include "../algorithms/localization/kalman_filter.h"
 #include "../pch.h"
+#include "../session_metrics.h"
 #include "../utils.h"
 using namespace std::chrono_literals;
 
@@ -33,6 +34,8 @@ class Tracker
     void scheduleCluster();
 
     void updateTrackerBuffer(const Eigen::VectorXf& directionOfArrival);
+
+    void setMetrics(std::shared_ptr<SessionMetrics> metrics);
 
     bool mIsTrackerInitialized = false;
 
@@ -83,6 +86,8 @@ class Tracker
     std::vector<KalmanFilter> mKalmanFilters;
     std::vector<int> mClusterAssignments;
     std::vector<int> mMissedUpdates;
+    std::vector<std::chrono::steady_clock::time_point> mFilterCreationTimes;
+    std::shared_ptr<SessionMetrics> mMetrics;
 };
 
 class ITracker

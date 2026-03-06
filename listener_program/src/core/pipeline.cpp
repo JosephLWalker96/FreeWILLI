@@ -85,6 +85,8 @@ void Pipeline::initializeContext()
     if (!mContext->dataTimes.empty() && mContext->firmware)
     {
         mOutputHandler->initialize(mContext->dataTimes[0], mContext->firmware->numChannels());
+        mContext->metrics->sessionStartTime = mContext->dataTimes[0];
+        mContext->metrics->lastDataTime = mContext->dataTimes[0];
     }
     else
     {
@@ -170,6 +172,8 @@ void Pipeline::processLoop()
 
     // Final flush and statistics
     mOutputHandler->flush();
+
+    mContext->metrics->report();
 
     std::cout << "Processing loop completed." << std::endl;
     std::cout << "Total iterations: " << iterationCount << std::endl;

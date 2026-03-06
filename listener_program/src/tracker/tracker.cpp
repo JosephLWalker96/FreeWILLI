@@ -24,6 +24,8 @@ Tracker::Tracker(
     std::cout << "    no clustering window: " << mNoClusterWindow.count() << std::endl;
 }
 
+void Tracker::setMetrics(std::shared_ptr<SessionMetrics> metrics) { mMetrics = std::move(metrics); }
+
 /**
  * @brief Runs the DBSCAN clustering algorithm on the observation buffer.
  *
@@ -51,13 +53,23 @@ auto Tracker::runDbscan() -> std::vector<Eigen::Vector3f>
  */
 void Tracker::destroyExpiredFilters()
 {
+    auto now = std::chrono::steady_clock::now();
+
     // Identify filters that have not exceeded the missed update threshold
     std::vector<int> indicesToKeep;
     for (size_t i = 0; i < mMissedUpdates.size(); ++i)
     {
         if (mMissedUpdates[i] <= mMissedUpdateThreshold)
         {
-            indicesToKeep.push_back(i);
+            indicesToKeep.push_back(static_cast<int>(i));
+        }
+        else if (mMetrics)
+        {
+            // Metric 7 & 9: record this track's termination and duration
+            double durationSecs =
+                std::chrono::duration<double>(now - mFilterCreationTimes[i]).count();
+            mMetrics->terminatedTrackDurations.push_back(durationSecs);
+            mMetrics->tracksTerminated++;
         }
     }
 
@@ -65,6 +77,7 @@ void Tracker::destroyExpiredFilters()
     filterByIndices(mKalmanFilters, indicesToKeep);
     filterByIndices(mMissedUpdates, indicesToKeep);
     filterByIndices(mClusterAssignments, indicesToKeep);
+    filterByIndices(mFilterCreationTimes, indicesToKeep);
 }
 
 /**
@@ -149,6 +162,20 @@ void Tracker::initializeFiltersForClusters(
         // Assign a unique label to the new filter and initialize its missed update counter
         mClusterAssignments.push_back(mNextLabel++);
         mMissedUpdates.push_back(0);
+        mFilterCreationTimes.push_back(std::chrono::steady_clock::now());
+
+        // Metric 6: count every new track
+        if (mMetrics)
+        {
+            mMetrics->tracksCreated++;
+        }
+    }
+
+    // Metric 8: update peak concurrent active track count
+    if (mMetrics && !mKalmanFilters.empty())
+    {
+        mMetrics->maxActiveTracks =
+            std::max(mMetrics->maxActiveTracks, static_cast<int>(mKalmanFilters.size()));
     }
 }
 
